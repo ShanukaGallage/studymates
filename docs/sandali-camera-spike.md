@@ -1,8 +1,10 @@
 # Sandali — Step 1: baseline and camera spike plan
 
-Inspection date: 15 November 2026. This is a planning slice, not a working scanner.
+Inspection date: 15 November 2026. Local scanner dependency setup is verified;
+scanner UI and camera hardware verification remain future work. Sections before
+the setup verification update describe the initial inspection, not current status.
 
-## Local baseline evidence
+## Initial local baseline evidence (historical)
 
 - Branch: `feat/sandali-invitations`.
 - Inspected commit: `a9bde2b6a78e5d3884a871adfa49ec1c30c2173f` (`first UI build`).
@@ -18,7 +20,7 @@ Inspection date: 15 November 2026. This is a planning slice, not a working scann
   Folder names do not prove installed versions. `flutter --version` did not
   return during inspection; actual SDK compatibility remains unconfirmed.
 
-## Proposed dependency slot (not reserved yet)
+## Initial dependency proposal (historical)
 
 Ask Shanuka to confirm ordering with Poojani's Firebase dependency PR and reserve
 one short slot for `pubspec.yaml`, `pubspec.lock`, and any needed Android config.
@@ -49,7 +51,7 @@ Official references checked:
 - https://raw.githubusercontent.com/juliansteenbakker/mobile_scanner/v7.5.0/android/src/main/AndroidManifest.xml
 - https://pub.dev/packages/qr_flutter
 
-## Next small slices
+## Original implementation sequence (historical)
 
 1. Confirm team baseline, actual SDK, phone Android version and room preview.
 2. In the agreed slot, add scanner dependency, resolve lockfile, inspect Android
@@ -76,3 +78,51 @@ release the camera when covered, backgrounded or exited. Never open scanned URLs
 
 Step 1 is still pending baseline agreement, dependency slot and phone evidence.
 No camera hardware, Flutter analysis, test suite or APK build passed in this slice.
+
+## Setup verification update — 15 November 2026
+
+This update supersedes the pending local setup findings above. The earlier
+inspection is retained as a record of the initial state.
+
+- Shared preview baseline: `9c222c66051706682ab57b7a4b2a90f4b42455c6` from
+  `origin/main`. Current local Git history records its merge as `69c8c39`
+  (`Merge Shanuka room preview baseline`). There is no pending merge now.
+- Scanner dependency commit: `c9f1c55` (`chore(m4): add QR scanner dependency`).
+  These commits already existed when this documentation-only update began;
+  this update creates no commit and does not establish push or PR status.
+- Shanuka's dependency/Android edit approval was supplied by the user.
+- Actual installed toolchain: Flutter 3.50.0 stable / Dart 3.14.0.
+- Added exact direct dependency `mobile_scanner: 7.5.0`. New transitive lockfile
+  entries: `plugin_platform_interface` 2.1.8 and `web` 1.1.2. No existing package
+  was upgraded. `qr_flutter` remains deferred until invitation display work.
+- No Android source/config edit was needed: Flutter resolves compileSdk 36,
+  targetSdk 36 and minSdk 24; existing Java compatibility is 17. The plugin needs
+  compileSdk 36 / minSdk 23 / Java 17. The successful APK's merged manifest
+  contains CAMERA permission and camera hardware with `required="false"`.
+- Default bundled ML Kit retained. No scanner UI or runtime camera flow exists.
+- `flutter pub get`: passed.
+- `flutter analyze --no-pub`: passed, no issues.
+- `flutter test --no-pub`: passed, 34 tests.
+- `flutter build apk --debug --no-pub -t lib/main_preview.dart --verbose`:
+  passed after dependency-download delays. APK: `build/app/outputs/flutter-apk/app-debug.apk`.
+- APK SHA256: `5A6ABDE6376EEF565DAEABD94A0ADA8F1B5C0A5F1C562F31E89D755910D8ED02`.
+- Ran the built preview APK on `emulator-5554`, model `sdk_gphone64_x86_64`,
+  Android 17. Opened Discover, Explore IoT, Join SIG, Open ESP32, Join subgroup,
+  Preview First Sensor Project. The room route `/discover/rooms/first-sensor`
+  opened with three sample occupants and three available seats. Inspected the
+  screenshot and accessibility hierarchy; this is local sample data only.
+- Screenshot captured at `%TEMP%/studymates-room-step1.png` for this session.
+- User-supplied screenshots also confirm six seats, three sample occupants and
+  Seat 4 selected locally, with the explicit message that no seat was claimed.
+  The goal panel still says there is no preview goal and Start is disabled.
+  Goal saving and enabled Start behavior were not verified by these screenshots.
+- User selected emulator verification for now. Sandali's physical phone model,
+  Android version and room-preview run are still pending; camera hardware has
+  not been tested.
+
+Local dependency setup and emulator verification are complete. Full team Step 1
+closure still requires confirmation of dependency PR review/merge and teammates
+pulling the resulting lockfile, plus the physical-phone baseline check. Local
+commits are present as recorded above; remote publication and PR status have not
+been checked in this documentation-only update. No code, dependency or Android
+configuration changes, commits, pushes or merge operations were made in this update.
