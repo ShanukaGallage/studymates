@@ -198,3 +198,55 @@ commits for the controller/fixtures and the history screen/preview. The notes
 above describe checks performed before publication. PR review should cover the
 fixture-backed behavior and Shanuka's route/provider handoff; production history
 integration and long-goal support remain outside this change.
+
+## Goal-text follow-up after baseline ffc6311
+
+This supersedes the earlier goal-text blocker: M3 has now merged the required
+`CompletionRecord.goalText` field and updated its fixtures. History cards display
+the original personal goal without truncation, separately from goal outcome and
+timer status. Blank stored text uses `No goal text recorded.` without changing
+valid credit. The local test fixture now supplies the required model field.
+
+Added the M4-owned `Long goal history` preview scenario using the agreed model.
+It varies only the first record's goal text; its identity, timer/goal outcomes,
+credit and complete summary are preserved. Paging a duplicate of the same record
+does not replace its long text or add a second row. No M3 fixture/schema was edited.
+
+Checks: analysis passed with no issues; full suite passed all 111 tests; the final
+history-screen suite passed all nine tests, including 320px/2x-text long-goal
+scrolling, goal retention across duplicate pages and blank-goal fallback. Built
+and ran the preview on Android 17 emulator with the existing temporary
+`--no-enable-impeller` option. Selected Long goal history, scrolled the whole goal
+and inspected screenshot `%TEMP%/progress-long-goal.png`: text was readable,
+recorded time remained 20m and outcome remained Unfinished. Physical-phone review
+of the new goal layout is not claimed.
+
+Run the same preview command above, then sliders > Long goal history. Check the
+full text, Load more history and the unchanged normal summary (1h 5m / two
+completed sessions). Shanuka's existing route/provider handoff remains applicable;
+shared app routes and provider bindings were not changed. Production history,
+account isolation and persistence remain Step 5 work. Cancellation credit remains
+M2/M3's policy; the reader does not award or rewrite it. This follow-up is not yet
+committed or pushed.
+
+## Combined goal display and edge-case follow-up
+
+Added `Cancelled sample (provisional)` to the standalone fixture scenarios. It
+reads M3's existing zero-credit example and shows an explicit provisional-data
+notice. It does not set or approve cancellation policy. Additional screen tests
+provide cancelled records with 0 and 125 credited seconds and confirm that the
+reader displays exactly the supplied credit and supplied summary/count. The
+positive example is test input only, not an award rule or production fixture.
+
+Added a 2x-text test rotating the long-goal screen from 320x568 portrait to
+568x320 landscape. Load-more and demo controls remain reachable by scrolling;
+summary values remain stable. The targeted screen suite passes all 12 tests and
+analysis passes with no issues. These landscape/cancellation checks are automated;
+no additional physical-phone verification is claimed.
+
+The user requested fewer commits and publication of related work together. This
+follow-up combines original-goal display, long-goal/blank-goal handling, cancelled
+display and responsive checks in one meaningful commit. No shared routing,
+completion writes, auth integration or credit-policy changes are included.
+
+Final pre-publication full suite: `flutter test --no-pub` passed all 114 tests.

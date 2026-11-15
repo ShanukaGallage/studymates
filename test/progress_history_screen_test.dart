@@ -8,8 +8,46 @@ import 'package:studymates/features/progress/presentation/screens/progress_histo
 import 'package:studymates/features/sessions/data/completion_history_repository.dart';
 import 'package:studymates/preview/progress_history_fixtures.dart';
 import 'package:studymates/preview/progress_history_preview.dart';
+import 'package:studymates/preview/completion_fixtures.dart';
+
+/// Supplied credit is read-only test data, not a decision about cancellation.
+class _CancelledRepository extends ProgressHistoryFixtureRepository {
+  _CancelledRepository(this.credit);
+  final int credit;
+
+  @override
+  Future<CompletionHistorySummary> loadCurrentUserSummary() async =>
+      CompletionHistorySummary(
+        creditedSeconds: credit,
+        completedSessionCount: 0,
+      );
+
+  @override
+  Future<CompletionHistoryPage> loadCurrentUserHistoryPage({
+    String? pageToken,
+  }) async {
+    final source = provisionalCancelledCompletionHistoryFixture.single;
+    return CompletionHistoryPage(
+      records: [
+        CompletionRecord(
+          recordId: source.recordId,
+          userId: source.userId,
+          sessionId: source.sessionId,
+          goalText: source.goalText,
+          endedAt: source.endedAt,
+          creditedSeconds: credit,
+          timerStatus: source.timerStatus,
+          goalOutcome: source.goalOutcome,
+          isDemo: source.isDemo,
+        ),
+      ],
+    );
+  }
+}
 
 class _LongSessionRepository extends ProgressHistoryFixtureRepository {
+  _LongSessionRepository({this.goalText = progressLongGoalText});
+  final String goalText;
   @override
   Future<CompletionHistoryPage> loadCurrentUserHistoryPage({
     String? pageToken,
@@ -19,6 +57,7 @@ class _LongSessionRepository extends ProgressHistoryFixtureRepository {
         recordId: 'long',
         userId: 'preview-user-1',
         sessionId: 'Long session identifier ' * 15,
+        goalText: goalText,
         endedAt: DateTime.utc(2026, 11, 15),
         creditedSeconds: 1200,
         timerStatus: TimerCompletionStatus.completed,
@@ -94,6 +133,8 @@ void main() {
       expect(find.text('Eligible recorded time: 1h 5m'), findsOneWidget);
       expect(find.text('Completed sessions: 2'), findsOneWidget);
       expect(find.text('Goal: Unfinished'), findsOneWidget);
+      expect(find.text('Build a working sensor sketch'), findsOneWidget);
+      expect(find.text('Recorded time: 20m'), findsOneWidget);
       await tapVisible(tester, 'Load more history');
       expect(
         find.byKey(
@@ -170,7 +211,7 @@ void main() {
   );
 
   testWidgets(
-    '320px large text scrolls long session identifiers without overflow',
+    '320px large text scrolls full long goal and session identifier without overflow',
     (tester) async {
       tester.view.physicalSize = const Size(320, 568);
       tester.view.devicePixelRatio = 1;
@@ -181,6 +222,84 @@ void main() {
       await tester.pump();
       expect(tester.takeException(), isNull);
       expect(find.text('Recorded time: 20m'), findsOneWidget);
+      expect(find.text(progressLongGoalText), findsOneWidget);
+      final goal = tester.widget<Text>(find.text(progressLongGoalText));
+      expect(goal.maxLines, isNull);
+      expect(goal.overflow, isNull);
+    },
+  );
+
+  testWidgets(
+    'long-goal preview keeps text and credit after paging duplicates',
+    (tester) async {
+      await open(
+        tester,
+        ProgressHistoryFixtureRepository(
+          scenario: ProgressHistoryScenario.longGoal,
+        ),
+      );
+      expect(find.text(progressLongGoalText), findsOneWidget);
+      await tapVisible(tester, 'Load more history');
+      expect(find.text(progressLongGoalText), findsOneWidget);
+      expect(find.text('Build a working sensor sketch'), findsNothing);
+      expect(find.text('Eligible recorded time: 1h 5m'), findsOneWidget);
+      expect(find.text('Completed sessions: 2'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'blank stored goal has a readable fallback without hiding credited time',
+    (tester) async {
+      await open(tester, _LongSessionRepository(goalText: '   '));
+      expect(find.text('No goal text recorded.'), findsOneWidget);
+      expect(find.text('Recorded time: 20m'), findsOneWidget);
+      expect(find.text('Goal: Unfinished'), findsOneWidget);
+    },
+  );
+
+  for (final sample in {0: '0m', 125: '2m 5s'}.entries) {
+    testWidgets(
+      'cancelled record displays supplied ${sample.key}s without awarding or erasing credit',
+      (tester) async {
+        await open(tester, _CancelledRepository(sample.key));
+        expect(find.text('Timer: Cancelled'), findsOneWidget);
+        expect(find.text('Recorded time: ${sample.value}'), findsOneWidget);
+        expect(
+          find.text('Eligible recorded time: ${sample.value}'),
+          findsOneWidget,
+        );
+        expect(find.text('Completed sessions: 0'), findsOneWidget);
+        expect(find.text('Read the assigned chapter'), findsOneWidget);
+      },
+    );
+  }
+
+  testWidgets(
+    'long goal survives portrait to landscape with large text and accessible pagination',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await open(
+        tester,
+        ProgressHistoryFixtureRepository(
+          scenario: ProgressHistoryScenario.longGoal,
+        ),
+        largeText: true,
+      );
+      tester.view.physicalSize = const Size(568, 320);
+      await tester.pumpAndSettle();
+      expect(find.text(progressLongGoalText), findsOneWidget);
+      await tapVisible(tester, 'Load more history');
+      expect(tester.takeException(), isNull);
+      expect(find.text('Eligible recorded time: 1h 5m'), findsOneWidget);
+      expect(find.text('Completed sessions: 2'), findsOneWidget);
+      await tapVisible(tester, 'Demo history');
+      await tester.ensureVisible(find.text('Recorded time: 1m 15s'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Recorded time: 1m 15s'), findsOneWidget);
     },
   );
 }
