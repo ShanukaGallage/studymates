@@ -223,6 +223,62 @@ Still requiring team confirmation:
 - The exact nullability and update semantics of seat timestamps when a seat is
   available, and the final Firestore schema details.
 
+## Completion and history handoff
+
+`CompletionRecord` is defined in `lib/core/models/completion_record.dart` for
+M3 finalization and M4 read-only history. It contains a stable `recordId`,
+`userId`, `sessionId`, UTC `endedAt`, `creditedSeconds`, a typed timer completion
+status, a separate `GoalOutcome` (`completed` or `unfinished`), and `isDemo`.
+The model validates non-empty identity fields and non-negative credited seconds;
+it does not enforce persistence uniqueness or calculate credited time.
+
+`TimerCompletionStatus` distinguishes `completed`, `endedEarly`, and `cancelled`.
+These statuses describe the timer/session result only. The history summary's
+`completedSessionCount` counts only non-demo records with
+`timerStatus == completed`, independently of `goalOutcome`; early-left and
+cancelled records are not completed sessions. An unfinished goal may retain
+positive valid `creditedSeconds`. Demo records are excluded from normal totals
+and counts.
+
+`CompletionHistoryRepository` in
+`lib/features/sessions/data/completion_history_repository.dart` is read-only and
+has separate operations for the current user's history page and all-history
+summary. It accepts no caller-supplied user ID; the production adapter must use
+M2's current identity and enforce private user scope. The page token is opaque.
+The all-history summary must come from the complete source, not a sum of the
+currently loaded page, and must remain independent of page loading. The interface
+and fixtures do not implement a production history adapter or authorization.
+Sadali's M4 history adapter is responsible for defensive read deduplication by
+`recordId`, as required by [the M4 guide](team/04-sandali-invites-progress.md).
+This does not enforce unique persistence or replace M3's pending idempotent
+write implementation.
+
+Fixtures in `lib/preview/completion_fixtures.dart` cover empty history, multiple
+normal records, an unfinished goal with retained credited time, early-left,
+provisional cancelled, and demo records. Expected normal summary examples:
+
+| Fixture | Normal credited seconds | Completed sessions |
+|---|---:|---:|
+| Empty history | 0 | 0 |
+| Multiple normal records | 3000 | 2 |
+| Early-left record | 900 | 0 |
+| Provisional cancelled record | 0 | 0 |
+| Demo record alone | 0 | 0 |
+
+The demo record has 75 credited seconds and one completed timer for the separate
+demo view; it contributes neither to normal total nor normal completed count.
+Combined normal fixtures total 3900 credited seconds and two completed sessions.
+The cancelled example assumes, provisionally, that cancellation means
+participation with no eligible credit. This is not an approved policy. Other
+fixture values are illustrative, not credit rules.
+
+Still pending M2/M3 confirmation: the definition of cancellation used by the
+provisional fixture; eligible-time calculation, including early-left and
+disconnected/background intervals; and the authoritative all-time summary
+query/source. Stable identity is required per user/session. Duplicate finalization
+is not enforced by the model or repository interface; M3 must implement and test
+idempotent persistence before claiming exactly-once completion.
+
 ## Implemented session timing
 
 `features/sessions/data/session_timing.dart` provides the pure
@@ -233,9 +289,10 @@ start a live session, synchronize devices or write completion records.
 ## Later contracts — not implemented
 
 Auth/profile services, community creation/owner edits, RoomSnapshot/SeatState,
-SessionSnapshot, Participation, CompletionRecord and InvitationPreview remain
-future work. Aradhana (M3) owns live seat claims, timing, completion writes and invitation
-services; Sandali (M4) consumes completion history and invitation lookup/admission.
+SessionSnapshot, Participation, completion finalization/history adapter and
+InvitationPreview remain future work. Aradhana (M3) owns live seat claims, timing,
+completion writes and invitation services; Sandali (M4) consumes completion
+history and invitation lookup/admission.
 See the [current four-member plan](team/00-common-plan.md) for ownership and gates.
 
 Use stable IDs, UTC timestamps and local display in future persistence. Admission
