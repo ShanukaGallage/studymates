@@ -1,8 +1,10 @@
-# Community preview contracts
+# StudyMates contracts — preview and backend agreements
 
-Implemented for the local preview; **M2/M3 review is still pending** before backend
-integration. These are UI/service contracts, not a Firestore schema. There is no
-real authentication, authorization, seat admission or synchronization yet.
+The local preview models and repository boundaries below are implemented.
+Identity/membership proposals still need M2/M3 review; the room/seat section
+records their agreed decisions and remaining questions. Its proposed Firestore
+structure is not deployed. There is no real authentication, authorization, seat
+admission or synchronization yet.
 
 ## Implemented models
 
@@ -24,20 +26,21 @@ preview profile, not to every user.
 
 The preview already implements `UserProfile`, `SigSummary`, `SubgroupSummary`
 and `MembershipState` in `lib/core/models/community_models.dart`. Reuse and evolve
-these types; do not create parallel models. Items below that are marked proposed
-or pending remain subject to M2/M3 review, independent of Firebase snapshot types.
+these types; do not create parallel models. The authenticated identity and backend
+membership behavior below remain service-level contracts, independent of Firebase
+snapshot types. Agreed behavior is marked below; none of it is implemented against
+Firebase or live users yet.
 
 | Contract concept | Meaning |
 |---|---|
-| Auth/profile state | `loading`, `signedOut`, `incompleteProfile`, or `ready`. `loading` means the initial auth/profile lookup has not resolved; `signedOut` means no authenticated user; `incompleteProfile` means an authenticated user lacks required profile fields; `ready` means the authenticated user's required profile is available. A backend failure is an error/unavailable result, not a fifth identity state or a fake signed-out user. |
-| User identity and profile completion | Stable `userId` is the Firebase Authentication UID. Profile data carries that same ID. `displayName` is required; avatar selection and interests are optional. A default avatar may be used if the user has not selected one. Email remains an auth credential/contact field, not the identity key. Avatar is a preset identifier; image upload/URL is out of scope for this contract. |
-| SIG identity | Stable `sigId`; `SigSummary.ownerId` is the user ID of its owner. |
+| Auth/profile state | `loading`, `signedOut`, `incompleteProfile`, or `ready`. `loading` means the initial auth/profile lookup has not resolved; `signedOut` means no authenticated user; `incompleteProfile` means an authenticated user lacks a display name; `ready` means the authenticated user's profile is available with a display name. A backend failure is an error/unavailable result, not a fifth identity state or a fake signed-out user. |
+| User identity | Stable `userId` is the Firebase Authentication UID. Profile data carries that same ID, required `displayName`, optional `avatarId`, and optional `interestIds`. If no avatar is selected, use a default avatar. Email remains an auth credential/contact field, not the identity key. Avatar is a preset identifier; image upload/URL is out of scope for this contract. |
+| SIG identity | Stable `sigId`; `SigSummary.ownerId` is the user ID of its owner. The owner automatically counts as a member of the SIG. |
 | Subgroup identity | Stable `subgroupId` plus its parent `sigId`; subgroup ownership is inherited from the parent SIG owner in the first version, not a separate subgroup owner. |
-| Membership | A SIG owner is automatically a member of that SIG. SIG membership is keyed by `(userId, sigId)`. Subgroup membership is keyed by `(userId, sigId, subgroupId)` and must reference a subgroup under that SIG. Existing summaries expose `membership` as `MembershipState.joined` or `notJoined`. The proposed backend concepts `member` / `nonMember` should map to these values; agree any API rename before changing consumers. Missing, denied, and unavailable data must remain distinguishable from non-membership. |
+| Membership | SIG membership is keyed by `(userId, sigId)`; the SIG owner automatically counts as a SIG member. Subgroup membership is keyed by `(userId, sigId, subgroupId)` and must reference a subgroup under that SIG. SIG membership does not by itself imply subgroup membership. Existing summaries expose `membership` as `MembershipState.joined` or `notJoined`. The proposed backend concepts `member` / `nonMember` should map to these values; agree any API rename before changing consumers. Missing, denied, and unavailable data must remain distinguishable from non-membership. |
 | Membership query | Proposed repository operation: check whether `userId` is a member of the requested SIG and, when supplied, its subgroup. For room admission, check both the room's parent SIG and subgroup against the authenticated caller; do not trust a client-supplied user ID. Return a typed result/error so M3 can distinguish `membershipRequired` from `unavailable`. |
 | Subgroup owner permission | Only the owner of the parent SIG may create, edit or delete its subgroups in the first version. Membership alone grants no subgroup administration permission. Enforce this in repository/backend access rules, not just by hiding UI controls. |
-| Leaving a SIG or subgroup | Leaving a SIG removes that user's memberships in its subgroups. The user must also be removed from associated active rooms, their occupied seats released, and their active session participation ended. If they are the room host, apply the agreed host-transfer or room-closure rules. M2 owns SIG ownership transfer, closure status, and member notifications; M3 owns active room/session cleanup, seat release, participation termination, and applicable room host transfer or closure. Exact authorization and transaction coordination for membership removal and cleanup remain pending M2/M3 implementation agreement; cleanup must still occur after membership becomes inactive. |
-| SIG owner departure | If an eligible replacement member exists, M2 transfers ownership to that member. If no eligible replacement exists, M2 marks the SIG `Closed`, not deleted, and notifies remaining members. Membership records, subgroup information, and historical activity are retained. A closed SIG cannot accept new members, create subgroups, or create new rooms. |
+| Leaving a parent SIG | Proposed cascade: leaving a SIG also removes that user's memberships in its subgroups, so subgroup membership cannot outlive parent membership. This denies future room admission through either membership. The room/seat agreement below requires seat release when subgroup membership ends; cleanup authorization and transaction coordination remain open. Whether a current SIG owner may leave before transferring ownership or deleting the SIG still needs M2/M3 agreement. |
 
 ## Proposed cross-feature operations
 
@@ -49,8 +52,8 @@ consume those boundaries rather than Firebase directly.
 |---|---|
 | Observe identity/profile state | M2 exposes the four states above and the current `userId`/profile when available. Shanuka can use this state for the startup gate: show loading while resolving, route signed-out users to welcome/sign-in, route incomplete profiles to setup, and allow ready users into the authenticated app. M2/M1 agree on route names and pending-link behavior before any global routing changes. |
 | `isMember(userId, sigId, subgroupId?)` or equivalent | M2 provides authoritative membership lookup for UI and other feature repositories. It is not itself sufficient authorization if data can change between check and action. |
-| `checkRoomAdmission(authenticatedUserId, sigId, subgroupId)` or equivalent | M2/M3 agree a single membership-aware boundary for M3 room admission. M3 obtains the caller from authenticated state and invokes the check as part of the admission operation; the backend must re-check membership atomically/under access rules at the point of seating to avoid stale-check races. M3 returns `membershipRequired` when either required membership is absent, and `unavailable` when it cannot verify. |
-| Leave SIG or subgroup | M2 updates membership and applies the subgroup cascade when leaving a SIG. M3 removes the user from associated active rooms, releases their occupied seats, ends active session participation, and applies room host-transfer/closure behavior when needed. When a SIG owner leaves, M2 transfers ownership to an eligible replacement member, or closes the SIG and notifies remaining members if none exists, retaining its records and history. Do not treat a client-side membership cache as authoritative. |
+| `checkRoomAdmission(sigId, subgroupId)` or equivalent | M2/M3 agree a single membership-aware boundary for Aradhana (M3) to use during room admission. It derives the caller from authenticated state, checks both parent SIG and subgroup membership, and the backend rechecks membership at the point of seating to avoid stale-check races. Return `membershipRequired` when either membership is absent and `unavailable` when membership cannot be verified. A UI membership lookup alone is not authorization. |
+| Leave SIG | M2 coordinates the SIG membership change and subgroup cascade with M3. M3 owns room removal, seat release, ending session participation at the leave time, and host transfer or room closure as described above. Do not treat a client-side membership cache as authoritative. |
 
 ## Implemented repository boundaries
 
@@ -112,6 +115,121 @@ scenario or restarting clears the draft and cancels pending timers. Invite and
 Start open explanatory placeholders; they create no code, session or completion.
 M3 should supply the same scene inputs/callbacks from real room state later.
 
+## Room and seat management agreement
+
+The room/seat decisions in Aradhana's contract commit `afd0093` are recorded as
+agreed by M2/M3; implementation is pending. They extend the preview boundaries
+above without replacing the existing UI models or repository consumers.
+
+### Planned live models (not implemented)
+
+| Model | Fields / meaning |
+|---|---|
+| RoomSnapshot | roomId, subgroupId, title, createdBy, hostUid, status (`waiting`, `active`, `completed`, `closed`), createdAt, updatedAt |
+| SeatState | seatId, nullable userId, status (`available`, `occupied`), claimedAt, leaseExpiresAt, lastRenewedAt; exactly six records per room |
+
+These describe live data; `RoomSummary` remains the discovery model and
+`RoomSeat` remains a presentation input. Adapt live data to the existing scene.
+
+### Responsibilities
+
+| Owner | Responsibility |
+| --- | --- |
+| M2 (Poojani) | Firebase Authentication, user profiles, a service exposing the<br>current Firebase UID, subgroup membership service/repository, Firebase<br>structure coordination and Firestore security rules |
+| M3 (Aradhana) | Room and seat business logic, room repository, seat<br>claim/release/renewal behavior, room data services and related tests; reuse<br>M2 authentication and membership services rather than duplicating them |
+| M1 (Shanuka) | Room scene presentation and navigation; UI consumes room data and<br>operations through presentation-facing providers/controllers, not direct<br>database operations |
+| M4 (Sandali) | QR scanning UI; use the same checked room admission path as other join<br>methods |
+
+### Room and seat behavior
+
+- An authenticated member of a subgroup may create a room in that subgroup.
+  The creator is the initial host.
+- Every room has exactly six seats. A user must be authenticated and an active
+  subgroup member to claim a seat.
+- The Firebase Authentication UID is the common user ID. A user may occupy only
+  one active seat across all rooms. The Team Playbook calls for a coordinated
+  active-room record; its storage and transaction implementation are not
+  specified here.
+- Seat claims, releases and renewals are protected by Firestore transactions.
+  Claims check expired leases before deciding whether a seat is available.
+- Claiming the same seat as its current occupant is an idempotent success.
+  Claiming another user's occupied seat returns `seatTaken`; claiming when the
+  user already occupies a different seat in this or another room returns
+  `alreadySeated`. A room with no claimable seat returns `fullRoom`.
+- A user may release only their own seat, subject to the host permissions still
+  to be confirmed below.
+- When a user leaves a subgroup, any seat they occupy in that subgroup's rooms
+  must be released under the membership-leaving policy. Cleanup must remain
+  possible after their membership becomes inactive. The authorizing actor and
+  transaction coordination between membership removal and seat release are
+  pending confirmation.
+- A seat lease lasts two minutes from claim. Active users periodically renew
+  their lease. A disconnected user's seat remains reserved until lease expiry.
+- If the host leaves the subgroup, hosting transfers to another eligible member
+  currently participating in the room. If none is available, the room closes
+  and remaining participants are notified.
+
+### Proposed Firestore structure
+
+Store each room and its seats at these paths; seats are a subcollection, not
+embedded seat records in the room document:
+
+```text
+subgroups/{subgroupId}/rooms/{roomId}
+subgroups/{subgroupId}/rooms/{roomId}/seats/{seatId}
+```
+
+This is the agreed proposed structure for coordination with M2; it does not mean
+that Firebase, the collections, transactions or security rules are configured.
+
+### Repository responsibilities and operations
+
+The M3 room repository uses M2's current-UID and membership services. It owns
+room creation and observation, and transactional seat claim, release and renewal
+operations. It reports agreed domain errors rather than exposing raw database
+errors. Presentation-facing providers/controllers connect the repository to M1's
+room UI; widgets do not access Firestore. M4's QR flow must enter through the
+same membership-checked admission operation.
+
+Expected operations are: create a titled room for a subgroup; observe rooms in a
+subgroup; observe a room and its seat changes; claim a seat; release the current
+user's seat; and renew the current user's lease. These are responsibilities,
+not implemented method signatures.
+
+### Errors and remaining decisions
+
+Use explicit errors: `membershipRequired` when the user has no active subgroup
+membership, `seatTaken` when another user occupies the requested seat,
+`alreadySeated` when the user occupies another seat in this or another room,
+`fullRoom` when no seat is available, and `unavailable` when an operation cannot
+be completed.
+
+These errors and policies are not yet implemented.
+
+Still requiring team confirmation:
+
+- The exact host permissions for releasing another user's seat.
+- How to choose among multiple eligible participants when transferring host,
+  and how the room-close notification is delivered.
+- Whether membership must still be active to renew an existing seat. Membership
+  removal must not prevent release of that user's seat; the authorization and
+  transaction coordination for this cleanup remain pending confirmation.
+- The renewal cadence within the two-minute lease, and whether any grace period
+  applies after expiry.
+- The behavior of repeated release/renew requests and a repeated claim after
+  that seat's previous lease has expired.
+- Whether and how to schedule backend cleanup of expired seats. Cleanup is only
+  a consideration; no scheduled process is agreed or implemented.
+- The exact nullability and update semantics of seat timestamps when a seat is
+  available, and the final Firestore schema details.
+
+## Implemented session timing
+
+`features/sessions/data/session_timing.dart` provides the pure
+`calculateSessionTiming` function: UTC boundaries determine waiting, focus,
+breakTime or completed, with explicit invalid-timestamp results. It does not
+start a live session, synchronize devices or write completion records.
+
 ## Later contracts — not implemented
 
 Auth/profile services, community creation/owner edits, RoomSnapshot/SeatState,
@@ -123,5 +241,6 @@ See the [current four-member plan](team/00-common-plan.md) for ownership and gat
 Use stable IDs, UTC timestamps and local display in future persistence. Admission
 must enforce membership and atomic seating, and finalization must prevent duplicate
 credit. Goal outcome is separate from timer completion. Demo records stay outside
-normal totals. Lease durations, credit policy and storage schema need the M2/M3
-two-device spike; this preview does not implement those guarantees.
+normal totals. The agreed seat lease is two minutes; renewal cadence, cleanup,
+credit policy and final storage details remain subject to the decisions above
+and the M2/M3 two-device spike. This preview does not implement those guarantees.
