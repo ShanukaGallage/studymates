@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="StudyMates four-member team working guide: Shanuka.">
+<title>M1 — Shanuka: UI and integration guide</title>
+<style>
+:root { color-scheme: light; --ink:#1e2b24; --muted:#5f6d64; --green:#225b3b; --cream:#faf7f0; --mint:#e4f0df; --line:#dce3d8; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--cream); color:var(--ink); font:16px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+a { color:var(--green); text-underline-offset:3px; }
+a:hover { text-decoration-thickness:2px; }
+a:focus-visible, button:focus-visible { outline:3px solid #9b6a13; outline-offset:4px; }
+.skip { position:absolute; top:-100px; left:16px; padding:12px; background:white; z-index:2; }
+.skip:focus { top:12px; }
+header { background:var(--green); color:white; padding:28px max(24px,calc((100vw - 1120px)/2)); }
+.brand { font-size:25px; font-weight:750; letter-spacing:-.5px; }
+header p { margin:4px 0 0; color:#e4f0df; font-size:14px; }
+.layout { display:grid; grid-template-columns:225px minmax(0,1fr); gap:32px; max-width:1168px; margin:auto; padding:32px 24px 64px; }
+nav { align-self:start; position:sticky; top:24px; }
+nav h2 { font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin:0 0 12px; }
+nav a { display:block; padding:12px; margin-bottom:5px; border-radius:10px; text-decoration:none; }
+nav a[aria-current="page"] { background:var(--mint); font-weight:700; }
+nav a:hover { background:#edf2e9; }
+nav small { display:block; font-size:12px; color:var(--muted); font-weight:400; }
+article { min-width:0; background:white; padding:32px 38px; border:1px solid var(--line); border-radius:16px; }
+h1,h2,h3 { line-height:1.25; scroll-margin-top:24px; }
+h1 { font-size:clamp(25px,3vw,35px); margin:0 0 24px; letter-spacing:-.7px; }
+h2 { font-size:23px; margin:38px 0 16px; border-top:1px solid var(--line); padding-top:24px; }
+h3 { font-size:19px; margin:26px 0 12px; }
+p { margin:0 0 16px; }
+ul,ol { padding-left:25px; margin:0 0 20px; }
+li { margin:6px 0; }
+li p { margin:6px 0; }
+blockquote { border-left:4px solid var(--green); padding:12px 18px; margin:20px 0; background:var(--mint); }
+blockquote p:last-child { margin-bottom:0; }
+code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:.88em; overflow-wrap:anywhere; background:#f0f3ee; padding:2px 5px; border-radius:4px; }
+pre { background:#f3f6f0; border:1px solid var(--line); border-left:4px solid var(--green); border-radius:8px; padding:18px; margin:20px 0; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.6; }
+pre code { padding:0; background:none; font-size:13px; border-radius:0; }
+.table-wrap { overflow-x:auto; margin:20px 0; }
+table { width:100%; border-collapse:collapse; font-size:14px; line-height:1.5; }
+th,td { text-align:left; vertical-align:top; padding:11px 12px; border:1px solid var(--line); min-width:100px; overflow-wrap:anywhere; }
+th { background:var(--mint); font-weight:700; }
+tr:nth-child(even) td { background:#fafbf8; }
+.toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:24px; font-size:13px; color:var(--muted); }
+button { font:inherit; background:var(--green); color:white; padding:10px 16px; border:0; border-radius:8px; cursor:pointer; min-height:44px; }
+footer { color:var(--muted); font-size:12px; border-top:1px solid var(--line); padding-top:20px; margin-top:32px; }
+@media(max-width:850px) { .layout { display:block; padding:20px 16px 40px; } nav { position:static; margin-bottom:24px; } nav a { display:inline-block; margin:4px; padding:10px; } nav small { display:none; } article { padding:24px 20px; } }
+@media print { @page { size:A4; margin:16mm; } body { background:white; font-size:10pt; } header,nav,.toolbar,.skip { display:none; } .layout { display:block; max-width:none; padding:0; } article { padding:0; border:0; border-radius:0; } h1 { font-size:22pt; } h2 { font-size:15pt; break-after:avoid; } h3 { break-after:avoid; } pre { font-size:9pt; break-inside:avoid; } .table-wrap { overflow:visible; } table { font-size:8pt; } th,td { min-width:0; padding:6px; } tr { break-inside:avoid; } a { color:inherit; } footer { font-size:8pt; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#plan">Skip to plan</a>
+<header><div class="brand">StudyMates</div><p>Four-member team • Five-minute live Android demonstration</p></header>
+<div class="layout">
+<nav aria-label="Team guides"><h2>Team plans</h2><a href="00-common-plan.html">Common team plan<small>Start here</small></a><a href="01-shanuka-ui-integration.html" aria-current="page">Shanuka<small>UI and integration</small></a><a href="02-poojani-accounts-communities.html">Poojani<small>Accounts and communities</small></a><a href="03-aradhana-rooms-sessions.html">Aradhana<small>Rooms and sessions</small></a><a href="04-sandali-invites-progress.html">Sandali<small>Invitations and progress</small></a></nav>
+<article id="plan">
+<div class="toolbar"><span>UI and integration • Working guide</span><button type="button" onclick="window.print()">Print / Save as PDF</button></div>
+<h1>M1 — Shanuka: UI and integration guide</h1>
+<p>Read the <a href="00-common-plan.html">common plan</a> first. Your main work is the visual system,
+room/session presentation and difficult cross-feature integration. Poojani,
+Aradhana and Sandali implement their own feature screens using your components.
+You are not responsible for writing every screen or every backend.</p>
+<h2>Your files and boundaries</h2>
+<p>Own <code>lib/app</code>, both entry points, shared theme/widgets, Home, design/assets,
+existing room scene/lobby/goal widgets, <code>room_scene_provider.dart</code>, session
+screens/widgets, central preview composition and shared navigation tests.
+Coordinate dependencies/Android config one short PR at a time. Poojani owns auth,
+communities and Firebase bootstrap; Aradhana owns room/session logic; Sandali owns
+scanner/history. Ask for state/callback contracts instead of copying their services.</p>
+<p>Already available: shared controls, four tabs, gallery, community preview,
+<code>RoomScene</code>, local goal sheet and fixture seat states. Improve these; do not rebuild.</p>
+<h2>Step 1 — Publish one shared starting point</h2>
+<p>Inspect the uncommitted community/room work on <code>feat/community-preview</code>. Review the
+changes, run checks, and inspect the room on your phone. Publish a reviewed baseline
+through your Git workflow, then give everyone the same commit. Their earlier
+successful device runs do not prove they have this latest code.</p>
+<p>Codex prompt, after the common starter:</p>
+<pre><code class="language-text">I am Shanuka. Review the current foundation/community/room preview for handoff.
+Inspect git status and existing changes; do not recreate any work or discard files.
+Run analysis and tests, verify the preview on Android if a device is connected,
+and identify scoped defects. Check README against what is implemented.
+Do not configure Firebase or implement another feature. Give me a review summary
+and the precise files to include in the shared baseline. Do not commit or push yet.
+</code></pre>
+<p>Done: all four confirm the same commit, preview command and IoT → ESP32 → room
+path. Record the room phone check accurately. Keep test/device evidence brief.</p>
+<h2>Step 2 — Freeze interfaces and release UI guidance</h2>
+<p>Meet with Poojani/Aradhana to review identity, membership, room, session, completion
+and invite contracts. Sandali checks the invite/history inputs. Publish rough
+screen behavior and state references rather than delaying for final artwork.
+Specify loading/error/empty, host/member, non-member/full, and small-screen behavior.</p>
+<p>Your difficult decisions: which app state owns routing, how pending invitations
+survive login, how Android back behaves during a session, and how one set of
+providers composes the connected app without hiding backend failures.</p>
+<pre><code class="language-text">Inspect the existing shared widgets and room scene and the agreed contracts in
+docs/contracts.md. Prepare concise UI handoff notes for auth/profile, communities,
+room/focus/summary, scanner and history. Identify reusable components and missing
+states; do not redesign all screens or implement backend contracts yourself.
+Keep detailed feature implementation with its owner. Do not promise an API that
+Poojani/Aradhana have not agreed. List route requests separately from UI changes.
+</code></pre>
+<p>Done: teammates can implement one screen without inventing its inputs or styling.
+You may refine colors/artwork later without changing public component signatures.</p>
+<h2>Step 3 — Build focus, break and summary presentation from fixtures</h2>
+<p>Wait only for Aradhana's session/completion contract and fixture examples, not the
+live backend. Own <code>features/sessions/presentation/screens</code> and <code>widgets</code>. Define
+callbacks for start/leave/goal outcome/retry; Aradhana implements their behavior.</p>
+<pre><code class="language-text">Implement only the focus/break/session-summary presentation against Aradhana's
+agreed models and fixture callbacks. Reuse the existing theme, goal sheet and
+RoomScene. Render countdowns from provided UTC phase boundaries and a testable
+clock; do not create a second session engine or perform database writes.
+Show host/member, reconnecting, saving/saved/retry and labelled demo states.
+Preserve large text, keyboard safe areas and clear leave confirmation.
+Keep production integration separate and add focused presentation tests.
+</code></pre>
+<p>Done: one fixture can drive the screens; local display ticks do not write to
+Firestore; summary clearly distinguishes task outcome from participation completion.
+Do not present this fixture preview as synchronized across devices.</p>
+<h2>Step 4 — Integrate identity and community routes</h2>
+<p>Requires Poojani's merged identity/profile state, auth screens and bootstrap
+service. Poojani supplies Firebase initialization code; you own its call from
+<code>main.dart</code> and route guards. Do not route through a fake identity on failure.</p>
+<pre><code class="language-text">Wire Poojani's merged bootstrap/auth/profile providers and screens into the
+normal entry point and existing router. Handle loading, signed-out,
+incomplete-profile, ready and initialization failure explicitly. Preserve the
+independent main_preview.dart composition and its development-only routes.
+Add named routes using stable IDs; keep a pending invite through login and
+revalidate it before admission when the invite service exists. Do not implement
+another auth repository. Test redirects, sign-out and unknown-route recovery.
+</code></pre>
+<p>Done: restarting restores identity, incomplete profiles go to setup, sign-out
+leaves protected screens, and preview still works without Firebase access.
+Poojani reviews this integration PR.</p>
+<h2>Step 5 — Connect the live room and session UI</h2>
+<p>Requires Aradhana's merged room stream/admission operations; session wiring follows
+once its contract implementation is ready. Coordinate the exact controller and
+widget files first so two Codex sessions do not edit the room presentation together.</p>
+<pre><code class="language-text">Connect the existing room scene and session presentation to Aradhana's real
+providers. Map backend seat/current-user/connection states to RoomSeat display
+inputs and forward actions to the one shared admission/session service.
+Keep RoomLobbyPreview and its 450ms simulated selection confined to preview.
+Remove all preview success paths from connected room behavior. Do not change
+transaction logic, credit policy or finalization schema. Verify two-device updates,
+failed admission, reconnect presentation and safe Android back behavior.
+</code></pre>
+<p>Done: real success comes from the service result, not a tap; both devices render
+one shared state; a busy/conflicting claim recovers without an extra local seat.
+You own UI adaptation; Aradhana diagnoses backend races with Poojani.</p>
+<h2>Step 6 — Integrate Sandali's screens, polish and rehearse</h2>
+<p>Sandali supplies scanner result/preview callbacks, history screen constructor and
+route requirements. You add shared routes, invitation intent and progress-tab
+wiring. For each merge, test the connected path and preview separately.</p>
+<pre><code class="language-text">Integrate Sandali's merged invite/history screens through the existing router
+and providers. Preserve Aradhana's single checked room-admission method for QR
+and manual entry. Reuse Poojani's identity state and keep private history scoped
+to the current user. Do not rewrite scanner code or award completions in the UI.
+Then fix only observed layout/accessibility/navigation defects on demo devices.
+Report the exact candidate APK command, verification results and remaining gaps.
+</code></pre>
+<p>Done: the common plan's five-minute route works on the exact installed APK.
+Freeze new features; use remaining time for regressions and repetition. Verify
+contrast, TalkBack seat actions, long names/goals, text scale and keyboard/back.
+Only create final room art after the connected path is stable; keep occupants,
+names/timers and touch targets separate from the background.</p>
+<h2>Dependencies and your next independent action</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Waiting for</th>
+<th>What it unlocks</th>
+<th>Work you can do meanwhile</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Poojani identity/bootstrap</td>
+<td>Connected entry point and auth guard</td>
+<td>UI state specs, gallery, session fixture views</td>
+</tr>
+<tr>
+<td>Aradhana room/session contracts</td>
+<td>Correct UI bindings</td>
+<td>Room scaling, accessibility, artwork prototype</td>
+</tr>
+<tr>
+<td>Aradhana live operations</td>
+<td>Two-device room/session flow</td>
+<td>Fixture presentation and navigation tests</td>
+</tr>
+<tr>
+<td>Sandali invite/history screens</td>
+<td>Complete route integration</td>
+<td>Device review and known UI fixes</td>
+</tr>
+</tbody>
+</table></div>
+<p>Review one small batch of PRs per work block. Reserve shared files visibly before
+editing; release the reservation after merge. If another owner is stuck, take one
+explicitly transferred task, not their entire module. Your first task now is Step 1.</p>
+
+<footer>Exported from 01-shanuka-ui-integration.md. Keep the Markdown source as the editable master.
+All styling is embedded; no internet connection is needed. Links to supporting repository notes retain their original Markdown targets.</footer>
+</article>
+</div>
+</body>
+</html>
