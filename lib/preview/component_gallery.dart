@@ -7,6 +7,8 @@ import '../core/widgets/app_card.dart';
 import '../core/widgets/app_text_field.dart';
 import '../core/widgets/avatar_badge.dart';
 import '../core/widgets/state_views.dart';
+import '../features/rooms/presentation/widgets/room_scene.dart';
+import 'room_scene_fixtures.dart';
 
 class ComponentGallery extends StatefulWidget {
   const ComponentGallery({super.key});
@@ -117,6 +119,18 @@ class _ComponentGalleryState extends State<ComponentGallery> {
                       'Sample card with a longer description that wraps naturally on smaller phones.',
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              _section('Six-seat room states'),
+              const Text(
+                'Available, occupied, selected, yours, pending and failed. Samples only.',
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              RoomScene(
+                seats: galleryRoomSeats,
+                onSeatTap: (number) => _showFeedback(
+                  'Sample seat $number tapped. No reservation was made.',
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),

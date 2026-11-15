@@ -10,7 +10,12 @@ class AppTextField extends StatefulWidget {
     this.keyboardType,
     this.textInputAction,
     this.onChanged,
+    this.minLines = 1,
+    this.maxLines = 1,
+    this.maxLength,
   });
+  final int minLines, maxLines;
+  final int? maxLength;
   final String label;
   final TextEditingController? controller;
   final FormFieldValidator<String>? validator;
@@ -29,6 +34,9 @@ class _AppTextFieldState extends State<AppTextField> {
   @override
   Widget build(BuildContext context) => TextFormField(
     controller: widget.controller,
+    minLines: widget.minLines,
+    maxLines: widget.maxLines,
+    maxLength: widget.maxLength,
     validator: widget.validator,
     onChanged: widget.onChanged,
     keyboardType: widget.keyboardType,
