@@ -1,5 +1,11 @@
 # StudyMates — Shanuka's startup and handoff guide
 
+> Historical planning reference. The team now has four members, all of whom have
+> reported running the app. Use the [current common plan](team/00-common-plan.md)
+> and its four individual guides for assignments, dependencies and next steps.
+> They supersede this document's five-member staffing and completed startup work.
+> The assignment is a five-minute live Android demo: no report, slides or rubric.
+
 Prepared 14 November 2026. This guide supplements StudyMates-Team-Playbook.md. It specifies what the team lead should prepare before feature implementation is handed over. It does not claim a repository, Firebase project or application has been created. Commands are instructions to run in your chosen development folder; replace placeholders explicitly.
 
 ## 1. Your startup goal

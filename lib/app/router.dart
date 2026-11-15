@@ -3,7 +3,12 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../core/widgets/app_button.dart';
+import '../core/theme/app_theme.dart';
 import '../preview/component_gallery.dart';
+import '../preview/preview_data_screen.dart';
+import '../features/communities/presentation/screens/discover_screen.dart';
+import '../features/communities/presentation/screens/community_detail_screens.dart';
+import '../features/rooms/presentation/screens/room_preview_screen.dart';
 import 'app_mode.dart';
 import 'app_shell.dart';
 import 'placeholder_screen.dart';
@@ -51,13 +56,51 @@ GoRouter createAppRouter({
               GoRoute(
                 path: '/${tab.$1}',
                 name: tab.$1,
-                builder: (context, state) =>
-                    PlaceholderScreen(title: tab.$2, message: tab.$3),
+                pageBuilder: (context, state) => _tabPage(
+                  state,
+                  mode == AppMode.preview && tab.$1 == 'discover'
+                      ? const DiscoverScreen()
+                      : PlaceholderScreen(title: tab.$2, message: tab.$3),
+                ),
               ),
+              if (mode == AppMode.preview && tab.$1 == 'discover') ...[
+                GoRoute(
+                  path: '/sigs/:sigId',
+                  name: 'sig-detail',
+                  pageBuilder: (context, state) => _tabPage(
+                    state,
+                    SigDetailScreen(id: state.pathParameters['sigId']!),
+                  ),
+                ),
+                GoRoute(
+                  path: '/subgroups/:subgroupId',
+                  name: 'subgroup-detail',
+                  pageBuilder: (context, state) => _tabPage(
+                    state,
+                    SubgroupDetailScreen(
+                      id: state.pathParameters['subgroupId']!,
+                    ),
+                  ),
+                ),
+                GoRoute(
+                  path: '/rooms/:roomId',
+                  name: 'room-preview',
+                  pageBuilder: (context, state) => _tabPage(
+                    state,
+                    RoomPreviewScreen(id: state.pathParameters['roomId']!),
+                  ),
+                ),
+              ],
             ],
           ),
       ],
     ),
+    if (mode == AppMode.preview)
+      GoRoute(
+        path: '/preview-data',
+        name: 'preview-data',
+        builder: (context, state) => const PreviewDataScreen(),
+      ),
     if (mode == AppMode.preview)
       GoRoute(
         path: '/components',
@@ -81,3 +124,10 @@ GoRouter createAppRouter({
     ),
   ),
 );
+
+// The shell owns the Scaffold; each branch page paints its own opaque surface.
+Page<void> _tabPage(GoRouterState state, Widget child) =>
+    NoTransitionPage<void>(
+      key: state.pageKey,
+      child: Material(color: AppColors.background, child: child),
+    );

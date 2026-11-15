@@ -1,5 +1,11 @@
 # StudyMates — Project and team playbook
 
+> Historical planning reference. The team now has four members, all of whom have
+> reported running the app. Use the [current common plan](team/00-common-plan.md)
+> and its four individual guides for assignments, dependencies and next steps.
+> They supersede this document's five-member staffing and completed startup work.
+> The assignment is a five-minute live Android demo: no report, slides or rubric.
+
 Prepared 14 November 2026. Planning baseline: five members, three with substantial weekday availability and two with limited availability. Shanuka owns UI design and integration. This is a development guide, not an assignment report. No implementation is claimed to exist yet.
 
 ## 1. Outcome and scope
