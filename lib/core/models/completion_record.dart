@@ -7,6 +7,7 @@ final class CompletionRecord {
     required this.recordId,
     required this.userId,
     required this.sessionId,
+    required this.goalText,
     required DateTime endedAt,
     required this.creditedSeconds,
     required this.timerStatus,
@@ -28,6 +29,7 @@ final class CompletionRecord {
   final String recordId;
   final String userId;
   final String sessionId;
+  final String goalText;
   final DateTime endedAt;
   final int creditedSeconds;
   final TimerCompletionStatus timerStatus;

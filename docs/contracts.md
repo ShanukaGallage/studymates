@@ -13,7 +13,7 @@ catalog/profile collections are immutable. Membership belongs to the current
 preview profile, not to every user.
 
 | Model | Fields / meaning |
-|---|---|
+| --- | --- |
 | UserProfile | id, displayName, avatarId, interestIds; sample identity only |
 | SigSummary | id, name, category, description, ownerId, membership |
 | SubgroupSummary | id, sigId, name, description, membership |
@@ -32,13 +32,13 @@ snapshot types. Agreed behavior is marked below; none of it is implemented again
 Firebase or live users yet.
 
 | Contract concept | Meaning |
-|---|---|
+| --- | --- |
 | Auth/profile state | `loading`, `signedOut`, `incompleteProfile`, or `ready`. `loading` means the initial auth/profile lookup has not resolved; `signedOut` means no authenticated user; `incompleteProfile` means an authenticated user lacks a display name; `ready` means the authenticated user's profile is available with a display name. A backend failure is an error/unavailable result, not a fifth identity state or a fake signed-out user. |
 | User identity | Stable `userId` is the Firebase Authentication UID. Profile data carries that same ID, required `displayName`, optional `avatarId`, and optional `interestIds`. If no avatar is selected, use a default avatar. Email remains an auth credential/contact field, not the identity key. Avatar is a preset identifier; image upload/URL is out of scope for this contract. |
 | SIG identity | Stable `sigId`; `SigSummary.ownerId` is the user ID of its owner. The owner automatically counts as a member of the SIG. |
 | Subgroup identity | Stable `subgroupId` plus its parent `sigId`; subgroup ownership is inherited from the parent SIG owner in the first version, not a separate subgroup owner. |
 | Membership | SIG membership is keyed by `(userId, sigId)`; the SIG owner automatically counts as a SIG member. Subgroup membership is keyed by `(userId, sigId, subgroupId)` and must reference a subgroup under that SIG. SIG membership does not by itself imply subgroup membership. Existing summaries expose `membership` as `MembershipState.joined` or `notJoined`. The proposed backend concepts `member` / `nonMember` should map to these values; agree any API rename before changing consumers. Missing, denied, and unavailable data must remain distinguishable from non-membership. |
-| Membership query | Proposed repository operation: check whether `userId` is a member of the requested SIG and, when supplied, its subgroup. For room admission, check both the room's parent SIG and subgroup against the authenticated caller; do not trust a client-supplied user ID. Return a typed result/error so M3 can distinguish `membershipRequired` from `unavailable`. |
+| Membership verification | M2 provides authoritative SIG and subgroup membership information for the authenticated user. M3 requires active membership in both the room's parent SIG and subgroup for room creation and seat claims. Do not trust preview state or a user ID supplied by the UI. M2 and M3 must agree on the service interface; its names and signatures are not finalized. Membership absence and inability to verify must remain distinguishable. |
 | Subgroup owner permission | Only the owner of the parent SIG may create, edit or delete its subgroups in the first version. Membership alone grants no subgroup administration permission. Enforce this in repository/backend access rules, not just by hiding UI controls. |
 | Leaving a parent SIG | Proposed cascade: leaving a SIG also removes that user's memberships in its subgroups, so subgroup membership cannot outlive parent membership. This denies future room admission through either membership. The room/seat agreement below requires seat release when subgroup membership ends; cleanup authorization and transaction coordination remain open. Whether a current SIG owner may leave before transferring ownership or deleting the SIG still needs M2/M3 agreement. |
 
@@ -49,11 +49,10 @@ M2 owns auth/profile and community repositories; screens/controllers should
 consume those boundaries rather than Firebase directly.
 
 | Proposed operation | Responsibility / consumer |
-|---|---|
+| --- | --- |
 | Observe identity/profile state | M2 exposes the four states above and the current `userId`/profile when available. Shanuka can use this state for the startup gate: show loading while resolving, route signed-out users to welcome/sign-in, route incomplete profiles to setup, and allow ready users into the authenticated app. M2/M1 agree on route names and pending-link behavior before any global routing changes. |
-| `isMember(userId, sigId, subgroupId?)` or equivalent | M2 provides authoritative membership lookup for UI and other feature repositories. It is not itself sufficient authorization if data can change between check and action. |
-| `checkRoomAdmission(sigId, subgroupId)` or equivalent | M2/M3 agree a single membership-aware boundary for Aradhana (M3) to use during room admission. It derives the caller from authenticated state, checks both parent SIG and subgroup membership, and the backend rechecks membership at the point of seating to avoid stale-check races. Return `membershipRequired` when either membership is absent and `unavailable` when membership cannot be verified. A UI membership lookup alone is not authorization. |
-| Leave SIG | M2 coordinates the SIG membership change and subgroup cascade with M3. M3 owns room removal, seat release, ending session participation at the leave time, and host transfer or room closure as described above. Do not treat a client-side membership cache as authoritative. |
+| Membership-backed room creation and seat claims | M2 owns authoritative SIG/subgroup membership data and the production authentication/current-user and membership services; these interfaces are not yet implemented or finalized for M3 integration. M3 requires an authenticated user and active membership in both the parent SIG and relevant subgroup for room creation and seat claims. M2 and M3 must agree on the actual service interface before integration. Backend authorization must recheck membership at the point of each operation. Preview/cached membership and user IDs supplied by the UI are not authoritative. |
+| Leave SIG or subgroup | M2 owns membership changes, subgroup membership cleanup, SIG ownership transfer or closure, and member notifications. M3 coordinates room eligibility and removes associated participants from active rooms, releases seats, ends participation, and performs applicable room host transfer or room closure. Membership changes must not leave active room/session state orphaned. Exact sequencing and transaction coordination remain pending. |
 
 ## Implemented repository boundaries
 
@@ -124,7 +123,7 @@ above without replacing the existing UI models or repository consumers.
 ### Planned live models (not implemented)
 
 | Model | Fields / meaning |
-|---|---|
+| --- | --- |
 | RoomSnapshot | roomId, subgroupId, title, createdBy, hostUid, status (`waiting`, `active`, `completed`, `closed`), createdAt, updatedAt |
 | SeatState | seatId, nullable userId, status (`available`, `occupied`), claimedAt, leaseExpiresAt, lastRenewedAt; exactly six records per room |
 
@@ -227,10 +226,14 @@ Still requiring team confirmation:
 
 `CompletionRecord` is defined in `lib/core/models/completion_record.dart` for
 M3 finalization and M4 read-only history. It contains a stable `recordId`,
-`userId`, `sessionId`, UTC `endedAt`, `creditedSeconds`, a typed timer completion
-status, a separate `GoalOutcome` (`completed` or `unfinished`), and `isDemo`.
+`userId`, `sessionId`, the original personal `goalText`, UTC `endedAt`,
+`creditedSeconds`, a typed timer completion status, a separate `GoalOutcome`
+(`completed` or `unfinished`), and `isDemo`.
 The model validates non-empty identity fields and non-negative credited seconds;
-it does not enforce persistence uniqueness or calculate credited time.
+it does not enforce persistence uniqueness or calculate credited time. The stable
+completion identity is per `(userId, sessionId)`; the exact ID encoding remains
+an implementation detail, and duplicate finalization must be prevented by M3's
+write path.
 
 `TimerCompletionStatus` distinguishes `completed`, `endedEarly`, and `cancelled`.
 These statuses describe the timer/session result only. The history summary's
@@ -244,7 +247,9 @@ and counts.
 `lib/features/sessions/data/completion_history_repository.dart` is read-only and
 has separate operations for the current user's history page and all-history
 summary. It accepts no caller-supplied user ID; the production adapter must use
-M2's current identity and enforce private user scope. The page token is opaque.
+M2's current identity and enforce private user scope. Production auth/current-user
+and membership interfaces are M2 integration dependencies and are not finalized.
+The page token is opaque.
 The all-history summary must come from the complete source, not a sum of the
 currently loaded page, and must remain independent of page loading. The interface
 and fixtures do not implement a production history adapter or authorization.
@@ -258,12 +263,13 @@ normal records, an unfinished goal with retained credited time, early-left,
 provisional cancelled, and demo records. Expected normal summary examples:
 
 | Fixture | Normal credited seconds | Completed sessions |
-|---|---:|---:|
+| --- | ---: | ---: |
 | Empty history | 0 | 0 |
 | Multiple normal records | 3000 | 2 |
 | Early-left record | 900 | 0 |
 | Provisional cancelled record | 0 | 0 |
 | Demo record alone | 0 | 0 |
+| Duplicate read of one normal record | 1200 after deduplication | 1 after deduplication |
 
 The demo record has 75 credited seconds and one completed timer for the separate
 demo view; it contributes neither to normal total nor normal completed count.
@@ -275,9 +281,11 @@ fixture values are illustrative, not credit rules.
 Still pending M2/M3 confirmation: the definition of cancellation used by the
 provisional fixture; eligible-time calculation, including early-left and
 disconnected/background intervals; and the authoritative all-time summary
-query/source. Stable identity is required per user/session. Duplicate finalization
-is not enforced by the model or repository interface; M3 must implement and test
-idempotent persistence before claiming exactly-once completion.
+query/source. M2's production auth/current-user and membership interfaces also
+remain integration dependencies. Stable identity is required per user/session.
+Duplicate finalization is not enforced by the model or repository interface; M3
+must implement and test idempotent persistence before claiming exactly-once
+completion.
 
 ## Implemented session timing
 

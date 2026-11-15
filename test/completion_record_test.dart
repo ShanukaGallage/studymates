@@ -10,7 +10,14 @@ void main() {
 
       expect(record.timerStatus, TimerCompletionStatus.completed);
       expect(record.goalOutcome, GoalOutcome.unfinished);
+      expect(record.goalText, 'Build a working sensor sketch');
       expect(record.creditedSeconds, 1200);
+    });
+
+    test('preserves the original personal goal text', () {
+      const originalGoal = '  Build the first sensor sketch  ';
+
+      expect(_record(goalText: originalGoal).goalText, originalGoal);
     });
 
     test('normalizes endedAt to UTC', () {
@@ -57,6 +64,11 @@ void main() {
         expect(earlyLeftCompletionHistoryFixture.single.creditedSeconds, 900);
         expect(demoCompletionHistoryFixture, hasLength(1));
         expect(demoCompletionHistoryFixture.single.isDemo, isTrue);
+        expect(duplicateCompletionHistoryFixture, hasLength(2));
+        expect(
+          duplicateCompletionHistoryFixture[0].recordId,
+          duplicateCompletionHistoryFixture[1].recordId,
+        );
         expect(
           multipleCompletionHistoryFixture.every((record) => !record.isDemo),
           isTrue,
@@ -102,6 +114,20 @@ void main() {
       expect(secondUserPage.records.map((record) => record.userId), [
         'preview-user-2',
       ]);
+    });
+
+    test('deduplicates duplicate read records by stable record ID', () async {
+      final repository = _FixtureHistoryRepository(
+        currentUserId: 'preview-user-1',
+        allRecords: duplicateCompletionHistoryFixture,
+      );
+
+      final page = await repository.loadCurrentUserHistoryPage();
+      final summary = await repository.loadCurrentUserSummary();
+
+      expect(page.records, hasLength(1));
+      expect(summary.creditedSeconds, 1200);
+      expect(summary.completedSessionCount, 1);
     });
 
     test(
@@ -197,12 +223,14 @@ CompletionRecord _record({
   String recordId = 'completion-user-1-session-1',
   String userId = 'preview-user-1',
   String sessionId = 'session-1',
+  String goalText = 'Complete a study task',
   DateTime? endedAt,
   int creditedSeconds = 600,
 }) => CompletionRecord(
   recordId: recordId,
   userId: userId,
   sessionId: sessionId,
+  goalText: goalText,
   endedAt: endedAt ?? DateTime.utc(2026, 11, 15),
   creditedSeconds: creditedSeconds,
   timerStatus: TimerCompletionStatus.completed,
@@ -216,7 +244,9 @@ class _FixtureHistoryRepository implements CompletionHistoryRepository {
     required Iterable<CompletionRecord> allRecords,
     this.pageSize = 2,
   }) : _records = List.unmodifiable(
-         allRecords.where((record) => record.userId == currentUserId),
+         _deduplicateByRecordId(
+           allRecords.where((record) => record.userId == currentUserId),
+         ),
        );
 
   final List<CompletionRecord> _records;
@@ -251,4 +281,14 @@ class _FixtureHistoryRepository implements CompletionHistoryRepository {
           .length,
     );
   }
+}
+
+List<CompletionRecord> _deduplicateByRecordId(
+  Iterable<CompletionRecord> records,
+) {
+  final recordsById = <String, CompletionRecord>{};
+  for (final record in records) {
+    recordsById.putIfAbsent(record.recordId, () => record);
+  }
+  return recordsById.values.toList(growable: false);
 }
