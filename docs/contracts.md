@@ -22,7 +22,7 @@ preview profile, not to every user.
 | MembershipState | notJoined / joined; owner permissions are not modeled yet |
 | RepositoryException | notFound, membershipRequired or unavailable; no raw errors shown in UI |
 
-## Proposed identity and membership details (for M2/M3 review)
+## Identity and membership details (confirmed and pending)
 
 The preview already implements `UserProfile`, `SigSummary`, `SubgroupSummary`
 and `MembershipState` in `lib/core/models/community_models.dart`. Reuse and evolve
@@ -31,7 +31,7 @@ membership behavior below remain service-level contracts, independent of Firebas
 snapshot types. Agreed behavior is marked below; none of it is implemented against
 Firebase or live users yet.
 
-| Contract concept | Proposed meaning |
+| Contract concept | Meaning |
 |---|---|
 | Auth/profile state | `loading`, `signedOut`, `incompleteProfile`, or `ready`. `loading` means the initial auth/profile lookup has not resolved; `signedOut` means no authenticated user; `incompleteProfile` means an authenticated user lacks a display name; `ready` means the authenticated user's profile is available with a display name. A backend failure is an error/unavailable result, not a fifth identity state or a fake signed-out user. |
 | User identity | Stable `userId` is the Firebase Authentication UID. Profile data carries that same ID, required `displayName`, optional `avatarId`, and optional `interestIds`. If no avatar is selected, use a default avatar. Email remains an auth credential/contact field, not the identity key. Avatar is a preset identifier; image upload/URL is out of scope for this contract. |
@@ -72,7 +72,7 @@ consume those boundaries rather than Firebase directly.
 Preview membership rules: joining a subgroup requires its parent SIG membership;
 leaving a SIG clears all its subgroup memberships; rejoining does not restore
 those memberships. Explicit set operations are idempotent. Leave actions ask for
-confirmation. These local rules need M2/M3 review, then server-side enforcement.
+confirmation. These local rules are preview behavior, not server-side enforcement.
 
 ## Fixtures and routes
 
