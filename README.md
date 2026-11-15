@@ -76,9 +76,15 @@ sample occupancy or grants access to a live room.
 - The component gallery demonstrates all six states, including the sample
   “yours” state. Selection in the room only becomes “selected,” never “yours.”
 
-The room is drawn in Flutter with separate desk/avatar/interaction layers; no
-external artwork, font downloads or new dependencies were added. It is a layout
-prototype ready for later artwork and live room data, not a synchronized room.
+The room now uses the [classroom design](docs/design/room-classroom.html): six
+illustrated desk cards in two columns, a green classroom header, occupant names
+and explicit seat states. Cards stack into one column below 280 logical pixels
+of available width or above 150% body-text scaling. Names and controls wrap;
+the page scrolls vertically. Original desk/avatar art is painted in Flutter,
+separate from labels and interaction; no external assets or dependencies were added.
+The `RoomScene` constructor, seat models and callbacks remain unchanged for M3.
+This is still a local preview, not a synchronized room. The mockup's live
+connection, host and focus samples are not connected application behavior.
 
 Material 3 uses the existing `material_ui` package (locked at 1.11.0), whose
 installed source supplies the Material widgets used by the starter. Keep these
@@ -122,6 +128,19 @@ flutter build apk --debug --target-platform android-arm64 -t lib/main_preview.da
 
 The earlier general APK build stalled and was stopped; this successful build is
 specifically for the ARM64 demo phone, not a universal architecture build.
+
+Classroom update: formatting, analysis and all **61 tests** passed, including
+responsive desk cards at 320px with 200% text and the existing selection/retry,
+semantics and goal-sheet checks. The new failure-action color pair also passed
+the contrast check. A Flutter render of all six states was visually inspected.
+`flutter run -d 704285f1 -t lib/main_preview.dart` built and launched on the
+23129RAA4G / Android 15 phone. The first build downloaded SDK Platform 34 and
+native dependencies. On 16 November, the unlocked phone passed the Discover →
+IoT → ESP32 → First Sensor Project walkthrough: two-column classroom rendering,
+scrolling to all six seats, local seat selection and goal entry/save with the
+keyboard open were checked. Selection remained explicitly local, not a reservation.
+TalkBack and large-system-text review on the physical phone remain pending;
+large-text layout is covered by the widget tests above.
 
 On Android inspect all four tabs, selected navigation state, gallery/back,
 validation, password visibility, loading/disabled controls and Retry. Try large

@@ -59,14 +59,35 @@ Test TalkBack on the actual Android device before the demo candidate is frozen.
 
 ## Room illustration direction
 
-Use one calm, fixed-camera 2D room with six desks. The existing Flutter-drawn room
-is the structure prototype. Later artwork must be an empty room with separate
-avatar/decoration layers; keep all names, timers, statuses and actions as widgets.
+The [classroom mockup](room-classroom.html) is the approved visual direction:
+two columns and three rows of illustrated desks. `RoomScene` now implements this
+layout with original Flutter vector art and a classroom header in the room preview.
+No external artwork, fonts or packages are needed. The HTML remains a design
+reference; its live connection, host and focus samples are future integrations.
 
-Use normalized coordinates within the painted scene for avatars and touch targets.
-Keep depth/layer order consistent and preserve tap alignment at every width.
-Start with a small set of preset avatars; no walkable world, game engine or extra
-room scenes. Track asset sources/licenses or generation provenance when art arrives.
+Each desk separates scenery/avatar art from names, statuses and touch targets.
+Keep six stable seat numbers and existing `RoomScene` inputs/callbacks; Shanuka
+owns the rendering change and live-data adapter. Aradhana's live repository should
+not depend on grid geometry, artwork or presentation-only pending/failed states.
+The scene uses responsive cards with natural text height, capped at 640 logical
+pixels overall. Below 280 pixels of available width or above 150% body-text
+scaling it uses one column. Cards retain 48px minimum actions and vertical scrolling.
+
+The reference includes nine sample states: lobby, local selection, pending,
+confirmed sample seat, conflict, failure, reconnecting, full and focus. Host/member
+controls are distinct. Focus time is frozen; no backend/session behavior runs.
+Personal goals remain in the current user's panel; public goals would require a
+separate visibility agreement. Do not infer sharing from the supplied image.
+
+The existing preview selection, goal entry, conflict simulation and gallery remain
+operational. Review desk size, scrolling and avatar appearance on the phone before
+connecting live data. Preset IDs determine avatar appearance; no game engine or
+walkable world is needed. Personal names and statuses are ordinary Flutter text.
+
+Mockup verification: inspected desktop and phone renders in headless Chrome;
+108 combinations of state/role, 320/390/1280px viewport and 100%/200% text size
+passed six-seat and page-overflow checks. Selection/clear and host focus navigation
+passed. Android, TalkBack and Flutter behavior are not validated by this HTML.
 
 ## Design work sequence for Shanuka
 

@@ -250,6 +250,7 @@ void main() {
       (scheme.onSurfaceVariant, AppColors.background),
       (scheme.onPrimaryContainer, scheme.primaryContainer),
       (scheme.error, scheme.surface),
+      (scheme.error, scheme.errorContainer), // Failed classroom seat action.
     ]) {
       final a = pair.$1.computeLuminance();
       final b = pair.$2.computeLuminance();

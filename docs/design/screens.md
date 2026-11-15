@@ -22,6 +22,14 @@ The editable master is the standalone HTML. All form data stays in memory and
 resets on refresh. Use sample credentials only. Browser Back is not the simulated
 Android Back control. The wireframe does not modify the Flutter application.
 
+For the newer room visual direction, open the [classroom mockup](room-classroom.html).
+It complements this overall flow with six illustrated desks, nine room states and
+host/member controls. Use the external state selector to inspect samples; desk
+taps only select locally. The focus timer is frozen and no reservation is made.
+The Flutter scene now uses this classroom layout; review artwork, desk size and
+scrolling on a phone. Its callbacks and preview interactions remain unchanged;
+the HTML's connection/host/focus scenarios are still design references only.
+
 ## Main navigation and screen placement
 
 - Home: return to joined communities, room shortcuts and progress. A new user sees

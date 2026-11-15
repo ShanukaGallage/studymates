@@ -163,6 +163,37 @@ class _RoomLobbyPreviewState extends State<RoomLobbyPreview> {
           'All people shown are samples. Selecting a seat here does not reserve it.',
         ),
         const SizedBox(height: 16),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary,
+            borderRadius: BorderRadius.circular(14),
+            border: const Border(
+              bottom: BorderSide(color: Color(0xFFBD976C), width: 5),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Find your place. Settle in.',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Six desks. One small goal at a time.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
         RoomScene(
           seats: seats,
           selectionEnabled: widget.isMember && _pending == null,
