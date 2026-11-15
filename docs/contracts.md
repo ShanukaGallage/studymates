@@ -20,23 +20,24 @@ preview profile, not to every user.
 | MembershipState | notJoined / joined; owner permissions are not modeled yet |
 | RepositoryException | notFound, membershipRequired or unavailable; no raw errors shown in UI |
 
-## Proposed identity and membership details (for M2/M3 review)
+## Identity and membership details (confirmed and pending)
 
 The preview already implements `UserProfile`, `SigSummary`, `SubgroupSummary`
 and `MembershipState` in `lib/core/models/community_models.dart`. Reuse and evolve
-these types; do not create parallel models. The authenticated identity and backend
-membership behavior below remain proposals, independent of Firebase snapshot types.
+these types; do not create parallel models. Items below that are marked proposed
+or pending remain subject to M2/M3 review, independent of Firebase snapshot types.
 
-| Contract concept | Proposed meaning |
+| Contract concept | Meaning |
 |---|---|
 | Auth/profile state | `loading`, `signedOut`, `incompleteProfile`, or `ready`. `loading` means the initial auth/profile lookup has not resolved; `signedOut` means no authenticated user; `incompleteProfile` means an authenticated user lacks required profile fields; `ready` means the authenticated user's required profile is available. A backend failure is an error/unavailable result, not a fifth identity state or a fake signed-out user. |
-| User identity | Stable `userId` is the Firebase Authentication UID. Profile data carries that same ID, required `displayName`, preset `avatarId`, and `interestIds`. Email remains an auth credential/contact field, not the identity key. Avatar is a preset identifier; image upload/URL is out of scope for this contract. |
+| User identity and profile completion | Stable `userId` is the Firebase Authentication UID. Profile data carries that same ID. `displayName` is required; avatar selection and interests are optional. A default avatar may be used if the user has not selected one. Email remains an auth credential/contact field, not the identity key. Avatar is a preset identifier; image upload/URL is out of scope for this contract. |
 | SIG identity | Stable `sigId`; `SigSummary.ownerId` is the user ID of its owner. |
 | Subgroup identity | Stable `subgroupId` plus its parent `sigId`; subgroup ownership is inherited from the parent SIG owner in the first version, not a separate subgroup owner. |
-| Membership | SIG membership is keyed by `(userId, sigId)`. Subgroup membership is keyed by `(userId, sigId, subgroupId)` and must reference a subgroup under that SIG. Existing summaries expose `membership` as `MembershipState.joined` or `notJoined`. The proposed backend concepts `member` / `nonMember` should map to these values; agree any API rename before changing consumers. Missing, denied, and unavailable data must remain distinguishable from non-membership. |
+| Membership | A SIG owner is automatically a member of that SIG. SIG membership is keyed by `(userId, sigId)`. Subgroup membership is keyed by `(userId, sigId, subgroupId)` and must reference a subgroup under that SIG. Existing summaries expose `membership` as `MembershipState.joined` or `notJoined`. The proposed backend concepts `member` / `nonMember` should map to these values; agree any API rename before changing consumers. Missing, denied, and unavailable data must remain distinguishable from non-membership. |
 | Membership query | Proposed repository operation: check whether `userId` is a member of the requested SIG and, when supplied, its subgroup. For room admission, check both the room's parent SIG and subgroup against the authenticated caller; do not trust a client-supplied user ID. Return a typed result/error so M3 can distinguish `membershipRequired` from `unavailable`. |
 | Subgroup owner permission | Only the owner of the parent SIG may create, edit or delete its subgroups in the first version. Membership alone grants no subgroup administration permission. Enforce this in repository/backend access rules, not just by hiding UI controls. |
-| Leaving a parent SIG | Proposed cascade: leaving a SIG also removes that user's memberships in its subgroups, so subgroup membership cannot outlive parent membership. This denies future room admission through either membership. Whether an already seated user is removed immediately, and whether a current SIG owner may leave before transferring ownership or deleting the SIG, remain open questions for M2/M3 agreement. |
+| Leaving a SIG or subgroup | Leaving a SIG removes that user's memberships in its subgroups. The user must also be removed from associated active rooms, their occupied seats released, and their active session participation ended. If they are the room host, apply the agreed host-transfer or room-closure rules. M2 owns SIG ownership transfer, closure status, and member notifications; M3 owns active room/session cleanup, seat release, participation termination, and applicable room host transfer or closure. Exact authorization and transaction coordination for membership removal and cleanup remain pending M2/M3 implementation agreement; cleanup must still occur after membership becomes inactive. |
+| SIG owner departure | If an eligible replacement member exists, M2 transfers ownership to that member. If no eligible replacement exists, M2 marks the SIG `Closed`, not deleted, and notifies remaining members. Membership records, subgroup information, and historical activity are retained. A closed SIG cannot accept new members, create subgroups, or create new rooms. |
 
 ## Proposed cross-feature operations
 
@@ -49,7 +50,7 @@ consume those boundaries rather than Firebase directly.
 | Observe identity/profile state | M2 exposes the four states above and the current `userId`/profile when available. Shanuka can use this state for the startup gate: show loading while resolving, route signed-out users to welcome/sign-in, route incomplete profiles to setup, and allow ready users into the authenticated app. M2/M1 agree on route names and pending-link behavior before any global routing changes. |
 | `isMember(userId, sigId, subgroupId?)` or equivalent | M2 provides authoritative membership lookup for UI and other feature repositories. It is not itself sufficient authorization if data can change between check and action. |
 | `checkRoomAdmission(authenticatedUserId, sigId, subgroupId)` or equivalent | M2/M3 agree a single membership-aware boundary for M3 room admission. M3 obtains the caller from authenticated state and invokes the check as part of the admission operation; the backend must re-check membership atomically/under access rules at the point of seating to avoid stale-check races. M3 returns `membershipRequired` when either required membership is absent, and `unavailable` when it cannot verify. |
-| Leave SIG | M2 removes the parent membership and applies the agreed subgroup cascade. Coordinate with M3 for active seats/rooms; do not silently treat a client-side membership cache as authoritative. |
+| Leave SIG or subgroup | M2 updates membership and applies the subgroup cascade when leaving a SIG. M3 removes the user from associated active rooms, releases their occupied seats, ends active session participation, and applies room host-transfer/closure behavior when needed. When a SIG owner leaves, M2 transfers ownership to an eligible replacement member, or closes the SIG and notifies remaining members if none exists, retaining its records and history. Do not treat a client-side membership cache as authoritative. |
 
 ## Implemented repository boundaries
 
@@ -68,7 +69,7 @@ consume those boundaries rather than Firebase directly.
 Preview membership rules: joining a subgroup requires its parent SIG membership;
 leaving a SIG clears all its subgroup memberships; rejoining does not restore
 those memberships. Explicit set operations are idempotent. Leave actions ask for
-confirmation. These local rules need M2/M3 review, then server-side enforcement.
+confirmation. These local rules are preview behavior, not server-side enforcement.
 
 ## Fixtures and routes
 
