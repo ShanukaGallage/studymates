@@ -169,6 +169,17 @@ class _RecordCard extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Personal goal',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            Text(
+              record.goalText.trim().isEmpty
+                  ? 'No goal text recorded.'
+                  : record.goalText,
+              key: ValueKey('progress-goal-${record.recordId}'),
+            ),
+            const SizedBox(height: AppSpacing.md),
             Text('Session: ${record.sessionId}'),
             Text('Ended: $date (local time)'),
             Text('Recorded time: ${_duration(record.creditedSeconds)}'),

@@ -67,6 +67,10 @@ class _ProgressHistoryPreviewState extends State<ProgressHistoryPreview> {
                                     'Initial error once',
                                   ProgressHistoryScenario.pageErrorOnce =>
                                     'Next-page error once',
+                                  ProgressHistoryScenario.longGoal =>
+                                    'Long goal history',
+                                  ProgressHistoryScenario.cancelledSample =>
+                                    'Cancelled sample (provisional)',
                                 },
                                 onPressed: () {
                                   Navigator.of(context).pop();
@@ -89,7 +93,18 @@ class _ProgressHistoryPreviewState extends State<ProgressHistoryPreview> {
             ),
           ],
         ),
-        body: const ProgressHistoryScreen(),
+        body: Column(
+          children: [
+            if (_repository.scenario == ProgressHistoryScenario.cancelledSample)
+              const Padding(
+                padding: EdgeInsets.all(AppSpacing.lg),
+                child: Text(
+                  'Provisional fixture only. Its zero credit is sample data, not an approved cancellation rule.',
+                ),
+              ),
+            const Expanded(child: ProgressHistoryScreen()),
+          ],
+        ),
       ),
     ),
   );
