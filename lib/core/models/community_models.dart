@@ -1,11 +1,13 @@
 enum MembershipState { notJoined, joined }
 
 class UserProfile {
+  static const defaultAvatarId = 'default';
+
   UserProfile({
     required this.id,
     required this.displayName,
-    required this.avatarId,
-    required List<String> interestIds,
+    this.avatarId = defaultAvatarId,
+    List<String> interestIds = const [],
   }) : interestIds = List.unmodifiable(interestIds);
   final String id;
   final String displayName;
