@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:studymates/app/app.dart';
+import 'package:studymates/features/communities/presentation/controllers/community_providers.dart';
+import 'package:studymates/preview/preview_repositories.dart';
 import 'package:studymates/app/app_mode.dart';
 import 'package:studymates/app/router.dart';
 import 'package:studymates/core/widgets/app_button.dart';
@@ -19,6 +21,9 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         appModeProvider.overrideWithValue(mode),
+        communityRepositoryProvider.overrideWith(
+          (ref) => MemoryCommunityRepository(),
+        ),
         appRouterProvider.overrideWithValue(router),
       ],
     );
@@ -53,7 +58,12 @@ void main() {
     ].indexed) {
       await tester.tap(find.text(name).last);
       await tester.pumpAndSettle();
-      expect(find.text('$name placeholder'), findsOneWidget);
+      expect(
+        find.text(
+          name == 'Discover' ? 'Search communities' : '$name placeholder',
+        ),
+        findsOneWidget,
+      );
       expect(
         tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
         index,
@@ -99,7 +109,7 @@ void main() {
     'preview opens gallery outside tabs and back restores selected tab',
     (tester) async {
       await mount(tester, location: '/profile');
-      expect(find.text('UI Preview • Sample controls only'), findsOneWidget);
+      expect(find.text('UI Preview • Local sample data'), findsOneWidget);
       await tester.tap(find.byTooltip('Component gallery'));
       // Gallery intentionally contains indeterminate loading indicators.
       await tester.pump();

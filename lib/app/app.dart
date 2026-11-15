@@ -32,7 +32,7 @@ class StudyMatesApp extends ConsumerWidget {
                   width: double.infinity,
                   child: Text(
                     preview
-                        ? 'UI Preview • Sample controls only'
+                        ? 'UI Preview • Local sample data'
                         : 'Foundation only • Not connected',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall

@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="StudyMates four-member team working guide: Common team plan.">
+<title>StudyMates — common four-member plan</title>
+<style>
+:root { color-scheme: light; --ink:#1e2b24; --muted:#5f6d64; --green:#225b3b; --cream:#faf7f0; --mint:#e4f0df; --line:#dce3d8; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--cream); color:var(--ink); font:16px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+a { color:var(--green); text-underline-offset:3px; }
+a:hover { text-decoration-thickness:2px; }
+a:focus-visible, button:focus-visible { outline:3px solid #9b6a13; outline-offset:4px; }
+.skip { position:absolute; top:-100px; left:16px; padding:12px; background:white; z-index:2; }
+.skip:focus { top:12px; }
+header { background:var(--green); color:white; padding:28px max(24px,calc((100vw - 1120px)/2)); }
+.brand { font-size:25px; font-weight:750; letter-spacing:-.5px; }
+header p { margin:4px 0 0; color:#e4f0df; font-size:14px; }
+.layout { display:grid; grid-template-columns:225px minmax(0,1fr); gap:32px; max-width:1168px; margin:auto; padding:32px 24px 64px; }
+nav { align-self:start; position:sticky; top:24px; }
+nav h2 { font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin:0 0 12px; }
+nav a { display:block; padding:12px; margin-bottom:5px; border-radius:10px; text-decoration:none; }
+nav a[aria-current="page"] { background:var(--mint); font-weight:700; }
+nav a:hover { background:#edf2e9; }
+nav small { display:block; font-size:12px; color:var(--muted); font-weight:400; }
+article { min-width:0; background:white; padding:32px 38px; border:1px solid var(--line); border-radius:16px; }
+h1,h2,h3 { line-height:1.25; scroll-margin-top:24px; }
+h1 { font-size:clamp(25px,3vw,35px); margin:0 0 24px; letter-spacing:-.7px; }
+h2 { font-size:23px; margin:38px 0 16px; border-top:1px solid var(--line); padding-top:24px; }
+h3 { font-size:19px; margin:26px 0 12px; }
+p { margin:0 0 16px; }
+ul,ol { padding-left:25px; margin:0 0 20px; }
+li { margin:6px 0; }
+li p { margin:6px 0; }
+blockquote { border-left:4px solid var(--green); padding:12px 18px; margin:20px 0; background:var(--mint); }
+blockquote p:last-child { margin-bottom:0; }
+code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:.88em; overflow-wrap:anywhere; background:#f0f3ee; padding:2px 5px; border-radius:4px; }
+pre { background:#f3f6f0; border:1px solid var(--line); border-left:4px solid var(--green); border-radius:8px; padding:18px; margin:20px 0; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.6; }
+pre code { padding:0; background:none; font-size:13px; border-radius:0; }
+.table-wrap { overflow-x:auto; margin:20px 0; }
+table { width:100%; border-collapse:collapse; font-size:14px; line-height:1.5; }
+th,td { text-align:left; vertical-align:top; padding:11px 12px; border:1px solid var(--line); min-width:100px; overflow-wrap:anywhere; }
+th { background:var(--mint); font-weight:700; }
+tr:nth-child(even) td { background:#fafbf8; }
+.toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:24px; font-size:13px; color:var(--muted); }
+button { font:inherit; background:var(--green); color:white; padding:10px 16px; border:0; border-radius:8px; cursor:pointer; min-height:44px; }
+footer { color:var(--muted); font-size:12px; border-top:1px solid var(--line); padding-top:20px; margin-top:32px; }
+@media(max-width:850px) { .layout { display:block; padding:20px 16px 40px; } nav { position:static; margin-bottom:24px; } nav a { display:inline-block; margin:4px; padding:10px; } nav small { display:none; } article { padding:24px 20px; } }
+@media print { @page { size:A4; margin:16mm; } body { background:white; font-size:10pt; } header,nav,.toolbar,.skip { display:none; } .layout { display:block; max-width:none; padding:0; } article { padding:0; border:0; border-radius:0; } h1 { font-size:22pt; } h2 { font-size:15pt; break-after:avoid; } h3 { break-after:avoid; } pre { font-size:9pt; break-inside:avoid; } .table-wrap { overflow:visible; } table { font-size:8pt; } th,td { min-width:0; padding:6px; } tr { break-inside:avoid; } a { color:inherit; } footer { font-size:8pt; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#plan">Skip to plan</a>
+<header><div class="brand">StudyMates</div><p>Four-member team • Five-minute live Android demonstration</p></header>
+<div class="layout">
+<nav aria-label="Team guides"><h2>Team plans</h2><a href="00-common-plan.html" aria-current="page">Common team plan<small>Start here</small></a><a href="01-shanuka-ui-integration.html">Shanuka<small>UI and integration</small></a><a href="02-poojani-accounts-communities.html">Poojani<small>Accounts and communities</small></a><a href="03-aradhana-rooms-sessions.html">Aradhana<small>Rooms and sessions</small></a><a href="04-sandali-invites-progress.html">Sandali<small>Invitations and progress</small></a></nav>
+<article id="plan">
+<div class="toolbar"><span>Start here • Working guide</span><button type="button" onclick="window.print()">Print / Save as PDF</button></div>
+<h1>StudyMates — common four-member plan</h1>
+<p>This is the current team working plan. It supersedes the five-member assignments
+and startup assumptions in the two original StudyMates guides. It is not an
+assignment report. Deliverable: <strong>five-minute live Android demonstration</strong>, with
+no slides, report or formal rubric. All four members use VS Code with Codex.</p>
+<p>Read this first, then your individual guide:</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Main responsibility</th>
+<th>Individual guide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M1 — Shanuka</td>
+<td>Shared UI, room/session presentation, navigation and difficult integration work</td>
+<td><a href="01-shanuka-ui-integration.html">Shanuka</a></td>
+</tr>
+<tr>
+<td>M2 — Poojani</td>
+<td>Firebase setup, authentication, profiles and communities</td>
+<td><a href="02-poojani-accounts-communities.html">Poojani</a></td>
+</tr>
+<tr>
+<td>M3 — Aradhana</td>
+<td>Live rooms, seat correctness, session timing and completion writes</td>
+<td><a href="03-aradhana-rooms-sessions.html">Aradhana</a></td>
+</tr>
+<tr>
+<td>M4 — Sandali</td>
+<td>QR/manual invitations and read-only progress/history</td>
+<td><a href="04-sandali-invites-progress.html">Sandali</a></td>
+</tr>
+</tbody>
+</table></div>
+<p>These assignments follow the supplied name order and can be exchanged before work
+starts. Availability and deadline have not been supplied; use the gates below,
+not the original guide's four-week estimate or former part-time assumptions.
+Reserve roughly one quarter of available effort for integration, testing and fixes.</p>
+<h2>1. What we are building</h2>
+<p>StudyMates helps people find study partners through <strong>SIG → subgroup → room →
+focus session → personal history</strong>. Example: IoT → ESP32 → First Sensor Project.
+The timer records eligible participation, not verified attention or learning.</p>
+<p>Core target: email/password accounts and reset, preset profiles, create/discover/
+join/leave SIGs, owner-created subgroups, six-seat rooms, personal goals, a shared
+focus/break schedule, one completion per user/session, camera invitations with
+manual fallback, and private personal history. Retain camera scanning as a product
+choice; do not describe it as a formal marking criterion now that no rubric exists.</p>
+<p>Normal schedule: 25-minute focus + 5-minute break. Provide a visibly labelled
+60-second demo cycle, kept separate from ordinary progress. Proposed demo split:
+45-second focus + 15-second break; agree and record the exact split at Gate 1.
+Goal outcome (completed/unfinished) is independent of timer completion.</p>
+<p>Defer charts, decorations and resource links until the connected path is reliable.
+No full chat, voice/video, AI, 3D world, uploads, public rankings or public launch.</p>
+<h2>2. Existing work — extend it</h2>
+<p>All four members have reported running the app on their devices. This confirms
+onboarding; it does not yet prove everybody has the latest room-preview code.
+Shanuka's recorded device is 23129RAA4G, Android 15, build AQ3A.240829.003.</p>
+<p>Present locally: Flutter 3.50.0 / Dart 3.14.0; Material UI, Riverpod and go_router;
+shared theme/components; four-tab shell; preview gallery and scenario controls;
+community search/details with in-memory membership; six-seat presentation, local
+seat selection/conflict simulation and goal entry. The normal entry point remains
+a disconnected shell. The latest recorded full suite passed 21 tests; an ARM64
+preview APK built. Room phone/TalkBack review remains pending.</p>
+<p>Not present: Firebase integration, real identity, persistent memberships, live
+seating, real sessions, invitation services/scanning, persisted completions/history.
+The existing <code>RoomLobbyPreview</code> is a local interaction harness, not a live-room
+controller. Never convert its simulated success into a claimed server admission.</p>
+<p><strong>First dependency:</strong> the latest community/room changes are still uncommitted on
+<code>feat/community-preview</code> in this checkout. Shanuka reviews and publishes a tested
+baseline through the team's normal PR/merge workflow; everyone starts from that
+same commit. Do not regenerate the app, directories, theme, router or dependencies.</p>
+<h2>3. Ownership and conflict boundaries</h2>
+<p>Each feature owner implements their own screens with Shanuka's components.
+Shanuka designs/reviews shared UI, builds room/session presentation and handles
+integration; he does not rewrite all three teammates' screens.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Area / paths</th>
+<th>Single coordinating owner</th>
+<th>Cooperation rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lib/core/theme</code>, <code>lib/core/widgets</code>, assets/design references</td>
+<td>Shanuka</td>
+<td>Request missing components; reuse existing ones meanwhile</td>
+</tr>
+<tr>
+<td><code>lib/app</code>, <code>main.dart</code>, <code>main_preview.dart</code>, central preview bindings</td>
+<td>Shanuka</td>
+<td>Feature owners provide constructors, providers and route requests; Shanuka wires them</td>
+</tr>
+<tr>
+<td><code>lib/features/auth</code>, <code>profile</code>, <code>communities</code></td>
+<td>Poojani</td>
+<td>Preserve existing community consumers; publish interface changes first</td>
+</tr>
+<tr>
+<td><code>lib/features/home</code></td>
+<td>Shanuka</td>
+<td>Consume Poojani's agreed community/profile services when available</td>
+</tr>
+<tr>
+<td><code>lib/features/rooms/data</code>, new live-room controllers</td>
+<td>Aradhana</td>
+<td>Adapt live state to the existing scene; no second scene or seat service</td>
+</tr>
+<tr>
+<td>Existing room scene/lobby/goal widgets and <code>room_scene_provider.dart</code></td>
+<td>Shanuka</td>
+<td>Aradhana supplies state/callbacks; agree before editing these files</td>
+</tr>
+<tr>
+<td><code>lib/features/sessions/data</code> and <code>presentation/controllers</code></td>
+<td>Aradhana</td>
+<td>Own timing, participation and finalization logic</td>
+</tr>
+<tr>
+<td><code>lib/features/sessions/presentation/screens</code> and <code>widgets</code></td>
+<td>Shanuka</td>
+<td>Consume Aradhana's contracts; no duplicate timer/completion engine</td>
+</tr>
+<tr>
+<td><code>lib/features/invites/presentation</code>; scanner/token parser</td>
+<td>Sandali</td>
+<td>UI consumes Aradhana's shared invite/admission operations</td>
+</tr>
+<tr>
+<td><code>lib/features/invites/data</code> invitation contract + remote implementation</td>
+<td>Aradhana</td>
+<td>Sandali contributes parser-specific files only; agree filenames first</td>
+</tr>
+<tr>
+<td><code>lib/features/progress</code> including read-only history adapter</td>
+<td>Sandali</td>
+<td>Read the agreed completion schema; never award or rewrite completions</td>
+</tr>
+<tr>
+<td>Shared domain models and <code>docs/contracts.md</code></td>
+<td>Poojani coordinates</td>
+<td>Aradhana authors room/session fields; Sandali reviews consumers; Shanuka reviews UI needs</td>
+</tr>
+<tr>
+<td>Firebase project/config/bootstrap, <code>firestore.rules</code>, indexes</td>
+<td>Poojani</td>
+<td>Aradhana supplies room/session/invite rule changes and tests in a reserved small PR</td>
+</tr>
+<tr>
+<td><code>pubspec.yaml</code>, lockfile and <code>android/</code> shared config</td>
+<td>Shanuka coordinates</td>
+<td>One dependency/config PR at a time; Poojani and Sandali request a short edit slot</td>
+</tr>
+<tr>
+<td>Shared tests (<code>widget_test.dart</code>, existing preview suites)</td>
+<td>Shanuka</td>
+<td>Each member adds separate feature test files in owned scope</td>
+</tr>
+<tr>
+<td>New feature fixtures under <code>lib/preview/</code></td>
+<td>Relevant feature owner</td>
+<td>Separate named files; only Shanuka changes central <code>preview_scope.dart</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Firebase bootstrap code should live in a dedicated new service file owned by
+Poojani; Shanuka calls it from the normal entry point. Generated Firebase client
+config belongs to Poojani. Do not give two agents concurrent ownership of <code>main.dart</code>.</p>
+<p>A coordinating owner is not a permanent gatekeeper for every edit. Reserve the
+shared file in the task/PR, make one small change, merge it, then release the slot.
+If a task is blocked by another owner, continue its fixture-based screen/tests.
+Do not silently edit the other owner's files just to make your branch compile.</p>
+<h2>4. Contract handoffs before dependent implementation</h2>
+<p>Current implementations and drafts are distinguished in <a href="../contracts.md">contracts</a>.
+The following future interfaces must be agreed; the table is not a claim that
+these APIs already exist. Choose exact names/types in one small contract PR.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Handoff</th>
+<th>Producer → consumer</th>
+<th>Agree and provide before integration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Identity/profile state</td>
+<td>Poojani → everyone</td>
+<td>loading / signed-out / incomplete-profile / ready; stable user ID, name, avatar; error behavior</td>
+</tr>
+<tr>
+<td>Community membership</td>
+<td>Poojani → Aradhana/Shanuka</td>
+<td>SIG/subgroup IDs, owner permissions, membership checks; leave-parent behavior</td>
+</tr>
+<tr>
+<td>Room state/admission</td>
+<td>Aradhana → Shanuka/Sandali</td>
+<td>room ID, six seat states, host, current user's seat, connection status; admitted/full/seatTaken/membershipRequired/unavailable</td>
+</tr>
+<tr>
+<td>Session state</td>
+<td>Aradhana → Shanuka</td>
+<td>stable session ID, UTC start/focus-end/break-end, phase, goal, participation, save state; host and member actions</td>
+</tr>
+<tr>
+<td>Completion/history</td>
+<td>Aradhana → Sandali</td>
+<td>stable user/session record ID, creditedSeconds, endedAt UTC, timer completion status, goal outcome, isDemo; private read/query boundary and complete-total source versus bounded history pages</td>
+</tr>
+<tr>
+<td>Invitation</td>
+<td>Aradhana → Sandali/Shanuka</td>
+<td>exact versioned QR/manual-token format, preview fields, expiry/revocation and errors; explicit membership consent; one admission operation</td>
+</tr>
+<tr>
+<td>Route intent</td>
+<td>Each owner → Shanuka</td>
+<td>destination, parameter IDs, auth requirement, back behavior, pending invitation across login</td>
+</tr>
+</tbody>
+</table></div>
+<p>Poojani and Aradhana must resolve how shared models evolve without duplicating
+<code>UserProfile</code>, <code>RoomSummary</code> or the existing membership types. Presentation-only
+<code>RoomSeat</code> is not automatically the Firestore seat schema. Add fixtures and
+meaningful contract tests alongside each change. Freeze a small version of these
+interfaces while Sandali builds its consumers; provide migrations when changing them.</p>
+<h2>5. Parallel work and merge order</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Shanuka</th>
+<th>Poojani</th>
+<th>Aradhana</th>
+<th>Sandali</th>
+<th>Exit proof</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0: Shared baseline</td>
+<td>Review/publish current preview; record commit</td>
+<td>Pull/run same commit</td>
+<td>Pull/run same commit</td>
+<td>Pull/run same commit</td>
+<td>All four confirm identical commit and preview route</td>
+</tr>
+<tr>
+<td>1: Contracts + first independent tasks</td>
+<td>Session UI states/design; route-request list</td>
+<td>Auth/profile contract; Firebase setup PR</td>
+<td>Room/session/invite/completion drafts and fixtures</td>
+<td>Camera spike with test token; history from fixture contract once merged</td>
+<td>Contracts merged; scanner reads known QR once on a phone</td>
+</tr>
+<tr>
+<td>2: Identity + real occupancy</td>
+<td>Connect auth gate; live room adapter</td>
+<td>Auth/profile first, then SIG/subgroup persistence/rules</td>
+<td>First room stream and checked atomic seats</td>
+<td>Scanner errors/manual input; history UI</td>
+<td>Two authenticated accounts join one subgroup and occupy distinct seats</td>
+</tr>
+<tr>
+<td>3: Complete path</td>
+<td>Focus/break/summary UI; navigation/invite integration</td>
+<td>Ownership/membership regressions; seed demo data</td>
+<td>Shared schedule, unique completion, invitation lookup/admission</td>
+<td>Real invite preview/join and real history reader</td>
+<td>QR → room → demo cycle → saved history across two devices</td>
+</tr>
+<tr>
+<td>4: Reliability/freeze</td>
+<td>Responsive/accessibility fixes, candidate APK, rehearsal</td>
+<td>Access/isolation checks</td>
+<td>Conflicts/reconnect/host departure/duplicate completion</td>
+<td>Camera denial/retry, history totals and demo separation</td>
+<td>Exact candidate APK completes repeatable five-minute demo</td>
+</tr>
+</tbody>
+</table></div>
+<p>Dependencies: Aradhana can write fixture/emulator tests before Firebase UI is
+ready, but real admission needs Poojani's identity/membership/rules. Shanuka can
+build timer screens from timestamps before the real session engine exists.
+Sandali can prove camera hardware immediately and history UI from fixtures;
+actual QR admission waits for Aradhana, and real totals wait for completion writes.
+Nobody needs final artwork to start. Merge small slices at each gate; do not wait
+for an entire member's module to be finished before integrating it.</p>
+<h2>6. Working together in Git and Codex</h2>
+<p>Use one repository, one clone per person, and short task branches. Before a task,
+check <code>git status</code>; preserve unfinished changes. With a clean tree and the shared
+baseline merged, use <code>git switch main</code>, <code>git pull --ff-only</code>, then
+<code>git switch -c feat/&lt;one-small-task&gt;</code>. No force-pushes over shared work, duplicated
+apps, bulk replacement of folders, or automatic resolution of others' conflicts.</p>
+<p>One small issue should name the owner, allowed files, input contract/commit,
+observable success/error cases, reviewer and any shared-file reservation.
+Every day (or after each work block), post: branch, completed, next, blocker,
+and requested handoff. This is team coordination, not a report deliverable.</p>
+<p>Review assignments: Poojani and Aradhana review each other's backend/rules work;
+Shanuka reviews UI/integration; Sandali reviews QR/history consumers; Poojani reviews
+Shanuka's app wiring/release. Each PR needs one appropriate human reviewer and
+matching checks. Feature owners must explain the behavior their AI helped produce.</p>
+<p>Paste this starter into a fresh Codex task, then append ONE step prompt from your
+individual guide. Replace all bracketed fields before running it.</p>
+<pre><code class="language-text">We are building the existing StudyMates Android Flutter app.
+Read AGENTS.md, README.md, docs/team/00-common-plan.md, my individual plan
+[exact file], and docs/contracts.md. Inspect git status and relevant existing
+code before changing anything. Preserve unrelated and uncommitted work.
+I am [member/name]. Implement only [one task] in [owned paths].
+The agreed input contract/commit is [reference]. Acceptance cases: [list].
+Reuse Material UI, Riverpod, go_router and existing shared components.
+Do not recreate the project, guess a missing backend contract, add a second
+state solution or change another owner's shared files silently.
+If a dependency is missing, keep the task fixture-backed and report the exact
+handoff needed. Ask only about decisions that block this task; continue safe,
+independent work. Never treat mock data as real synchronization.
+No backend deployment, billing change or external messages are part of this task.
+Format changed Dart files, run analysis and relevant independent tests, and
+report Android checks actually performed. Summarize changed files, behavior,
+remaining placeholders, integration requests and a phone verification sequence.
+Do not commit or push unless I explicitly ask within this task.
+</code></pre>
+<p>Common checks: <code>dart format lib test</code>, <code>flutter analyze</code>, <code>flutter test</code>, then
+<code>flutter run -t lib/main_preview.dart</code> for previews. Once backend wiring exists,
+test <code>flutter run -t lib/main.dart</code> separately: a working preview does not validate
+Firebase. Use emulator-backed rules/transaction tests when available and record
+commands in README. Do not make routine tests require a personal Firebase login.
+Pin the agreed SDK/lockfile and verify package compatibility when adding a package.</p>
+<h2>7. Reliability and scope decisions</h2>
+<p>Use atomic admission for six seats and one active seat per user; enforce permissions
+in backend rules, not just button visibility. Use shared timestamps rather than
+per-second timer writes. Document late-join/early-leave credit, lease/grace periods,
+uncertain connectivity, background/resume and host departure. Finalizing the same
+user/session twice must not produce a second completion. History is private.</p>
+<p>Poojani owns the shared development Firebase project; collaborators use their own
+accounts. Never put admin credentials, release signing secrets or passwords in
+source or AI prompts. Client config is distinct from admin secrets; decide its
+tracking policy explicitly. Do not use allow-all shared database rules. Human
+project setup/rule deployment is a named step, not an implicit action in every prompt.</p>
+<p>If a gate slips, stop charts/decorations/resources and final art polish. Shanuka
+helps with a bounded integration task; he does not absorb all unfinished features.
+If Sandali is overloaded, finish the camera spike first, then the minimal history
+list/total; Shanuka can take history presentation after an explicit ownership
+transfer. If Aradhana is overloaded, Poojani pairs on transactions after accounts
+are stable and Shanuka retains all session UI. Transfer a named file/task before
+another person or Codex agent edits it.</p>
+<h2>8. Five-minute demo and final handoff</h2>
+<p>Prepare the exact candidate APK on two phones, two controlled accounts, seeded
+IoT/ESP32 data, working connectivity and a repeatable reset. No Play Store release
+is needed. Use a visible demo flag and a separate demo-history view/dataset; normal
+totals must exclude demo time. A backup recording may explain an outage but must
+not be represented as live behavior.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Time</th>
+<th>Demonstration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0:00–0:30</td>
+<td>Introduce StudyMates and show the two prepared accounts</td>
+</tr>
+<tr>
+<td>0:30–1:15</td>
+<td>Discover/join IoT → ESP32 and open the room</td>
+</tr>
+<tr>
+<td>1:15–2:00</td>
+<td>Display/scan invitation; show both participants in different seats</td>
+</tr>
+<tr>
+<td>2:00–2:20</td>
+<td>Enter separate personal goals and start labelled demo mode</td>
+</tr>
+<tr>
+<td>2:20–3:20</td>
+<td>Run the agreed 60-second focus/break demo cycle</td>
+</tr>
+<tr>
+<td>3:20–4:10</td>
+<td>Show summary and saved demo history; reopen to show persistence</td>
+</tr>
+<tr>
+<td>4:10–4:40</td>
+<td>Show demo separation from normal progress; explain one reliability behavior</td>
+</tr>
+<tr>
+<td>4:40–5:00</td>
+<td>Buffer and finish</td>
+</tr>
+</tbody>
+</table></div>
+<p>Do not force every error case into the live five minutes. Verify them beforehand:
+seat race, multiple-seat prevention, invalid/full invite, camera denial/retry,
+private history isolation, reconnect, host departure and duplicate finalization.
+A final handoff names the tested commit/APK, device versions, known limitations,
+setup/reset steps and who can explain each feature. No slides or report are added.</p>
+
+<footer>Exported from 00-common-plan.md. Keep the Markdown source as the editable master.
+All styling is embedded; no internet connection is needed. Links to supporting repository notes retain their original Markdown targets.</footer>
+</article>
+</div>
+</body>
+</html>

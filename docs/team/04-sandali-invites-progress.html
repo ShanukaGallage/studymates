@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="StudyMates four-member team working guide: Sandali.">
+<title>M4 — Sandali: QR invitations and personal progress</title>
+<style>
+:root { color-scheme: light; --ink:#1e2b24; --muted:#5f6d64; --green:#225b3b; --cream:#faf7f0; --mint:#e4f0df; --line:#dce3d8; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--cream); color:var(--ink); font:16px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+a { color:var(--green); text-underline-offset:3px; }
+a:hover { text-decoration-thickness:2px; }
+a:focus-visible, button:focus-visible { outline:3px solid #9b6a13; outline-offset:4px; }
+.skip { position:absolute; top:-100px; left:16px; padding:12px; background:white; z-index:2; }
+.skip:focus { top:12px; }
+header { background:var(--green); color:white; padding:28px max(24px,calc((100vw - 1120px)/2)); }
+.brand { font-size:25px; font-weight:750; letter-spacing:-.5px; }
+header p { margin:4px 0 0; color:#e4f0df; font-size:14px; }
+.layout { display:grid; grid-template-columns:225px minmax(0,1fr); gap:32px; max-width:1168px; margin:auto; padding:32px 24px 64px; }
+nav { align-self:start; position:sticky; top:24px; }
+nav h2 { font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin:0 0 12px; }
+nav a { display:block; padding:12px; margin-bottom:5px; border-radius:10px; text-decoration:none; }
+nav a[aria-current="page"] { background:var(--mint); font-weight:700; }
+nav a:hover { background:#edf2e9; }
+nav small { display:block; font-size:12px; color:var(--muted); font-weight:400; }
+article { min-width:0; background:white; padding:32px 38px; border:1px solid var(--line); border-radius:16px; }
+h1,h2,h3 { line-height:1.25; scroll-margin-top:24px; }
+h1 { font-size:clamp(25px,3vw,35px); margin:0 0 24px; letter-spacing:-.7px; }
+h2 { font-size:23px; margin:38px 0 16px; border-top:1px solid var(--line); padding-top:24px; }
+h3 { font-size:19px; margin:26px 0 12px; }
+p { margin:0 0 16px; }
+ul,ol { padding-left:25px; margin:0 0 20px; }
+li { margin:6px 0; }
+li p { margin:6px 0; }
+blockquote { border-left:4px solid var(--green); padding:12px 18px; margin:20px 0; background:var(--mint); }
+blockquote p:last-child { margin-bottom:0; }
+code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:.88em; overflow-wrap:anywhere; background:#f0f3ee; padding:2px 5px; border-radius:4px; }
+pre { background:#f3f6f0; border:1px solid var(--line); border-left:4px solid var(--green); border-radius:8px; padding:18px; margin:20px 0; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.6; }
+pre code { padding:0; background:none; font-size:13px; border-radius:0; }
+.table-wrap { overflow-x:auto; margin:20px 0; }
+table { width:100%; border-collapse:collapse; font-size:14px; line-height:1.5; }
+th,td { text-align:left; vertical-align:top; padding:11px 12px; border:1px solid var(--line); min-width:100px; overflow-wrap:anywhere; }
+th { background:var(--mint); font-weight:700; }
+tr:nth-child(even) td { background:#fafbf8; }
+.toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:24px; font-size:13px; color:var(--muted); }
+button { font:inherit; background:var(--green); color:white; padding:10px 16px; border:0; border-radius:8px; cursor:pointer; min-height:44px; }
+footer { color:var(--muted); font-size:12px; border-top:1px solid var(--line); padding-top:20px; margin-top:32px; }
+@media(max-width:850px) { .layout { display:block; padding:20px 16px 40px; } nav { position:static; margin-bottom:24px; } nav a { display:inline-block; margin:4px; padding:10px; } nav small { display:none; } article { padding:24px 20px; } }
+@media print { @page { size:A4; margin:16mm; } body { background:white; font-size:10pt; } header,nav,.toolbar,.skip { display:none; } .layout { display:block; max-width:none; padding:0; } article { padding:0; border:0; border-radius:0; } h1 { font-size:22pt; } h2 { font-size:15pt; break-after:avoid; } h3 { break-after:avoid; } pre { font-size:9pt; break-inside:avoid; } .table-wrap { overflow:visible; } table { font-size:8pt; } th,td { min-width:0; padding:6px; } tr { break-inside:avoid; } a { color:inherit; } footer { font-size:8pt; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#plan">Skip to plan</a>
+<header><div class="brand">StudyMates</div><p>Four-member team • Five-minute live Android demonstration</p></header>
+<div class="layout">
+<nav aria-label="Team guides"><h2>Team plans</h2><a href="00-common-plan.html">Common team plan<small>Start here</small></a><a href="01-shanuka-ui-integration.html">Shanuka<small>UI and integration</small></a><a href="02-poojani-accounts-communities.html">Poojani<small>Accounts and communities</small></a><a href="03-aradhana-rooms-sessions.html">Aradhana<small>Rooms and sessions</small></a><a href="04-sandali-invites-progress.html" aria-current="page">Sandali<small>Invitations and progress</small></a></nav>
+<article id="plan">
+<div class="toolbar"><span>Invitations and progress • Working guide</span><button type="button" onclick="window.print()">Print / Save as PDF</button></div>
+<h1>M4 — Sandali: QR invitations and personal progress</h1>
+<p>Read the <a href="00-common-plan.html">common plan</a> first. You own two bounded features:
+getting a second learner into the room through a camera/manual invitation, and
+showing personal history. These were separate roles in the old five-member plan;
+you now own both. Prioritize the real-phone camera spike, then basic history. Charts
+and decorations are optional and should not compete with these core features.</p>
+<h2>Your files and boundaries</h2>
+<p>Own <code>features/invites/presentation</code>, parser-specific invitation files agreed with
+Aradhana, and <code>features/progress</code> including its read-only repository adapter.
+Use separate invite/progress fixture and test files. Implement your own screens
+using Shanuka's shared controls and state references.</p>
+<p>Aradhana owns invitation token issuance/resolution/admission and completion writes.
+Poojani owns identity, membership rules and Firestore rule/index coordination.
+Shanuka owns routes, shared components, central preview bindings and dependencies.
+Do not create a second room-join method, change the completion schema or award time.</p>
+<h2>Step 1 — Run the identical baseline and reserve a camera spike</h2>
+<p>Your phone already runs the app. Confirm the exact new baseline commit, Android
+version and that the latest room preview opens. Record these facts; do not reinstall
+or regenerate a working project. Request a short scanner dependency/Android-config
+slot from Shanuka after Poojani's Firebase package PR, or agree the reverse order.
+Only one person edits <code>pubspec.yaml</code>, lockfile or manifest at a time.</p>
+<pre><code class="language-text">I am Sandali. Inspect the shared baseline and existing invite/progress folders.
+Plan only an isolated Android camera scan spike. Identify the necessary scanner
+and QR-rendering dependencies and Android requirements using their current official
+documentation, checking the existing lockfile/toolchain. Do not change shared
+package or Android config before our reserved slot. No authentication, routing,
+room admission or session implementation is part of this task.
+</code></pre>
+<p>Done: a bounded dependency/config PR is merged and everyone pulls its lockfile.
+The existing scanner candidates in the old guide are suggestions, not verified
+versions. Keep package additions minimal and verify on the actual phone.</p>
+<h2>Step 2 — Prove scanning on a real phone</h2>
+<p>Use a known test QR and an explicit callback. Before the production invitation
+format is agreed, treat this as a standalone scanner spike, not a valid StudyMates
+invitation. Pause/release the camera when the page is covered, backgrounded or left.</p>
+<pre><code class="language-text">Implement only the scanner screen using the agreed package. Request camera access
+when scanning is opened, handle denied permission with retry/settings guidance,
+and provide manual input fallback. Accept at most one result per interaction;
+stop/pause scanning before handing a token to the callback, and dispose resources
+on exit. Use a test callback; do not navigate globally or join a room directly.
+Test parsing/debounce logic independently and give a real-phone permission,
+background/resume and repeated-detection checklist.
+</code></pre>
+<p>Done: read a known QR once, cancel/reopen safely, deny and retry permission, and
+return the result without repeated joins. An emulator/parser test does not prove
+camera hardware. Tell Shanuka immediately if this spike is blocked; do not wait
+until the final demonstration week.</p>
+<h2>Step 3 — Build basic history from agreed fixtures</h2>
+<p>This can proceed while Aradhana finishes admission. Wait for the merged completion
+model/contract, not the live history stream. Ask Aradhana for empty, single/multiple,
+long-goal, completed/early-left and demo records. Do not invent another CompletionRecord.</p>
+<pre><code class="language-text">Implement only the read-only progress screen from the agreed CompletionRecord
+fixtures and repository boundary. Show eligible recorded-time total, completed
+session count and history, with loading/empty/error/retry states. Deduplicate by
+the agreed stable record identity. Keep goal outcome independent of timer status;
+an unfinished goal must not erase valid credited time. Exclude demo records from
+normal totals and provide a clearly labelled demo-history view for the rehearsal.
+Do not change finalization, auth, schema or global routing. No chart or rewards yet.
+</code></pre>
+<p>Done: totals match the exact unique fixture records; cancelled/early-left records
+follow the agreed credit/count policy; demo records are visible separately and
+cannot inflate normal totals. Give Shanuka the screen constructor/provider request.</p>
+<h2>Step 4 — Invitation display, parsing and preview</h2>
+<p>Requires Aradhana's agreed versioned QR/manual-token format and lookup fixtures.
+Build a room invitation display with manual code, parser and explicit preview.
+The preview explains membership required/full/invalid/expired/revoked/unavailable.
+Do not encode passwords, personal details or client authority into the QR payload.</p>
+<pre><code class="language-text">Implement only invitation display, the agreed payload parser and preview screens
+against Aradhana's invitation contract/fixtures. QR and typed code must normalize
+to the same opaque token. Reject malformed/unsupported payloads safely; never open
+arbitrary scanned links automatically. Show the room and parent communities before
+an explicit Join action. Membership enrollment needs clear consent. Use the shared
+admission callback and handle a room becoming full after preview. Send route and
+pending-login intent requirements to Shanuka; do not edit the router yourself.
+</code></pre>
+<p>Done: valid, invalid, expired/revoked, full and membership-required cases are
+reviewable without Firebase. Preserve the token across login through Shanuka's
+navigation integration, then revalidate. Manual entry and QR must not diverge into
+two different join implementations.</p>
+<h2>Step 5 — Connect real invitation and history services</h2>
+<p>Invite integration waits for Aradhana's merged resolver/admission and Poojani's
+identity/membership behavior. History integration waits for Aradhana's finalization
+records and Poojani's history read rules/indexes. Wire them as separate small PRs.</p>
+<pre><code class="language-text">Connect only [invitation flow OR history reader] to the merged service contract.
+For invitations, use Aradhana's shared checked admission and keep explicit consent;
+verify the avatar appears on both devices after actual success.
+For history, implement a current-user-scoped read adapter over the agreed schema,
+using a bounded recent query/pagination. Do not label a partial page sum as an
+all-time total: agree a complete total source/query with Aradhana and Poojani.
+Clear old account data on sign-out/account change and handle loading/error/retry.
+Keep fixture previews available. Do not write completions or change shared schema.
+</code></pre>
+<p>Replace the bracketed choice and keep only its relevant paragraph. Done: QR on
+phone A → scan/preview/Join on B → real room admission; and after a real session,
+history persists across restart with correct totals and user isolation. If an
+all-time aggregate is not ready, display an honestly labelled recent-period total
+until the team supplies one; do not silently misrepresent it as total study time.</p>
+<h2>Step 6 — Rehearse and close edge cases</h2>
+<pre><code class="language-text">Review only the integrated invite/history feature against the common demo path.
+Verify denied permission/retry, scanner background/resume, repeated recognition,
+manual input, invalid/full/revoked invitations and network failures. Check history
+restart, account switching, duplicate completions, long text and demo separation.
+Fix reproducible defects within my feature paths and report cross-owner issues
+with exact reproduction steps. Do not add charts, decorations or extra features.
+</code></pre>
+<p>Done: a repeatable phone checklist and screenshots of the final screens, plus a
+short explanation you can give live: scanner → token → preview → shared admission;
+completion records → private history → eligible totals. No slides/report required.</p>
+<h2>Dependencies and conflict avoidance</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Waiting for</th>
+<th>Needed for</th>
+<th>Independent work</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Shared dependency slot</td>
+<td>Scanner package/manifest</td>
+<td>Screen layout and token parser plan</td>
+</tr>
+<tr>
+<td>Aradhana's invitation format</td>
+<td>Final parser/display</td>
+<td>Known-test-QR camera spike</td>
+</tr>
+<tr>
+<td>Aradhana's completion model</td>
+<td>History fields/totals</td>
+<td>Scanner permission and lifecycle checks</td>
+</tr>
+<tr>
+<td>Aradhana's real services</td>
+<td>Live join/history data</td>
+<td>Fixture/error screens and independent tests</td>
+</tr>
+<tr>
+<td>Poojani's rules/indexes</td>
+<td>Private history query</td>
+<td>Fixture totals, account-change handling tests</td>
+</tr>
+<tr>
+<td>Shanuka's route wiring</td>
+<td>Product navigation</td>
+<td>Screen/callback handoff and feature QA</td>
+</tr>
+</tbody>
+</table></div>
+<p>Tell teammates the precise method/field/route you need. Add <code>invites_*</code> and
+<code>progress_*</code> tests instead of editing shared suites. If both features become too
+large, finish camera + minimal history first; transfer one named presentation task
+to Shanuka by agreement rather than allowing concurrent edits.</p>
+
+<footer>Exported from 04-sandali-invites-progress.md. Keep the Markdown source as the editable master.
+All styling is embedded; no internet connection is needed. Links to supporting repository notes retain their original Markdown targets.</footer>
+</article>
+</div>
+</body>
+</html>

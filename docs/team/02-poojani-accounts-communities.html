@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="StudyMates four-member team working guide: Poojani.">
+<title>M2 — Poojani: accounts, profiles and communities</title>
+<style>
+:root { color-scheme: light; --ink:#1e2b24; --muted:#5f6d64; --green:#225b3b; --cream:#faf7f0; --mint:#e4f0df; --line:#dce3d8; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--cream); color:var(--ink); font:16px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+a { color:var(--green); text-underline-offset:3px; }
+a:hover { text-decoration-thickness:2px; }
+a:focus-visible, button:focus-visible { outline:3px solid #9b6a13; outline-offset:4px; }
+.skip { position:absolute; top:-100px; left:16px; padding:12px; background:white; z-index:2; }
+.skip:focus { top:12px; }
+header { background:var(--green); color:white; padding:28px max(24px,calc((100vw - 1120px)/2)); }
+.brand { font-size:25px; font-weight:750; letter-spacing:-.5px; }
+header p { margin:4px 0 0; color:#e4f0df; font-size:14px; }
+.layout { display:grid; grid-template-columns:225px minmax(0,1fr); gap:32px; max-width:1168px; margin:auto; padding:32px 24px 64px; }
+nav { align-self:start; position:sticky; top:24px; }
+nav h2 { font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin:0 0 12px; }
+nav a { display:block; padding:12px; margin-bottom:5px; border-radius:10px; text-decoration:none; }
+nav a[aria-current="page"] { background:var(--mint); font-weight:700; }
+nav a:hover { background:#edf2e9; }
+nav small { display:block; font-size:12px; color:var(--muted); font-weight:400; }
+article { min-width:0; background:white; padding:32px 38px; border:1px solid var(--line); border-radius:16px; }
+h1,h2,h3 { line-height:1.25; scroll-margin-top:24px; }
+h1 { font-size:clamp(25px,3vw,35px); margin:0 0 24px; letter-spacing:-.7px; }
+h2 { font-size:23px; margin:38px 0 16px; border-top:1px solid var(--line); padding-top:24px; }
+h3 { font-size:19px; margin:26px 0 12px; }
+p { margin:0 0 16px; }
+ul,ol { padding-left:25px; margin:0 0 20px; }
+li { margin:6px 0; }
+li p { margin:6px 0; }
+blockquote { border-left:4px solid var(--green); padding:12px 18px; margin:20px 0; background:var(--mint); }
+blockquote p:last-child { margin-bottom:0; }
+code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:.88em; overflow-wrap:anywhere; background:#f0f3ee; padding:2px 5px; border-radius:4px; }
+pre { background:#f3f6f0; border:1px solid var(--line); border-left:4px solid var(--green); border-radius:8px; padding:18px; margin:20px 0; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.6; }
+pre code { padding:0; background:none; font-size:13px; border-radius:0; }
+.table-wrap { overflow-x:auto; margin:20px 0; }
+table { width:100%; border-collapse:collapse; font-size:14px; line-height:1.5; }
+th,td { text-align:left; vertical-align:top; padding:11px 12px; border:1px solid var(--line); min-width:100px; overflow-wrap:anywhere; }
+th { background:var(--mint); font-weight:700; }
+tr:nth-child(even) td { background:#fafbf8; }
+.toolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:24px; font-size:13px; color:var(--muted); }
+button { font:inherit; background:var(--green); color:white; padding:10px 16px; border:0; border-radius:8px; cursor:pointer; min-height:44px; }
+footer { color:var(--muted); font-size:12px; border-top:1px solid var(--line); padding-top:20px; margin-top:32px; }
+@media(max-width:850px) { .layout { display:block; padding:20px 16px 40px; } nav { position:static; margin-bottom:24px; } nav a { display:inline-block; margin:4px; padding:10px; } nav small { display:none; } article { padding:24px 20px; } }
+@media print { @page { size:A4; margin:16mm; } body { background:white; font-size:10pt; } header,nav,.toolbar,.skip { display:none; } .layout { display:block; max-width:none; padding:0; } article { padding:0; border:0; border-radius:0; } h1 { font-size:22pt; } h2 { font-size:15pt; break-after:avoid; } h3 { break-after:avoid; } pre { font-size:9pt; break-inside:avoid; } .table-wrap { overflow:visible; } table { font-size:8pt; } th,td { min-width:0; padding:6px; } tr { break-inside:avoid; } a { color:inherit; } footer { font-size:8pt; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#plan">Skip to plan</a>
+<header><div class="brand">StudyMates</div><p>Four-member team • Five-minute live Android demonstration</p></header>
+<div class="layout">
+<nav aria-label="Team guides"><h2>Team plans</h2><a href="00-common-plan.html">Common team plan<small>Start here</small></a><a href="01-shanuka-ui-integration.html">Shanuka<small>UI and integration</small></a><a href="02-poojani-accounts-communities.html" aria-current="page">Poojani<small>Accounts and communities</small></a><a href="03-aradhana-rooms-sessions.html">Aradhana<small>Rooms and sessions</small></a><a href="04-sandali-invites-progress.html">Sandali<small>Invitations and progress</small></a></nav>
+<article id="plan">
+<div class="toolbar"><span>Accounts and communities • Working guide</span><button type="button" onclick="window.print()">Print / Save as PDF</button></div>
+<h1>M2 — Poojani: accounts, profiles and communities</h1>
+<p>Read the <a href="00-common-plan.html">common plan</a>, then this guide. You own the identity
+and membership foundations that Aradhana's admission logic and Sandali's history
+need. You also implement your feature screens using Shanuka's shared controls.</p>
+<h2>Your files and boundaries</h2>
+<p>Own <code>lib/features/auth</code>, <code>profile</code>, <code>communities</code>, Firebase generated config and a
+dedicated bootstrap service. Coordinate <code>docs/contracts.md</code>, shared models,
+Firestore rules/indexes and the shared development project. Existing community
+screens, providers and fake repositories are useful working consumers: extend them.</p>
+<p>Shanuka owns <code>main.dart</code>, routes, shared UI and central preview composition.
+Aradhana owns room/session writes and supplies their rules. Sandali owns history
+reads and scanning. Do not add a second RoomRepository, router or UserProfile.
+Firebase/Android/dependency edits need a short shared-file reservation first.</p>
+<h2>Step 1 — Align the baseline and agree identity/membership contracts</h2>
+<p>Pull the reviewed commit Shanuka publishes, run the preview and inspect the
+existing <code>community_models.dart</code>, <code>CommunityRepository</code> and <code>CommunityController</code>.
+Do not run <code>flutter create</code>. Meet Aradhana to settle profile/identity state,
+community membership, subgroup ownership and parent-leave behavior.</p>
+<pre><code class="language-text">I am Poojani. Read docs/team/02-poojani-accounts-communities.md and the common
+starter instructions. Inspect existing auth/profile/community code and shared
+models. Draft only the missing identity/profile and membership contract changes
+in docs/contracts.md for team review. Reuse existing IDs and models; clearly
+separate proposed APIs from implemented ones. List effects on Aradhana's room
+checks and Shanuka's route guards. Do not configure services or implement all
+features in this task.
+</code></pre>
+<p>Done: everyone knows the identity states, profile shape, owner/membership rules,
+and what happens to subgroup membership when leaving a SIG. Add only the agreed
+model/interface changes in a follow-up small PR, with examples for consumers.</p>
+<h2>Step 2 — Set up the shared development Firebase project</h2>
+<p>Confirm the application ID with Shanuka before registration (currently
+<code>com.example.studymates</code>). One development project, individual collaborator access,
+email/password Auth and Firestore; record client-config policy and setup commands.
+Check service/billing requirements before enabling anything additional. No admin
+key belongs in source, the app or a Codex prompt. Do not use allow-all shared rules.</p>
+<p>Reserve dependency/config files with Shanuka, then make one bootstrap PR. Human
+project selection and deployment are explicit actions; they are not silently
+included in later feature prompts.</p>
+<pre><code class="language-text">Implement only the agreed Firebase client/bootstrap slice for Android after I
+identify the shared project and authorize its setup actions. Inspect existing
+package and Android versions first; add only required Firebase packages and
+verify compatibility. Keep initialization in one service; Shanuka will wire
+main.dart and route state in his integration PR. Preserve the offline preview.
+Explain generated config versus secrets. Do not add room logic, deploy permissive
+rules, change billing or alter Gradle/JDK versions without evidence of a need.
+</code></pre>
+<p>Done: provide Shanuka the bootstrap callable, success/failure contract, generated
+config and setup instructions. Demonstrate initialization in a test harness or
+coordinate the entry-point wiring immediately; do not mark the connected app ready
+until that integration runs. Release the package/config slot for Sandali's scanner.</p>
+<h2>Step 3 — Implement authentication, then basic profile</h2>
+<p>Split into small PRs: repository/state, sign-in/signup/reset/logout screens, then
+profile setup/edit. Use shared AppButton/AppTextField/AvatarBadge; no theme copies.
+Use neutral password-reset confirmation and recoverable error/loading states.</p>
+<pre><code class="language-text">Implement only [one agreed auth/profile slice] in my feature paths using the
+merged identity contract and shared controls. Keep Firebase calls in repositories
+and UI state in providers/controllers. Expose the agreed loading/signed-out/
+incomplete/ready states for Shanuka; do not edit global routes or main.dart.
+Include focused tests for success/error and state transitions, and list exact
+route/provider integration requests. Keep tests independent of personal login.
+</code></pre>
+<p>Replace the bracketed task before use. Then verify two accounts, incorrect
+credentials, reset flow, logout, profile persistence and app restart. Add/test rules
+so users edit their own profile only. Hand off constructors/providers to Shanuka.</p>
+<h2>Step 4 — Persist SIGs and subgroup memberships</h2>
+<p>Only after identity is stable, connect existing community consumers through the
+agreed repository. Implement SIG create/discover/join/leave and owner-created
+subgroups in separate slices. Implement the actual forms, not just their data.
+Coordinate any need for streaming membership with Aradhana before changing the
+current catalog API. Preserve its fixture implementation and preview tests.</p>
+<pre><code class="language-text">Implement only [SIG slice or subgroup slice] behind the existing agreed community
+contract. Reuse the current discovery/detail screens and shared components;
+add the necessary form/state instead of rebuilding them. Enforce owner and
+membership permissions through rules as well as UI. Test joining a subgroup
+without its parent, owner-only subgroup creation, and the agreed leave behavior.
+Do not implement room admission, duplicate its data model or edit room widgets.
+Give Aradhana the exact membership lookup/check and test account setup.
+</code></pre>
+<p>Done: two accounts can independently join IoT/ESP32, a non-owner cannot edit the
+owner's data, and real memberships can be checked during room admission.
+Leaving a SIG while seated/session-active needs an agreed rule with Aradhana before
+integration: reject with a clear message or coordinate leaving; never orphan an
+active seat by performing unrelated local deletes.</p>
+<h2>Step 5 — Consolidate rules and seed the demonstration</h2>
+<p>Aradhana supplies room/session/invite rule requirements and emulator tests;
+Sandali supplies history query requirements. You coordinate the single rules/index
+change at a time, preserving unrelated protections. Review Aradhana's transactional
+logic and have her review your access rules.</p>
+<pre><code class="language-text">Review the agreed rules/index changes for accounts, communities, room/session
+operations, invitations and private history. Consolidate only the named scope;
+do not replace existing rules wholesale. Verify own-profile edits, owner actions,
+non-member admission rejection and cross-user history isolation using emulator
+fixtures. Document indexes and repeatable demo data setup. Do not deploy until
+I explicitly authorize deployment to the identified development project.
+</code></pre>
+<p>Done: a documented reset creates controlled users/SIGs/subgroups/rooms without
+putting privileged setup credentials into the mobile client. Re-run permission
+checks after the connected path is integrated. Provide the demo dataset to the team.</p>
+<h2>Dependencies and conflict avoidance</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Dependency</th>
+<th>Needed for</th>
+<th>Independent work while waiting</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Shanuka's published baseline</td>
+<td>All branch work</td>
+<td>Review current contracts and prepare scope</td>
+</tr>
+<tr>
+<td>Shared dependency/config slot</td>
+<td>Firebase setup PR</td>
+<td>Auth/profile fixtures and screen tests</td>
+</tr>
+<tr>
+<td>Shanuka's route integration</td>
+<td>Normal app flow</td>
+<td>Repository tests and your feature screens</td>
+</tr>
+<tr>
+<td>Aradhana's admission/session policy</td>
+<td>Active-room leave and room/session rules</td>
+<td>Community CRUD, error states and demo seeding</td>
+</tr>
+<tr>
+<td>Sandali's history query</td>
+<td>Required indexes/read access</td>
+<td>Existing ownership/isolation regressions</td>
+</tr>
+</tbody>
+</table></div>
+<p>Before each PR: format, analyze, relevant tests, and actual Android checks. Use
+separate auth/community/rules test files rather than editing everyone's tests.
+Report what is live versus fixture-backed. Your first task is Step 1; Firebase
+setup and authentication follow immediately after the small contract handoff.</p>
+
+<footer>Exported from 02-poojani-accounts-communities.md. Keep the Markdown source as the editable master.
+All styling is embedded; no internet connection is needed. Links to supporting repository notes retain their original Markdown targets.</footer>
+</article>
+</div>
+</body>
+</html>

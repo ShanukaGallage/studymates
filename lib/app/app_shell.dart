@@ -15,6 +15,12 @@ class AppShell extends ConsumerWidget {
       actions: [
         if (ref.watch(appModeProvider) == AppMode.preview)
           IconButton(
+            tooltip: 'Preview data',
+            icon: const Icon(Icons.tune),
+            onPressed: () => context.push('/preview-data'),
+          ),
+        if (ref.watch(appModeProvider) == AppMode.preview)
+          IconButton(
             tooltip: 'Component gallery',
             icon: const Icon(Icons.palette_outlined),
             onPressed: () => context.push('/components'),
