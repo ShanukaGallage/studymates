@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:studymates/features/invites/data/invitation_token.dart';
+import 'package:studymates/preview/invitation_fixtures.dart';
 import 'package:studymates/core/theme/app_theme.dart';
 import 'package:studymates/app/app.dart';
 import 'package:studymates/preview/preview_scope.dart';
@@ -79,6 +81,7 @@ void main() {
     required ValueChanged<String> onResult,
     RouteObserver<ModalRoute<dynamic>>? observer,
     GlobalKey<NavigatorState>? navigatorKey,
+    bool invitation = false,
   }) async {
     final routes = observer ?? RouteObserver<ModalRoute<dynamic>>();
     await tester.pumpWidget(
@@ -90,6 +93,8 @@ void main() {
           routeObserver: routes,
           onResult: onResult,
           onCancel: () {},
+          parseQr: invitation ? InvitationTokenParser.parseQr : null,
+          parseManual: invitation ? InvitationTokenParser.parseManual : null,
         ),
       ),
     );
@@ -100,6 +105,51 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
   }
+
+  testWidgets(
+    'invitation camera rejects links and noncanonical QR before returning opaque token',
+    (tester) async {
+      final results = <String>[];
+      await open(tester, onResult: results.add, invitation: true);
+      camera.detect('https://example.com');
+      camera.detect(
+        ' studymates://invite/v1/${InvitationFixtures.validToken} ',
+      );
+      await tester.pumpAndSettle();
+      expect(results, isEmpty);
+      expect(
+        find.textContaining('Invalid or unsupported invitation'),
+        findsOneWidget,
+      );
+      camera.detect('studymates://invite/v1/${InvitationFixtures.validToken}');
+      camera.detect('studymates://invite/v1/${InvitationFixtures.validToken}');
+      await tester.pumpAndSettle();
+      expect(results, [InvitationFixtures.validToken]);
+      expect(camera.running, isFalse);
+      await close(tester);
+    },
+  );
+
+  testWidgets(
+    'invitation manual input uses shared parser and returns the same opaque token',
+    (tester) async {
+      final results = <String>[];
+      await open(tester, onResult: results.add, invitation: true);
+      await tester.tap(find.text('Enter code manually'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byType(TextFormField),
+        ' abcd-efgh-jk23-mnpq ',
+      );
+      await tester.ensureVisible(find.text('Preview invitation'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Preview invitation'));
+      await tester.pumpAndSettle();
+      expect(results, [InvitationFixtures.validToken]);
+      expect(camera.running, isFalse);
+      await close(tester);
+    },
+  );
 
   testWidgets(
     'denied camera has guidance, explicit retry and manual fallback',

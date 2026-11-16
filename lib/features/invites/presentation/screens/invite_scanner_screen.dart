@@ -16,11 +16,23 @@ class InviteScannerScreen extends StatefulWidget {
     required this.onResult,
     required this.onCancel,
     required this.routeObserver,
-  });
+    this.parseQr,
+    this.parseManual,
+  }) : assert(
+         (parseQr == null) == (parseManual == null),
+         'Provide both invitation parsers together.',
+       );
 
   final ValueChanged<String> onResult;
   final VoidCallback onCancel;
   final RouteObserver<ModalRoute<dynamic>> routeObserver;
+
+  /// Optional agreed parsers. Return null to reject without consuming capture.
+  /// No parsing is applied in the original raw-capture spike by default.
+  final String? Function(String?)? parseQr;
+  final String? Function(String?)? parseManual;
+
+  bool get isInvitation => parseQr != null && parseManual != null;
 
   @override
   State<InviteScannerScreen> createState() => _InviteScannerScreenState();
@@ -182,11 +194,19 @@ class _InviteScannerScreenState extends State<InviteScannerScreen>
     });
   }
 
-  void _accept(String? raw) {
+  String? _parse(String? raw, {bool manual = false}) {
+    final parser = manual ? widget.parseManual : widget.parseQr;
+    return parser == null ? ScannerCapture.normalize(raw) : parser(raw);
+  }
+
+  void _accept(String? raw, {bool manual = false}) {
     if (!_canInteract || _capture.hasResult) return;
-    if (!_capture.accept(raw)) {
+    final parsed = _parse(raw, manual: manual);
+    if (!_capture.accept(parsed)) {
       setState(
-        () => _captureError = 'No usable text found. Try another QR code.',
+        () => _captureError = widget.isInvitation
+            ? 'Invalid or unsupported invitation. Scan a StudyMates v1 QR or enter its manual code.'
+            : 'No usable text found. Try another QR code.',
       );
       return;
     }
@@ -223,15 +243,17 @@ class _InviteScannerScreenState extends State<InviteScannerScreen>
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text('Scan test QR'),
+      title: Text(widget.isInvitation ? 'Scan invitation' : 'Scan test QR'),
       automaticallyImplyLeading: false,
     ),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          const Text(
-            'Camera spike only — this does not join a StudyMates room.',
+          Text(
+            widget.isInvitation
+                ? 'Scan an invitation or enter its code. You will review the room before choosing Join.'
+                : 'Camera spike only — this does not join a StudyMates room.',
           ),
           const SizedBox(height: AppSpacing.lg),
           Offstage(
@@ -246,11 +268,12 @@ class _InviteScannerScreenState extends State<InviteScannerScreen>
                   onDetect: (capture) {
                     if (!_shouldScan) return;
                     for (final code in capture.barcodes) {
-                      if (ScannerCapture.normalize(code.rawValue) != null) {
+                      if (_parse(code.rawValue) != null) {
                         _accept(code.rawValue);
-                        break;
+                        return;
                       }
                     }
+                    _accept(null);
                   },
                   onDetectError: (_, _) {
                     if (mounted && !_closed) {
@@ -270,8 +293,8 @@ class _InviteScannerScreenState extends State<InviteScannerScreen>
           if (_capture.hasResult)
             Text(
               _capture.delivered
-                  ? 'Test result returned. Close and reopen for another scan.'
-                  : 'Stopping camera before returning the test result…',
+                  ? 'Result returned. Close and reopen for another scan.'
+                  : 'Stopping camera before returning the result…',
             ),
           if (_error != null) ...[
             const SizedBox(height: AppSpacing.lg),
@@ -309,19 +332,26 @@ class _InviteScannerScreenState extends State<InviteScannerScreen>
                   children: [
                     const SizedBox(height: AppSpacing.lg),
                     AppTextField(
-                      label: 'Test code',
+                      label: widget.isInvitation
+                          ? 'Invitation code'
+                          : 'Test code',
                       controller: _text,
                       maxLength: ScannerCapture.maxLength,
-                      validator: (value) =>
-                          ScannerCapture.normalize(value) == null
-                          ? 'Enter a non-empty code without control characters.'
+                      validator: (value) => _parse(value, manual: true) == null
+                          ? (widget.isInvitation
+                                ? 'Enter a valid 16-character invitation code.'
+                                : 'Enter a non-empty code without control characters.')
                           : null,
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     AppButton(
-                      label: 'Return test code',
+                      label: widget.isInvitation
+                          ? 'Preview invitation'
+                          : 'Return test code',
                       onPressed: () {
-                        if (_form.currentState!.validate()) _accept(_text.text);
+                        if (_form.currentState!.validate()) {
+                          _accept(_text.text, manual: true);
+                        }
                       },
                     ),
                   ],
