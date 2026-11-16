@@ -3,11 +3,21 @@ import 'dart:async';
 import '../core/models/community_models.dart';
 import '../core/models/room_models.dart';
 import '../features/rooms/data/room_repository.dart';
+import '../features/rooms/data/seat_claim_policy.dart';
+import '../features/rooms/data/seat_claim_result.dart';
 
-typedef FixtureRoomMembershipCheck = Future<bool> Function({
-  required String sigId,
-  required String subgroupId,
-});
+enum FixtureMembershipCheckResult {
+  member,
+  nonMember,
+  permissionDenied,
+  unavailable,
+}
+
+typedef FixtureRoomMembershipCheck =
+    Future<FixtureMembershipCheckResult> Function({
+      required String sigId,
+      required String subgroupId,
+    });
 
 /// In-memory implementation of the live room contract for tests and previews.
 ///
@@ -19,6 +29,7 @@ final class FixtureLiveRoomRepository implements LiveRoomRepository {
     required this.verifyMembership,
     required this.currentUserId,
     DateTime Function()? clock,
+    this._beforeClaimApplyForTest,
     Iterable<({RoomSnapshot room, Iterable<SeatState> seats})> initialRooms =
         const [],
   }) : _subgroupSigIds = Map.unmodifiable(subgroupSigIds),
@@ -41,6 +52,7 @@ final class FixtureLiveRoomRepository implements LiveRoomRepository {
   final FixtureRoomMembershipCheck verifyMembership;
   final String Function() currentUserId;
   final DateTime Function() _clock;
+  final void Function()? _beforeClaimApplyForTest;
   final Map<String, _StoredRoom> _rooms = {};
   final Map<String, StreamController<List<RoomSnapshot>>> _roomListWatchers =
       {};
@@ -48,6 +60,7 @@ final class FixtureLiveRoomRepository implements LiveRoomRepository {
   final Map<String, StreamController<List<SeatState>>> _seatWatchers = {};
   int _nextRoomId = 1;
   bool _disposed = false;
+  final Set<String> _malformedActiveClaimUsers = {};
 
   @override
   Future<RoomSnapshot> createRoom({
@@ -69,13 +82,23 @@ final class FixtureLiveRoomRepository implements LiveRoomRepository {
     if (userId.isEmpty) {
       throw const RoomRepositoryException(RoomRepositoryError.permissionDenied);
     }
-    if (!await verifyMembership(
+    final membership = await verifyMembership(
       sigId: sigId,
       subgroupId: normalizedSubgroupId,
-    )) {
-      throw const RoomRepositoryException(
-        RoomRepositoryError.membershipRequired,
-      );
+    );
+    switch (membership) {
+      case FixtureMembershipCheckResult.member:
+        break;
+      case FixtureMembershipCheckResult.nonMember:
+        throw const RoomRepositoryException(
+          RoomRepositoryError.membershipRequired,
+        );
+      case FixtureMembershipCheckResult.permissionDenied:
+        throw const RoomRepositoryException(
+          RoomRepositoryError.permissionDenied,
+        );
+      case FixtureMembershipCheckResult.unavailable:
+        throw const RoomRepositoryException(RoomRepositoryError.unavailable);
     }
 
     final now = _clock().toUtc();
@@ -99,6 +122,214 @@ final class FixtureLiveRoomRepository implements LiveRoomRepository {
     _emitRoom(roomId);
     _emitSeats(roomId);
     return room;
+  }
+
+  /// Deterministic local claim behavior for tests and UI integration only.
+  /// This method does not provide Firestore transaction atomicity.
+  @override
+  Future<SeatClaimResult> claimSeat({
+    required String subgroupId,
+    required String roomId,
+    required String seatId,
+  }) async {
+    _ensureOpen();
+    final roomData = _rooms[roomId];
+    if (roomData == null || roomData.room.subgroupId != subgroupId) {
+      return const SeatClaimFailed(SeatClaimFailure.roomUnavailable);
+    }
+
+    final userId = currentUserId().trim();
+    if (userId.isEmpty) {
+      return const SeatClaimFailed(SeatClaimFailure.permissionDenied);
+    }
+    final sigId = _subgroupSigIds[subgroupId];
+    if (sigId == null || sigId.isEmpty) {
+      return const SeatClaimFailed(SeatClaimFailure.unavailable);
+    }
+
+    final membership = await verifyMembership(
+      sigId: sigId,
+      subgroupId: subgroupId,
+    );
+    final membershipFailure = switch (membership) {
+      FixtureMembershipCheckResult.member => null,
+      FixtureMembershipCheckResult.nonMember =>
+        SeatClaimFailure.membershipRequired,
+      FixtureMembershipCheckResult.permissionDenied =>
+        SeatClaimFailure.permissionDenied,
+      FixtureMembershipCheckResult.unavailable => SeatClaimFailure.unavailable,
+    };
+    if (membershipFailure case final failure?) {
+      return SeatClaimFailed(failure);
+    }
+
+    final requestedSeat = roomData.seats
+        .where((seat) => seat.seatId == seatId)
+        .firstOrNull;
+    final userIds = <String>{userId, ?requestedSeat?.userId};
+    final activeClaims = <String, ActiveSeatClaimSnapshot>{
+      for (final id in userIds) id: _activeClaimSnapshot(id),
+    };
+    final decision = SeatClaimPolicy.evaluate(
+      roomStatus: roomData.room.status,
+      subgroupId: subgroupId,
+      roomId: roomId,
+      seats: roomData.seats,
+      requestedSeatId: seatId,
+      userId: userId,
+      nowUtc: _clock().toUtc(),
+      activeClaimsByUser: activeClaims,
+    );
+    final result = decision.result;
+    if (result case SeatClaimSucceeded(:final seat, :final wasAlreadyClaimed)) {
+      if (wasAlreadyClaimed) return result;
+      _beforeClaimApplyForTest?.call();
+
+      // Prepare every changed seat collection and validate every cleanup
+      // against the current fixture state before changing any shared state.
+      final seatIndex = roomData.seats.indexWhere(
+        (value) => value.seatId == seatId,
+      );
+      if (seatIndex < 0) {
+        return const SeatClaimFailed(SeatClaimFailure.seatNotFound);
+      }
+      final now = _clock().toUtc();
+      final changedSeats = <String, List<SeatState>>{};
+      final cleanupUsers = <String>{};
+      for (final cleanup in decision.staleClaimsToClean) {
+        final reference = cleanup.reference;
+        final currentReference = _activeSeatClaims[cleanup.userId];
+        final oldRoom = _rooms[reference.roomId];
+        if (cleanup.userId.trim().isEmpty ||
+            !cleanupUsers.add(cleanup.userId) ||
+            _malformedActiveClaimUsers.contains(cleanup.userId) ||
+            currentReference == null ||
+            !_sameClaimReference(currentReference, reference) ||
+            oldRoom == null ||
+            oldRoom.room.subgroupId != reference.subgroupId) {
+          return const SeatClaimFailed(SeatClaimFailure.unavailable);
+        }
+        final oldSeats = changedSeats.putIfAbsent(
+          oldRoom.room.roomId,
+          () => [...oldRoom.seats],
+        );
+        final oldSeatIndex = oldSeats.indexWhere(
+          (oldSeat) => oldSeat.seatId == reference.seatId,
+        );
+        if (oldSeatIndex < 0) {
+          return const SeatClaimFailed(SeatClaimFailure.unavailable);
+        }
+        final oldSeat = oldSeats[oldSeatIndex];
+        if (oldSeat.status != SeatStatus.occupied ||
+            oldSeat.userId != cleanup.userId ||
+            oldSeat.leaseExpiresAt == null ||
+            oldSeat.leaseExpiresAt!.toUtc().isAfter(now)) {
+          return const SeatClaimFailed(SeatClaimFailure.unavailable);
+        }
+        if (oldRoom.room.roomId != roomId || oldSeat.seatId != seatId) {
+          oldSeats[oldSeatIndex] = SeatState(
+            seatId: reference.seatId,
+            status: SeatStatus.available,
+          );
+        }
+      }
+
+      final targetSeats = changedSeats.putIfAbsent(
+        roomId,
+        () => [...roomData.seats],
+      );
+      targetSeats[seatIndex] = seat;
+      final validatedChanges = <String, List<SeatState>>{};
+      try {
+        for (final entry in changedSeats.entries) {
+          validatedChanges[entry.key] = validateSeatCollection(entry.value);
+        }
+      } on ArgumentError {
+        return const SeatClaimFailed(SeatClaimFailure.unavailable);
+      }
+
+      // Commit the already validated local plan only after all checks pass.
+      for (final entry in validatedChanges.entries) {
+        _rooms[entry.key]!.seats = entry.value;
+      }
+      for (final cleanupUser in cleanupUsers) {
+        _activeSeatClaims.remove(cleanupUser);
+        _malformedActiveClaimUsers.remove(cleanupUser);
+      }
+      _activeSeatClaims[userId] = ActiveSeatClaimReference(
+        subgroupId: subgroupId,
+        roomId: roomId,
+        seatId: seatId,
+      );
+      _malformedActiveClaimUsers.remove(userId);
+      for (final changedRoomId in validatedChanges.keys) {
+        final changedRoom = _rooms[changedRoomId]!;
+        _emitSeats(changedRoomId);
+        _emitRoom(changedRoomId);
+        _emitRoomList(changedRoom.room.subgroupId);
+      }
+      return result;
+    }
+    return result;
+  }
+
+  final Map<String, ActiveSeatClaimReference> _activeSeatClaims = {};
+
+  /// Read-only fixture introspection for consistency tests, not a repository
+  /// operation or persisted record representation.
+  ActiveSeatClaimReference? activeSeatClaimForTest(String userId) =>
+      _activeSeatClaims[userId];
+
+  bool _sameClaimReference(
+    ActiveSeatClaimReference first,
+    ActiveSeatClaimReference second,
+  ) =>
+      first.subgroupId == second.subgroupId &&
+      first.roomId == second.roomId &&
+      first.seatId == second.seatId;
+
+  /// Seeds fixture state for status/data-integrity tests only.
+  void seedRoomForTest(RoomSnapshot room, Iterable<SeatState> seats) {
+    _ensureOpen();
+    final validatedSeats = validateSeatCollection(seats);
+    if (room.roomId.trim().isEmpty ||
+        room.subgroupId.trim().isEmpty ||
+        room.title.trim().isEmpty ||
+        room.createdBy.trim().isEmpty ||
+        room.hostUid.trim().isEmpty ||
+        _rooms.containsKey(room.roomId)) {
+      throw const RoomRepositoryException(RoomRepositoryError.invalidData);
+    }
+    _rooms[room.roomId] = _StoredRoom(room, validatedSeats);
+  }
+
+  /// Marks a fixture claim as unreadable/inconsistent without deleting it.
+  void corruptActiveSeatClaimForTest(String userId) {
+    if (!_activeSeatClaims.containsKey(userId)) {
+      throw ArgumentError.value(userId, 'userId', 'No fixture claim exists.');
+    }
+    _malformedActiveClaimUsers.add(userId);
+  }
+
+  ActiveSeatClaimSnapshot _activeClaimSnapshot(String userId) {
+    if (_malformedActiveClaimUsers.contains(userId)) {
+      return const ActiveSeatClaimSnapshot.malformed();
+    }
+    final reference = _activeSeatClaims[userId];
+    if (reference == null) return const ActiveSeatClaimSnapshot.missing();
+
+    final room = _rooms[reference.roomId];
+    if (room == null || room.room.subgroupId != reference.subgroupId) {
+      return const ActiveSeatClaimSnapshot.malformed();
+    }
+    final seat = room.seats
+        .where((candidate) => candidate.seatId == reference.seatId)
+        .firstOrNull;
+    if (seat == null) return const ActiveSeatClaimSnapshot.malformed();
+    return ActiveSeatClaimSnapshot.valid(
+      reference: reference,
+      referencedSeat: seat,
+    );
   }
 
   String _newRoomId() {
@@ -234,8 +465,8 @@ final class FixtureLiveRoomRepository implements LiveRoomRepository {
 }
 
 final class _StoredRoom {
-  const _StoredRoom(this.room, this.seats);
+  _StoredRoom(this.room, this.seats);
 
   final RoomSnapshot room;
-  final List<SeatState> seats;
+  List<SeatState> seats;
 }
