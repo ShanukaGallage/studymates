@@ -76,7 +76,13 @@ service cloud.firestore {
 
     // Existing user profiles remain private to their authenticated owner.
     match /users/{uid} {
-      allow read, write: if self(uid);
+      allow read, delete: if self(uid);
+      allow create, update: if self(uid)
+        && (!('photoBase64' in request.resource.data)
+          || request.resource.data.photoBase64 == null
+          || (request.resource.data.photoBase64 is string
+            && request.resource.data.photoBase64.size() <= 43692
+            && request.resource.data.photoBase64.matches('^[A-Za-z0-9+/]*={0,2}$')));
     }
 
     match /sigs/{sigId} {

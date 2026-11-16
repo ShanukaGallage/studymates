@@ -111,7 +111,13 @@ class _ProfileDetails extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Center(child: AvatarBadge(name: profile.displayName)),
+        Center(
+          child: AvatarBadge(
+            name: profile.displayName,
+            photo: profile.photo,
+            size: 80,
+          ),
+        ),
         const SizedBox(height: AppSpacing.lg),
         Text(
           profile.displayName,

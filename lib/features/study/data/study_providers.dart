@@ -88,4 +88,6 @@ final connectedRoomSummariesProvider = StreamProvider.autoDispose
                 )
                 .toList(),
           ),
+      // Keep the room error visible until its section's explicit Retry action.
+      retry: (count, error) => null,
     );

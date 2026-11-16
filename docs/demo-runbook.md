@@ -73,7 +73,8 @@ If a seat/session in another community is still active, finish/release it first.
 ## Five-minute sequence
 
 1. Use two accounts. Host creates a community and subgroup; both join.
-2. Host creates a room; both open it and claim different seats. Both phones must
+2. In Discover, open the community and expand a subgroup. Its Study rooms section
+   lets the host create a room; both open it and claim different seats. Both phones must
    show the same occupancy. A second claim on an occupied seat must fail safely.
 3. Set personal goals. Host starts the labelled 45s focus / 15s break demo;
    guest joins the same schedule. Explain that late joins do not receive earlier time.

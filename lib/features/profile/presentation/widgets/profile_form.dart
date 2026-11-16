@@ -8,6 +8,7 @@ import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/avatar_badge.dart';
 import '../controllers/profile_providers.dart';
+import '../../data/profile_photo_picker.dart';
 
 /// Shared editable fields for setup and the owner's full profile editor.
 class ProfileForm extends ConsumerStatefulWidget {
@@ -32,6 +33,8 @@ class _ProfileFormState extends ConsumerState<ProfileForm> {
   String? _yearOfStudy;
   String? _errorMessage;
   String? _successMessage;
+  ProfilePhoto? _photo;
+  bool _isPickingPhoto = false;
 
   bool get _isEditing => widget.profile != null;
 
@@ -45,6 +48,7 @@ class _ProfileFormState extends ConsumerState<ProfileForm> {
     _bio = TextEditingController(text: profile?.bio);
     _interests = List.of(profile?.interestIds ?? const <String>[]);
     _yearOfStudy = profile?.yearOfStudy;
+    _photo = profile?.photo;
   }
 
   @override
@@ -75,7 +79,8 @@ class _ProfileFormState extends ConsumerState<ProfileForm> {
   }
 
   Future<void> _submit() async {
-    if (ref.read(profileMutationProvider).isLoading ||
+    if (_isPickingPhoto ||
+        ref.read(profileMutationProvider).isLoading ||
         !(_formKey.currentState?.validate() ?? false)) {
       return;
     }
@@ -94,6 +99,7 @@ class _ProfileFormState extends ConsumerState<ProfileForm> {
               displayName: _displayName.text.trim(),
               institution: _institution.text,
               interestIds: List.of(_interests),
+              photo: _photo,
             )
           : await mutation.updateProfile(
               existingProfile: existing,
@@ -103,6 +109,7 @@ class _ProfileFormState extends ConsumerState<ProfileForm> {
               programme: _programme.text,
               yearOfStudy: _yearOfStudy,
               bio: _bio.text,
+              photo: _photo,
             );
       if (!mounted) return;
       setState(() {
@@ -115,6 +122,30 @@ class _ProfileFormState extends ConsumerState<ProfileForm> {
       if (mounted) {
         setState(() => _errorMessage = profileErrorMessage(error));
       }
+    }
+  }
+
+  Future<void> _choosePhoto() async {
+    if (_isPickingPhoto || ref.read(profileMutationProvider).isLoading) return;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isPickingPhoto = true;
+      _errorMessage = null;
+      _successMessage = null;
+    });
+    try {
+      final selected = await ref.read(profilePhotoPickerProvider).pickPhoto();
+      if (mounted && selected != null) setState(() => _photo = selected);
+    } catch (error) {
+      if (mounted) {
+        setState(
+          () => _errorMessage = error is ProfilePhotoException
+              ? error.message
+              : 'Could not use that photo. Please try another.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isPickingPhoto = false);
     }
   }
 
@@ -143,25 +174,52 @@ class _ProfileFormState extends ConsumerState<ProfileForm> {
                     const SizedBox(height: AppSpacing.xl),
                     AppCard(
                       child: AbsorbPointer(
-                        absorbing: isLoading,
+                        absorbing: isLoading || _isPickingPhoto,
                         child: Form(
                           key: _formKey,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              const Text(
+                                'Profile photo (optional)',
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: AppSpacing.md),
                               Center(
                                 child: ValueListenableBuilder<TextEditingValue>(
                                   valueListenable: _displayName,
-                                  builder: (context, value, _) =>
-                                      AvatarBadge(name: value.text),
+                                  builder: (context, value, _) => AvatarBadge(
+                                    name: value.text,
+                                    photo: _photo,
+                                    size: 80,
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: AppSpacing.sm),
-                              Text(
-                                'Initials avatar',
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.bodySmall,
+                              AppButton(
+                                key: const ValueKey('profile-choose-photo'),
+                                label: _photo == null
+                                    ? 'Add photo'
+                                    : 'Change photo',
+                                variant: AppButtonVariant.secondary,
+                                isLoading: _isPickingPhoto,
+                                onPressed: _choosePhoto,
                               ),
+                              if (_photo != null)
+                                TextButton(
+                                  key: const ValueKey('profile-remove-photo'),
+                                  onPressed: () =>
+                                      setState(() => _photo = null),
+                                  style: TextButton.styleFrom(
+                                    minimumSize: const Size(48, 48),
+                                  ),
+                                  child: const Text('Remove photo'),
+                                ),
+                              if (_errorMessage != null && !_isPickingPhoto)
+                                _FeedbackMessage(
+                                  message: _errorMessage!,
+                                  isError: true,
+                                ),
                               const SizedBox(height: AppSpacing.xl),
                               AppTextField(
                                 key: const ValueKey('profile-display-name'),
@@ -319,11 +377,6 @@ class _ProfileFormState extends ConsumerState<ProfileForm> {
                                   maxLength: 160,
                                 ),
                               ],
-                              if (_errorMessage != null)
-                                _FeedbackMessage(
-                                  message: _errorMessage!,
-                                  isError: true,
-                                ),
                               if (_successMessage != null)
                                 _FeedbackMessage(message: _successMessage!),
                               const SizedBox(height: AppSpacing.xl),
@@ -332,7 +385,9 @@ class _ProfileFormState extends ConsumerState<ProfileForm> {
                                     ? 'Save changes'
                                     : 'Save profile',
                                 isLoading: isLoading,
-                                onPressed: isLoading ? null : _submit,
+                                onPressed: isLoading || _isPickingPhoto
+                                    ? null
+                                    : _submit,
                               ),
                               if (widget.onCancel != null) ...[
                                 const SizedBox(height: AppSpacing.sm),

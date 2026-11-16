@@ -53,10 +53,12 @@ class MembershipAction extends StatefulWidget {
     required this.onChange,
     this.enabled = true,
     this.leaveMessage,
+    this.inMenu = false,
   });
   final bool joined, enabled;
   final String subject;
   final String? leaveMessage;
+  final bool inMenu;
   final Future<void> Function(MembershipState) onChange;
   @override
   State<MembershipAction> createState() => _MembershipActionState();
@@ -118,6 +120,10 @@ class _MembershipActionState extends State<MembershipAction> {
               ? 'Leaving could not be confirmed. Use Pending leave requests in Discover to retry safely.'
               : 'Membership could not be updated. Please try again.',
         );
+        if (widget.inMenu) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(_error!)));
+        }
       }
     } finally {
       if (mounted) {
@@ -130,28 +136,51 @@ class _MembershipActionState extends State<MembershipAction> {
   }
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      AppButton(
-        label: '${widget.joined ? 'Leave' : 'Join'} ${widget.subject}',
-        variant: widget.joined
-            ? AppButtonVariant.secondary
-            : AppButtonVariant.primary,
-        isLoading: _busy,
-        onPressed: widget.enabled && !_confirming ? _change : null,
-      ),
-      if (_error != null)
-        Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Semantics(
-            liveRegion: true,
+  Widget build(BuildContext context) {
+    if (widget.inMenu) {
+      return PopupMenuButton<String>(
+        tooltip: 'Community actions',
+        enabled: widget.enabled && !_busy && !_confirming,
+        onSelected: (_) => _change(),
+        itemBuilder: (_) => [
+          PopupMenuItem(
+            value: 'membership',
             child: Text(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+              '${widget.joined ? 'Leave' : 'Join'} ${widget.subject}',
             ),
           ),
+        ],
+        icon: _busy
+            ? const SizedBox.square(
+                dimension: 24,
+                child: CircularProgressIndicator(),
+              )
+            : const Icon(Icons.more_vert),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppButton(
+          label: '${widget.joined ? 'Leave' : 'Join'} ${widget.subject}',
+          variant: widget.joined
+              ? AppButtonVariant.secondary
+              : AppButtonVariant.primary,
+          isLoading: _busy,
+          onPressed: widget.enabled && !_confirming ? _change : null,
         ),
-    ],
-  );
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Semantics(
+              liveRegion: true,
+              child: Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }

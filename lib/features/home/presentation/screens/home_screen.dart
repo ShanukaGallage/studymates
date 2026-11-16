@@ -8,6 +8,7 @@ import '../../../../core/models/community_models.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/avatar_badge.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../communities/presentation/controllers/community_providers.dart';
 import '../../../profile/presentation/controllers/profile_providers.dart';
@@ -49,10 +50,16 @@ class HomeScreen extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      const _TileIcon(
-                        icon: Icons.school_outlined,
-                        color: AppColors.softAccent,
-                      ),
+                      if (profile?.photo != null)
+                        AvatarBadge(
+                          name: profile!.displayName,
+                          photo: profile.photo,
+                        )
+                      else
+                        const _TileIcon(
+                          icon: Icons.school_outlined,
+                          color: AppColors.softAccent,
+                        ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(

@@ -49,6 +49,7 @@ class FirestoreProfileRepository implements ProfileRepository {
     String? programme,
     String? yearOfStudy,
     String? bio,
+    ProfilePhoto? photo,
   }) async {
     final profile = _newProfile(
       displayName: displayName,
@@ -58,6 +59,7 @@ class FirestoreProfileRepository implements ProfileRepository {
       programme: programme,
       yearOfStudy: yearOfStudy,
       bio: bio,
+      photo: photo,
     );
     try {
       await _documents.createDocumentIfAbsent(
@@ -113,6 +115,7 @@ class FirestoreProfileRepository implements ProfileRepository {
     String? programme,
     String? yearOfStudy,
     String? bio,
+    ProfilePhoto? photo,
   }) async {
     final profile = _newProfile(
       displayName: displayName,
@@ -122,6 +125,7 @@ class FirestoreProfileRepository implements ProfileRepository {
       programme: programme,
       yearOfStudy: yearOfStudy,
       bio: bio,
+      photo: photo,
     );
     try {
       await _documents.updateExistingDocument(
@@ -143,6 +147,7 @@ class FirestoreProfileRepository implements ProfileRepository {
     String? programme,
     String? yearOfStudy,
     String? bio,
+    ProfilePhoto? photo,
   }) {
     final normalizedName = displayName.trim();
     if (normalizedName.isEmpty) {
@@ -159,6 +164,7 @@ class FirestoreProfileRepository implements ProfileRepository {
       programme: _optionalText(programme),
       yearOfStudy: _optionalText(yearOfStudy),
       bio: _optionalText(bio),
+      photo: photo,
     );
   }
 

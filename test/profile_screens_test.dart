@@ -10,12 +10,37 @@ import 'package:studymates/features/auth/domain/auth_state.dart';
 import 'package:studymates/features/auth/presentation/controllers/auth_providers.dart';
 import 'package:studymates/features/profile/data/firestore_profile_repository.dart';
 import 'package:studymates/features/profile/data/profile_repository.dart';
+import 'package:studymates/features/profile/data/profile_photo_picker.dart';
 import 'package:studymates/features/profile/presentation/screens/profile_edit_screen.dart';
 import 'package:studymates/features/profile/presentation/screens/profile_setup_screen.dart';
 import 'package:studymates/features/profile/presentation/screens/profile_view_screen.dart';
 
+import 'support/profile_photo_fixture.dart';
+
 void main() {
   group('ProfileSetupScreen', () {
+    testWidgets('an optional selected photo is saved with the profile', (
+      tester,
+    ) async {
+      final repository = _FakeProfileRepository();
+      final picker = _FakePhotoPicker()..result = sampleProfilePhoto();
+      await _pump(
+        tester,
+        const ProfileSetupScreen(),
+        repository,
+        photoPicker: picker,
+      );
+      await tester.tap(find.text('Add photo'));
+      await tester.pumpAndSettle();
+      expect(find.text('Change photo'), findsOneWidget);
+      expect(repository.createCount, 0);
+      await _fill(tester, 'profile-display-name', 'Learner');
+      await _reveal(tester, find.text('Save profile'));
+      await tester.tap(find.text('Save profile'));
+      await tester.pumpAndSettle();
+      expect(repository.profile!.photo!.encoded, picker.result!.encoded);
+    });
+
     testWidgets('optional institution and removable interest tags are saved', (
       tester,
     ) async {
@@ -307,6 +332,88 @@ void main() {
   });
 
   group('ProfileEditScreen', () {
+    testWidgets(
+      'photo cancellation, replacement and removal preserve the profile',
+      (tester) async {
+        final first = sampleProfilePhoto();
+        final second = sampleProfilePhoto(red: 210);
+        final existing = UserProfile(
+          id: 'current-user-uid',
+          displayName: 'Learner',
+          avatarId: 'amber',
+          institution: 'School',
+          photo: first,
+        );
+        final repository = _FakeProfileRepository()..profile = existing;
+        final picker = _FakePhotoPicker();
+        await _pump(
+          tester,
+          ProfileEditScreen(profile: existing),
+          repository,
+          photoPicker: picker,
+        );
+        await tester.tap(find.text('Change photo'));
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<AvatarBadge>(find.byType(AvatarBadge)).photo,
+          first,
+        );
+        picker.result = second;
+        await tester.tap(find.text('Change photo'));
+        await tester.pumpAndSettle();
+        await _reveal(tester, find.text('Save changes'));
+        await tester.tap(find.text('Save changes'));
+        await tester.pumpAndSettle();
+        expect(repository.profile!.photo!.encoded, second.encoded);
+        expect(repository.profile!.avatarId, 'amber');
+        expect(repository.profile!.institution, 'School');
+        await _reveal(tester, find.text('Remove photo'));
+        await tester.tap(find.text('Remove photo'));
+        await tester.pumpAndSettle();
+        expect(find.text('Add photo'), findsOneWidget);
+        await _reveal(tester, find.text('Save changes'));
+        await tester.tap(find.text('Save changes'));
+        await tester.pumpAndSettle();
+        expect(repository.profile!.photo, isNull);
+      },
+    );
+
+    testWidgets(
+      'photo picker failure keeps the old photo and blocks early save',
+      (tester) async {
+        final photo = sampleProfilePhoto();
+        final existing = UserProfile(
+          id: 'current-user-uid',
+          displayName: 'Learner',
+          photo: photo,
+        );
+        final repository = _FakeProfileRepository()..profile = existing;
+        final picker = _FakePhotoPicker()..gate = Completer<ProfilePhoto?>();
+        await _pump(
+          tester,
+          ProfileEditScreen(profile: existing),
+          repository,
+          photoPicker: picker,
+        );
+        await tester.tap(find.text('Change photo'));
+        await tester.pump();
+        expect(
+          tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+          isNull,
+        );
+        picker.gate!.completeError(
+          const ProfilePhotoException('Please choose another photo.'),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Please choose another photo.'), findsOneWidget);
+        expect(
+          tester.widget<AvatarBadge>(find.byType(AvatarBadge)).photo,
+          photo,
+        );
+        expect(repository.updateCount, 0);
+      },
+    );
+
     testWidgets('saves and clears optional fields including study year', (
       tester,
     ) async {
@@ -499,11 +606,14 @@ Future<void> _pump(
   _FakeProfileRepository repository, {
   _TestAuthStateController? authController,
   bool disableAutomaticRetries = false,
+  ProfilePhotoPicker? photoPicker,
 }) => tester.pumpWidget(
   ProviderScope(
     retry: disableAutomaticRetries ? (_, _) => null : null,
     overrides: [
       profileRepositoryProvider.overrideWithValue(repository),
+      if (photoPicker != null)
+        profilePhotoPickerProvider.overrideWithValue(photoPicker),
       authStateProvider.overrideWith(
         () =>
             authController ??
@@ -518,6 +628,13 @@ Future<void> _pump(
     child: MaterialApp(theme: AppTheme.light, home: screen),
   ),
 );
+
+class _FakePhotoPicker implements ProfilePhotoPicker {
+  ProfilePhoto? result;
+  Completer<ProfilePhoto?>? gate;
+  @override
+  Future<ProfilePhoto?> pickPhoto() => gate?.future ?? Future.value(result);
+}
 
 UserProfile _sampleProfile({
   String id = 'current-user-uid',
@@ -555,6 +672,7 @@ class _FakeProfileRepository implements ProfileRepository {
     String? programme,
     String? yearOfStudy,
     String? bio,
+    ProfilePhoto? photo,
   }) async {
     createCount++;
     createdDisplayName = displayName;
@@ -569,6 +687,7 @@ class _FakeProfileRepository implements ProfileRepository {
       programme: programme,
       yearOfStudy: yearOfStudy,
       bio: bio,
+      photo: photo,
     );
     return profile!;
   }
@@ -596,6 +715,7 @@ class _FakeProfileRepository implements ProfileRepository {
     String? programme,
     String? yearOfStudy,
     String? bio,
+    ProfilePhoto? photo,
   }) async {
     updateCount++;
     updatedDisplayName = displayName;
@@ -612,6 +732,7 @@ class _FakeProfileRepository implements ProfileRepository {
       programme: programme,
       yearOfStudy: yearOfStudy,
       bio: bio,
+      photo: photo,
     );
     return profile!;
   }

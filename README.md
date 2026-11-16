@@ -68,6 +68,13 @@ observed from Firestore before access is granted. Errors remain errors, never fa
 signed-out identities or sample profiles. Return navigation accepts only known
 local account destinations. No invitation-link contract is implemented yet.
 
+Profile setup and editing support optional gallery photos. Save commits a cropped
+256px JPEG thumbnail (at most 32 KiB) to the owner's private Firestore profile;
+removing it restores initials. Full-size files, EXIF/GPS and local file paths are
+not stored. This university-scale approach uses the existing Spark database,
+without Firebase Storage. Deploy the photo field rules/index exemption with the
+normal Firestore rules/indexes command in the demo runbook.
+
 Before live account verification, Poojani must confirm email/password sign-in is
 enabled and access to `users/{uid}` is restricted to its authenticated owner in
 `studymates-dev`. Deployed rules have not been inspected; this checkout contains

@@ -12,8 +12,17 @@ clears a previously saved value. Other document fields are preserved.
 
 `users/{uid}` remains owner-only under the existing rules. Public seat projections
 still contain only name/avatar; no education, bio or email is exposed there.
-`avatarId` remains a preset identifier, not a photo URL. Initials are the fallback;
-photo uploads are not implemented (no upload service or Storage rules exist).
+`avatarId` remains a preset identifier for room seats. Optional `photoBase64` holds
+only a processed JPEG avatar: 256px square, at most 32 KiB (43,692 base64 chars),
+with EXIF/GPS removed. This small private thumbnail uses the existing Spark
+Firestore profile; it is not a full-resolution media store or a public photo URL.
+The field is excluded from indexes. Rules retain owner-only access and bound the
+field's type/length. Add/change/remove is committed with Save profile/Save changes;
+picker cancellation leaves the draft photo untouched. Legacy or unreadable photos
+fall back to initials. The gallery picker needs no broad Android storage access.
+Photo rules/index exemption deployed to `studymates-dev` on 17 November 2026.
+Verification: 339 Flutter tests, clean analysis and a physical Android Firebase
+emulator test for persistence, removal, legacy loading and owner/size restrictions.
 
 ## Current connected implementation (16 November 2026)
 

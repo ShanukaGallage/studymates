@@ -1,3 +1,7 @@
+import 'profile_photo.dart';
+
+export 'profile_photo.dart';
+
 enum MembershipState { notJoined, joined }
 
 enum SubgroupStatus { active, closed }
@@ -23,6 +27,7 @@ class UserProfile {
     this.programme,
     this.yearOfStudy,
     this.bio,
+    this.photo,
   }) : interestIds = List.unmodifiable(interestIds);
   final String id;
   final String displayName;
@@ -32,6 +37,7 @@ class UserProfile {
   final String? programme;
   final String? yearOfStudy;
   final String? bio;
+  final ProfilePhoto? photo;
 }
 
 class SigSummary {

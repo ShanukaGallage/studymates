@@ -200,3 +200,21 @@ build was installed and visually checked with hosted data; All/My counts, no-mat
 search and clear-to-restore passed. The pending-leave reader/finalization check
 passed separately against Firebase emulators on Android. No memberships were
 changed during the hosted UI check.
+
+## Inline community rooms
+
+Community details use one vertical scroll: Discover/back and community actions,
+icon/name/description, then bordered expandable subgroup cards. Only one subgroup
+is expanded. Its room list, retry/empty state and permitted creation action stay
+inside the card. Room rows show total desks, never inferred free seats; private
+labels and admission checks remain. Membership/owner actions stay in their scope.
+The community route retains expansion/scroll when a room is pushed and popped.
+Existing subgroup deep links share the same room section. Headers stack and text
+wraps at large text sizes, without a second vertical scroll surface.
+
+17 November verification: 347 Flutter tests and analysis passed; Android APK built
+and installed. Reviewed live subgroup switching and room open/back on 23129RAA4G;
+the expanded subgroup and room positions were restored. Also rendered at 320dp
+with 200% text. Creation targeting, permission gating and section error/retry were
+tested without Firebase. No hosted memberships, room creation or seat claims were
+performed during this UI check.

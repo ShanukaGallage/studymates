@@ -27,6 +27,7 @@ class ProfileMutationController extends Notifier<AsyncValue<UserProfile?>> {
     required String displayName,
     List<String> interestIds = const [],
     String? institution,
+    ProfilePhoto? photo,
   }) async {
     state = const AsyncLoading();
     try {
@@ -36,6 +37,7 @@ class ProfileMutationController extends Notifier<AsyncValue<UserProfile?>> {
             displayName: displayName,
             interestIds: interestIds,
             institution: institution,
+            photo: photo,
           );
       state = AsyncData(profile);
       return profile;
@@ -53,6 +55,7 @@ class ProfileMutationController extends Notifier<AsyncValue<UserProfile?>> {
     String? programme,
     String? yearOfStudy,
     String? bio,
+    ProfilePhoto? photo,
   }) async {
     state = const AsyncLoading();
     try {
@@ -66,6 +69,7 @@ class ProfileMutationController extends Notifier<AsyncValue<UserProfile?>> {
             programme: programme,
             yearOfStudy: yearOfStudy,
             bio: bio,
+            photo: photo,
           );
       state = AsyncData(profile);
       return profile;

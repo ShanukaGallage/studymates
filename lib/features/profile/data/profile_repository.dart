@@ -16,6 +16,7 @@ abstract interface class ProfileRepository {
     String? programme,
     String? yearOfStudy,
     String? bio,
+    ProfilePhoto? photo,
   });
 
   /// Replaces the signed-in user's editable profile fields.
@@ -30,6 +31,7 @@ abstract interface class ProfileRepository {
     String? programme,
     String? yearOfStudy,
     String? bio,
+    ProfilePhoto? photo,
   });
 }
 

@@ -4,6 +4,8 @@ import 'package:studymates/core/models/community_models.dart';
 import 'package:studymates/features/profile/data/firestore_profile_repository.dart';
 import 'package:studymates/features/profile/data/profile_repository.dart';
 
+import 'support/profile_photo_fixture.dart';
+
 void main() {
   group('FirestoreProfileRepository', () {
     late _FakeProfileDocumentStore store;
@@ -38,6 +40,7 @@ void main() {
         'programme': null,
         'yearOfStudy': null,
         'bio': null,
+        'photoBase64': null,
       });
     });
 
@@ -63,6 +66,43 @@ void main() {
         'Existing name',
       );
     });
+
+    test('creates, replaces, reloads and removes an optional photo', () async {
+      final first = sampleProfilePhoto();
+      final second = sampleProfilePhoto(red: 200);
+      await repository.createCurrentProfile(
+        displayName: 'Learner',
+        photo: first,
+      );
+      expect((await repository.getCurrentProfile())!.photo!.bytes, first.bytes);
+      await repository.updateCurrentProfile(
+        displayName: 'Learner',
+        photo: second,
+      );
+      expect(
+        (await repository.getCurrentProfile())!.photo!.bytes,
+        second.bytes,
+      );
+      await repository.updateCurrentProfile(
+        displayName: 'Learner',
+        photo: null,
+      );
+      expect((await repository.getCurrentProfile())!.photo, isNull);
+      expect(store.documents['firebase-uid-1']!['photoBase64'], isNull);
+    });
+
+    test(
+      'an invalid saved photo does not block legacy profile access',
+      () async {
+        store.documents['firebase-uid-1'] = {
+          'displayName': 'Learner',
+          'photoBase64': 'not an image',
+        };
+        final profile = await repository.getCurrentProfile();
+        expect(profile!.displayName, 'Learner');
+        expect(profile.photo, isNull);
+      },
+    );
 
     test(
       'returns null for a missing profile and uses document ID on read',
