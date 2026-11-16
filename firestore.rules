@@ -1,0 +1,315 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function self(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function sigDoc(sigId) {
+      return /databases/$(database)/documents/sigs/$(sigId);
+    }
+
+    function sigMember(sigId, uid) {
+      return /databases/$(database)/documents/sigs/$(sigId)/members/$(uid);
+    }
+
+    function sigMembershipRevisionIncremented(sigId) {
+      let previousRevision = get(sigDoc(sigId)).data.get('membershipRevision', 0);
+      let nextRevision = getAfter(sigDoc(sigId)).data.get('membershipRevision', 0);
+      return previousRevision is int
+        && nextRevision is int
+        && nextRevision == previousRevision + 1;
+    }
+
+    function subgroupDoc(subgroupId) {
+      return /databases/$(database)/documents/subgroups/$(subgroupId);
+    }
+
+    function subgroupMember(subgroupId, uid) {
+      return /databases/$(database)/documents/subgroups/$(subgroupId)/members/$(uid);
+    }
+
+    function cleanupRequest(requestId) {
+      return /databases/$(database)/documents/membershipCleanupRequests/$(requestId);
+    }
+
+    function requestIsPendingFor(uid, sigId, scope, subgroupId, requestId) {
+      let requestData = getAfter(cleanupRequest(requestId)).data;
+      return requestData.requestId == requestId
+        && requestData.userId == uid
+        && requestData.sigId == sigId
+        && requestData.scope == scope
+        && requestData.status == 'pending'
+        && (scope == 'sig' || requestData.subgroupId == subgroupId);
+    }
+
+    function completedRequestFor(uid, requestId) {
+      let requestData = get(cleanupRequest(requestId)).data;
+      return requestData.userId == uid
+        && requestData.requestId == requestId
+        && requestData.status == 'completed';
+    }
+
+    function completedSigCleanupFor(uid, sigId, requestId) {
+      let requestData = get(cleanupRequest(requestId)).data;
+      return requestData.userId == uid
+        && requestData.requestId == requestId
+        && requestData.sigId == sigId
+        && requestData.scope == 'sig'
+        && requestData.status == 'completed';
+    }
+
+    function activeSigMemberOrOwner(sigId, uid) {
+      let sig = getAfter(sigDoc(sigId)).data;
+      let memberPath = sigMember(sigId, uid);
+      return sig.status == 'active'
+        && ((sig.ownerId == uid
+              && (!existsAfter(memberPath)
+                || getAfter(memberPath).data.status == 'active'))
+          || (existsAfter(memberPath)
+            && getAfter(memberPath).data.status == 'active'));
+    }
+
+    // Existing user profiles remain private to their authenticated owner.
+    match /users/{uid} {
+      allow read, write: if self(uid);
+    }
+
+    match /sigs/{sigId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.status == 'active'
+        && request.resource.data.membershipRevision == 0;
+      allow update: if signedIn() && (
+        // Join/leave changes the revision and this caller's membership in one
+        // atomic transaction.
+        (request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['membershipRevision', 'updatedAt'])
+          && request.resource.data.get('membershipRevision', 0)
+            == (resource.data.get('membershipRevision', 0) + 1)
+          && getAfter(sigMember(sigId, request.auth.uid)).data.status
+            in ['active', 'removalPending', 'left']
+          && (
+            (!exists(sigMember(sigId, request.auth.uid))
+              && getAfter(sigMember(sigId, request.auth.uid)).data.status == 'active')
+            ||
+            (exists(sigMember(sigId, request.auth.uid))
+              && get(sigMember(sigId, request.auth.uid)).data.status == 'left'
+              && getAfter(sigMember(sigId, request.auth.uid)).data.status == 'active')
+            ||
+            (exists(sigMember(sigId, request.auth.uid))
+              && get(sigMember(sigId, request.auth.uid)).data.status == 'active'
+              && getAfter(sigMember(sigId, request.auth.uid)).data.status == 'removalPending')
+            ||
+            (exists(sigMember(sigId, request.auth.uid))
+              && get(sigMember(sigId, request.auth.uid)).data.status == 'removalPending'
+              && getAfter(sigMember(sigId, request.auth.uid)).data.status == 'left'
+              && completedRequestFor(
+                request.auth.uid,
+                get(sigMember(sigId, request.auth.uid)).data.removalRequestId
+              ))
+          ))
+        ||
+        // An owner can transfer ownership to an active member or close the SIG
+        // only in the same transaction that marks their own membership pending
+        // and creates the corresponding cleanup request.
+        (resource.data.status == 'active'
+          && resource.data.ownerId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['ownerId', 'status', 'membershipRevision', 'updatedAt'])
+          && request.resource.data.get('membershipRevision', 0)
+            == (resource.data.get('membershipRevision', 0) + 1)
+          && getAfter(sigMember(sigId, request.auth.uid)).data.status
+            == 'removalPending'
+          && getAfter(sigMember(sigId, request.auth.uid)).data.removalRequestId is string
+          && requestIsPendingFor(
+            request.auth.uid,
+            sigId,
+            'sig',
+            '',
+            getAfter(sigMember(sigId, request.auth.uid)).data.removalRequestId
+          )
+          && (
+            (request.resource.data.status == 'closed'
+              && request.resource.data.ownerId == resource.data.ownerId)
+            ||
+            (request.resource.data.status == 'active'
+              && request.resource.data.ownerId != request.auth.uid
+              && get(sigMember(
+                sigId,
+                request.resource.data.ownerId
+              )).data.status == 'active')
+          ))
+      );
+      allow delete: if false;
+
+      match /members/{uid} {
+        allow read: if self(uid)
+          || (signedIn() && get(sigDoc(sigId)).data.ownerId == request.auth.uid);
+        allow create: if self(uid)
+          && request.resource.data.keys().hasOnly([
+            'userId', 'sigId', 'status', 'joinedAt', 'updatedAt', 'removalRequestId'
+          ])
+          && request.resource.data.userId == uid
+          && request.resource.data.sigId == sigId
+          && sigMembershipRevisionIncremented(sigId)
+          && (
+            (request.resource.data.status == 'active'
+              && get(sigDoc(sigId)).data.status == 'active'
+              && get(sigDoc(sigId)).data.ownerId != uid)
+            ||
+            (request.resource.data.status == 'removalPending'
+              && get(sigDoc(sigId)).data.ownerId == uid
+              && request.resource.data.removalRequestId is string
+              && requestIsPendingFor(
+                uid,
+                sigId,
+                'sig',
+                '',
+                request.resource.data.removalRequestId
+              ))
+          );
+        allow update: if self(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'joinedAt', 'updatedAt', 'removalRequestId'
+          ])
+          && request.resource.data.userId == uid
+          && request.resource.data.sigId == sigId
+          && sigMembershipRevisionIncremented(sigId)
+          && (
+            (resource.data.status == 'active'
+              && request.resource.data.status == 'removalPending'
+              && request.resource.data.removalRequestId is string
+              && requestIsPendingFor(
+                uid,
+                sigId,
+                'sig',
+                '',
+                request.resource.data.removalRequestId
+              ))
+            ||
+            (resource.data.status == 'left'
+              && request.resource.data.status == 'active'
+              && get(sigDoc(sigId)).data.status == 'active'
+              && get(sigDoc(sigId)).data.ownerId != uid)
+            ||
+            (resource.data.status == 'removalPending'
+              && request.resource.data.status == 'left'
+              && completedRequestFor(uid, resource.data.removalRequestId))
+          );
+        allow delete: if false;
+      }
+    }
+
+    match /subgroups/{subgroupId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.sigId is string
+        && get(sigDoc(request.resource.data.sigId)).data.ownerId == request.auth.uid
+        && get(sigDoc(request.resource.data.sigId)).data.status == 'active';
+      allow update: if signedIn()
+        && resource.data.sigId == request.resource.data.sigId
+        && get(sigDoc(resource.data.sigId)).data.ownerId == request.auth.uid
+        && get(sigDoc(resource.data.sigId)).data.status == 'active';
+      allow delete: if false;
+
+      match /members/{uid} {
+        allow read: if self(uid);
+        allow create: if self(uid)
+          && request.resource.data.keys().hasOnly([
+            'userId', 'sigId', 'status', 'joinedAt', 'updatedAt', 'removalRequestId'
+          ])
+          && request.resource.data.userId == uid
+          && request.resource.data.sigId == get(subgroupDoc(subgroupId)).data.sigId
+          && request.resource.data.status == 'active'
+          && get(subgroupDoc(subgroupId)).data.status in [null, 'active']
+          && activeSigMemberOrOwner(request.resource.data.sigId, uid);
+        allow update: if self(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'joinedAt', 'updatedAt', 'removalRequestId'
+          ])
+          && request.resource.data.userId == uid
+          && request.resource.data.sigId == resource.data.sigId
+          && (
+            (resource.data.status == 'active'
+              && request.resource.data.status == 'removalPending'
+              && request.resource.data.removalRequestId is string
+              && requestIsPendingFor(
+                uid,
+                resource.data.sigId,
+                'subgroup',
+                subgroupId,
+                request.resource.data.removalRequestId
+              ))
+            ||
+            (resource.data.status == 'left'
+              && request.resource.data.status == 'active'
+              && activeSigMemberOrOwner(resource.data.sigId, uid))
+            ||
+            (resource.data.status == 'removalPending'
+              && request.resource.data.status == 'left'
+              && completedRequestFor(uid, resource.data.removalRequestId))
+            ||
+            (resource.data.status in ['active', 'removalPending']
+              && request.resource.data.status == 'left'
+              && request.resource.data.removalRequestId is string
+              && completedSigCleanupFor(
+                uid,
+                resource.data.sigId,
+                request.resource.data.removalRequestId
+              ))
+          );
+        allow delete: if false;
+      }
+    }
+
+    match /membershipCleanupRequests/{requestId} {
+      allow get, list: if signedIn() && resource.data.userId == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'requestId', 'userId', 'sigId', 'scope', 'subgroupId', 'status',
+          'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.requestId == requestId
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.sigId is string
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt is timestamp
+        && (
+          (request.resource.data.scope == 'sig'
+            && getAfter(sigMember(
+              request.resource.data.sigId,
+              request.auth.uid
+            )).data.status == 'removalPending'
+            && getAfter(sigMember(
+              request.resource.data.sigId,
+              request.auth.uid
+            )).data.removalRequestId == requestId)
+            && (
+              getAfter(sigDoc(request.resource.data.sigId)).data.ownerId
+                != request.auth.uid
+              || getAfter(sigDoc(request.resource.data.sigId)).data.status == 'closed'
+            )
+          ||
+          (request.resource.data.scope == 'subgroup'
+            && request.resource.data.subgroupId is string
+            && getAfter(subgroupMember(
+              request.resource.data.subgroupId,
+              request.auth.uid
+            )).data.status == 'removalPending'
+            && getAfter(subgroupMember(
+              request.resource.data.subgroupId,
+              request.auth.uid
+            )).data.removalRequestId == requestId)
+        );
+      // M3's trusted handler uses Admin SDK to acknowledge; clients cannot alter
+      // completion, status, or request ownership.
+      allow update, delete: if false;
+    }
+  }
+}

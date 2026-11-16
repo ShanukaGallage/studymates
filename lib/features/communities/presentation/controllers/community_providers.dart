@@ -1,11 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/app_mode.dart';
 import '../../../../core/models/community_models.dart';
+import '../../../auth/domain/auth_state.dart';
+import '../../../auth/presentation/controllers/auth_providers.dart';
+import '../../../profile/presentation/controllers/profile_providers.dart';
 import '../../data/community_repository.dart';
+import '../../data/firestore_community_repository.dart';
+import '../../data/firestore_membership_repository.dart';
 
 final communityRepositoryProvider = Provider<CommunityRepository>(
-  (ref) => throw StateError(
-    'No community repository configured. Use the preview entry point.',
+  (ref) => FirestoreCommunityRepository(
+    membershipRepository: ref.watch(membershipRepositoryProvider),
+    catalogStore: ref.watch(communityCatalogDocumentStoreProvider),
+    currentUserId: () => _currentAuthenticatedUid(ref.read(authStateProvider)),
+    loadCurrentProfile: () => ref.read(currentProfileProvider.future),
   ),
 );
 
@@ -17,8 +26,14 @@ final communityCatalogProvider =
 
 class CommunityController extends AsyncNotifier<CommunityCatalog> {
   @override
-  Future<CommunityCatalog> build() =>
-      ref.watch(communityRepositoryProvider).loadCatalog();
+  Future<CommunityCatalog> build() {
+    // Rebuild on account changes so another user's cached membership snapshot
+    // is never retained after authentication switches.
+    if (ref.watch(appModeProvider) == AppMode.foundation) {
+      ref.watch(authStateProvider.select((identity) => identity.userId));
+    }
+    return ref.watch(communityRepositoryProvider).loadCatalog();
+  }
 
   Future<void> setSigMembership(String id, MembershipState value) async {
     final result = await ref
@@ -34,3 +49,8 @@ class CommunityController extends AsyncNotifier<CommunityCatalog> {
     if (ref.mounted) state = AsyncData(result);
   }
 }
+
+String? _currentAuthenticatedUid(AuthState auth) => switch (auth.status) {
+  AuthStatus.ready || AuthStatus.incompleteProfile => auth.userId,
+  AuthStatus.loading || AuthStatus.signedOut => null,
+};
