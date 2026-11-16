@@ -12,10 +12,12 @@ class InvitationDisplayScreen extends StatelessWidget {
     required this.opaqueToken,
     required this.roomTitle,
     this.isFixture = false,
+    this.management,
   });
   final String opaqueToken;
   final String roomTitle;
   final bool isFixture;
+  final Widget? management;
 
   String? get qrPayload => InvitationTokenParser.isOpaqueToken(opaqueToken)
       ? 'studymates://invite/v1/$opaqueToken'
@@ -75,6 +77,7 @@ class InvitationDisplayScreen extends StatelessWidget {
               if (!isFixture) ...[
                 const SizedBox(height: AppSpacing.lg),
                 ShareInvitationButton(roomTitle: roomTitle, code: code),
+                ?management,
               ],
             ],
           ],

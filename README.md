@@ -328,9 +328,9 @@ not been redeployed by this task; repeat the two-phone rehearsal after deploymen
 
 Leave SIG/subgroup no longer waits for a Cloud Function. `SparkMembershipCleanup`
 ends only the current user's related participation, releases their seat and closes
-rooms they host in the departure scope before membership finalization. Their goal
+hands hosting to the longest-seated eligible learner (or closes an empty hosted room) before membership finalization. Their goal
 is recorded as unfinished; credit follows existing server-validated focus rules.
-It cannot transfer hosting or edit another user's participation. SIG ownership
+It never edits another user's participation. SIG ownership
 transfer/closure and subgroup cascade still use M2's membership protocol.
 
 Deploy current rules, then use Discover → **Finish pending leave requests** to
@@ -371,3 +371,38 @@ original book-and-two-learners vector emblem and Android 12+ splash resources.
 gentle entrance, tagline and loading indicator, with no artificial delay. Startup
 errors still show Retry. Preview remains Firebase-free and shares the native
 launch artwork. Narrow/landscape layouts and 200% text scaling are tested.
+
+## Automatic host handover and invitation management
+
+Rooms maintain an atomic FIFO `hostQueue`: each fresh desk claim appends its desk;
+renewals preserve order, and rejoining starts at the back. A healthy host keeps
+hosting. Seat release triggers handover to the oldest eligible seated learner.
+Logout/offline handover follows lease expiry (about two minutes), then a remaining
+foreground app checks within 30 seconds. The shared cycle/timestamps never reset.
+No server scheduler or paid Function is needed; if nobody has the app open,
+reconciliation waits for a seated learner to return. Empty rooms close on community
+departure. A newly created, unseated host has a 125-second setup grace.
+
+Existing rooms upgrade their queue when their current host opens the room or
+renews a seat. This trusted one-time upgrade sorts existing desks by server
+`claimedAt` (desk ID breaks ties). Reopen older demo rooms with their host after
+updating the app; an absent legacy host cannot be safely replaced until upgrade.
+All teammates must use this version: upgraded-room claims require atomic queue updates.
+
+Room hosts/creators have **Manage invitations**. Code issuers can revoke their own
+code from its display. A new host can revoke codes issued by the previous host.
+Revocation is irreversible, hides the live QR/share controls and prevents new
+admissions through that code. Already admitted users retain room access and seats.
+The management list is bounded to 50 codes; codes expire after 12 hours.
+
+Deploy `firestore:rules` before using this update on hosted Firebase. No indexes,
+billing changes, or Functions deployment are required. Emulator rule tests:
+`node test/room_host_invitation_rules_test.mjs`. Android integration:
+`flutter test integration_test/host_handover_test.dart -d <device-id> --dart-define=STUDYMATES_EMULATOR_HOST=127.0.0.1`.
+
+Verified against local Firebase emulators: 304 Flutter tests, clean analysis, the
+three-client Android host succession/revocation test and the existing Android
+room/session/private-capacity regression test passed. New rules tests cover queue
+ordering, healthy-host protection, expired/ineligible heads, rejoining at the tail,
+private desk 40, host setup-grace surrender and authorized revocation/listing.
+Hosted deployment and a physical multi-phone outage rehearsal remain separate.

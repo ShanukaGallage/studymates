@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/presentation/controllers/auth_providers.dart';
 import 'firestore_study_repository.dart';
+import 'room_host_coordinator.dart';
 import '../../../core/models/community_models.dart';
 
 final liveRoomsProvider = StreamProvider.autoDispose.family(
@@ -27,6 +28,19 @@ final studyLeaseKeeperProvider = Provider<void>((ref) {
   if (claim == null || claim['userId'] != ref.read(authStateProvider).userId) {
     return;
   }
+  Future<void> checkHost() async {
+    if (!ref.mounted) return;
+    try {
+      await ref
+          .read(studyRepositoryProvider)
+          .maintainRoomHost(claim['subgroupId'], claim['roomId']);
+    } catch (_) {
+      // Keep the confirmed host until the transaction succeeds. Lobby retry is explicit.
+    }
+  }
+
+  // A new claimant participates immediately; renewals continue on the same clock.
+  unawaited(Future<void>.microtask(checkHost));
   bool busy = false;
   final timer = Timer.periodic(const Duration(seconds: 30), (_) async {
     if (busy ||
@@ -43,6 +57,7 @@ final studyLeaseKeeperProvider = Provider<void>((ref) {
             seatId: claim['seatId'],
             expectedClaimId: claim['claimId'],
           );
+      await checkHost();
     } catch (_) {
       // The visible room/session explicitly revalidates and displays errors.
       // Never turn failed renewal into local success or automatic re-claim.

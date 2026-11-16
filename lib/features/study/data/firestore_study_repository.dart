@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'room_host_coordinator.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -76,6 +78,7 @@ class FirestoreStudyRepository
         'status': 'active',
         'membershipRevision': 0,
         'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
     } else {
       await db.collection('subgroups').add({
@@ -83,6 +86,8 @@ class FirestoreStudyRepository
         'name': title.trim(),
         'description': 'Study $title together.',
         'status': 'active',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
     }
   }
@@ -115,6 +120,13 @@ class FirestoreStudyRepository
       expectedClaimId: claimId,
     );
     if (result is SeatLeaseFailed) throw StudyFailure(result.message);
+    try {
+      await maintainRoomHost(subgroup, room);
+    } catch (_) {
+      throw const StudyFailure(
+        'Your seat was released. Host handover is pending; seated learners will retry automatically.',
+      );
+    }
   }
 
   Future<void> _verifyRoomInvitation(
@@ -221,6 +233,8 @@ class FirestoreStudyRepository
         'title': name,
         'createdBy': user,
         'hostUid': user,
+        'hostQueue': <String>[],
+        'hostReleased': false,
         'status': 'waiting',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -465,6 +479,13 @@ class FirestoreStudyRepository
             });
           }
         }
+        if (room.containsKey('hostQueue')) {
+          final queue = List<String>.from(room['hostQueue'])..remove(seatId);
+          tx.update(roomRef(subgroupId, roomId), {
+            'hostQueue': [...queue, seatId],
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
         final claimId = db.collection('roomDirectory').doc().id;
         final expiry = Timestamp.fromDate(result.seat.leaseExpiresAt!);
         tx.set(seatRef(subgroupId, roomId, seatId), {
@@ -575,6 +596,7 @@ class FirestoreStudyRepository
       final reference = seatRef(subgroup, room, seat);
       final data = (await tx.get(reference)).data();
       final claim = (await tx.get(claimRef(user))).data();
+      final roomData = (await tx.get(roomRef(subgroup, room))).data();
       _sameUser(user);
       if (release && (data?['status'] == 'available' || claim == null)) return;
       if (data?['userId'] != user ||
@@ -585,6 +607,14 @@ class FirestoreStudyRepository
         );
       }
       if (release) {
+        if (roomData?.containsKey('hostQueue') == true) {
+          final queue = List<String>.from(roomData!['hostQueue'])..remove(seat);
+          tx.update(roomRef(subgroup, room), {
+            'hostQueue': queue,
+            if (roomData['hostUid'] == user) 'hostReleased': true,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
         tx.set(reference, {'seatId': seat, 'status': 'available'});
         tx.delete(claimRef(user));
       } else {
@@ -615,6 +645,7 @@ class FirestoreStudyRepository
     if (goal.trim().isEmpty || goal.trim().length > 160) {
       throw const StudyFailure('Set a goal of 1–160 characters.');
     }
+    await maintainRoomHost(subgroup, room);
     final fresh = db.collection('roomSessions').doc();
     return db.runTransaction((tx) async {
       await _eligible(tx, subgroup);

@@ -13,7 +13,8 @@ import '../../rooms/presentation/widgets/goal_sheet.dart';
 import '../../rooms/presentation/widgets/room_scene.dart';
 import '../../rooms/presentation/widgets/room_scene_models.dart';
 import '../data/firestore_study_repository.dart';
-import '../../invites/presentation/screens/invitation_display_screen.dart';
+import '../data/room_host_coordinator.dart';
+import '../../invites/presentation/screens/room_invitations_screen.dart';
 import '../../invites/data/invitation_token.dart';
 import '../../invites/data/invitation_service.dart';
 import '../data/firestore_invitation_service.dart';
@@ -50,6 +51,9 @@ class _LiveRoomScreenState extends ConsumerState<LiveRoomScreen> {
       final room = await repo.getRoomSnapshot(widget.id);
       if (room == null) throw const StudyFailure('Room no longer exists.');
       _accessGranted = await repo.canAccessRoom(room);
+      if (_accessGranted) {
+        await repo.maintainRoomHost(place['subgroupId'], widget.id);
+      }
       _roomStream = repo.watchRoomDocument(place['subgroupId'], widget.id);
       _seatsStream = repo.watchSeatDocuments(place['subgroupId'], widget.id);
       return place;
@@ -198,6 +202,12 @@ class _LiveRoomScreenState extends ConsumerState<LiveRoomScreen> {
                   snapshot.data!.metadata.isFromCache ||
                   roomSnapshot.data!.metadata.isFromCache;
               final documents = snapshot.data!.docs;
+              final hostName =
+                  documents
+                          .where((d) => d.data()['userId'] == room['hostUid'])
+                          .firstOrNull
+                          ?.data()['displayName']
+                      as String?;
               final own = documents
                   .where((d) => d.data()['userId'] == user)
                   .firstOrNull
@@ -219,8 +229,22 @@ class _LiveRoomScreenState extends ConsumerState<LiveRoomScreen> {
                   Text(
                     room['hostUid'] == user
                         ? 'You host this room'
-                        : 'Shared study room',
+                        : hostName == null
+                        ? 'Host is not seated'
+                        : 'Host: $hostName',
                   ),
+                  const Text(
+                    'If the host leaves or their lease expires, the longest-seated eligible learner becomes host.',
+                  ),
+                  if (ownValid)
+                    TextButton(
+                      onPressed: _busy || cached
+                          ? null
+                          : () => _run(
+                              () => repo.maintainRoomHost(subgroup, widget.id),
+                            ),
+                      child: const Text('Check host handover'),
+                    ),
                   Text(
                     '${room['capacity'] ?? 6} desks · ${room['isPrivate'] == true ? 'Private room' : 'Public room'}',
                   ),
@@ -331,8 +355,8 @@ class _LiveRoomScreenState extends ConsumerState<LiveRoomScreen> {
                             if (context.mounted) {
                               Navigator.of(context, rootNavigator: true).push(
                                 MaterialPageRoute<void>(
-                                  builder: (_) => InvitationDisplayScreen(
-                                    opaqueToken: token,
+                                  builder: (_) => ManagedInvitationScreen(
+                                    token: token,
                                     roomTitle: room['title'],
                                   ),
                                 ),
@@ -340,6 +364,25 @@ class _LiveRoomScreenState extends ConsumerState<LiveRoomScreen> {
                             }
                           }),
                   ),
+                  if (room['hostUid'] == user || room['createdBy'] == user) ...[
+                    const SizedBox(height: 12),
+                    AppButton(
+                      label: 'Manage invitations',
+                      variant: AppButtonVariant.secondary,
+                      onPressed: _busy || cached
+                          ? null
+                          : () =>
+                                Navigator.of(context, rootNavigator: true).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => RoomInvitationsScreen(
+                                      subgroup: subgroup,
+                                      room: widget.id,
+                                      title: room['title'],
+                                    ),
+                                  ),
+                                ),
+                    ),
+                  ],
                   if (own != null) ...[
                     const SizedBox(height: 12),
                     AppButton(

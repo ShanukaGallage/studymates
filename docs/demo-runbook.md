@@ -48,12 +48,11 @@ flutter run -t lib/main.dart
 ```
 
 Leave SIG/subgroup ends the current user's related session as goal unfinished,
-releases their seat, closes rooms they host in that scope, acknowledges their own
+releases their seat, transfers hosting to the oldest eligible occupant (or closes empty hosted rooms), acknowledges their own
 pending request and finalizes membership removal. It never edits another user's
 seat or goal. Other participants can save their own participation and release
 their seats; a closed room cannot start/admit another session. SIG ownership still
-transfers or the SIG closes according to M2's existing protocol. Room host transfer
-on departure requires the optional trusted worker and is not used in Spark mode.
+transfers or the SIG closes according to M2's existing protocol. Room host handover runs through the ordered seating queue on Spark.
 
 For a request that timed out in the old version, deploy the updated rules and
 open Discover → Finish pending leave requests. Interrupted cleanup is retryable.
@@ -149,3 +148,19 @@ one seat before returning admitted. Both
 phones then see the same two desks. All membership requirements still apply.
 Previously admitted users can return without retyping the invitation. Redeploy
 Firestore rules for this update; no new Function or billing plan is needed.
+
+## Host handover and revoked-code rehearsal
+
+Deploy the new Firestore rules and install the same updated APK on both phones.
+For an existing room, first open it with its current host to initialize the queue.
+Have A host and claim a desk, then B sit, then C if available. Releasing A's desk
+passes hosting to B; releasing B's passes it to C. Rejoining places A last. The
+shared cycle continues unchanged. For a power-off/logout test, allow the old host's
+lease to expire (~2 minutes) and another foreground client's next 30-second check.
+A new room gives an unseated creator 125 seconds of setup grace. No app open means
+no client reconciliation until a seated learner returns; there is no paid scheduler.
+
+Open **Manage invitations**, issue/share a code, then revoke it. A previously
+opened preview must fail admission after revocation. Confirm existing learners
+keep their seats/access. A successor host must also be able to revoke an earlier
+host's code. New codes and revocations require confirmed backend success.

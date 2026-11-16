@@ -498,15 +498,40 @@ The connected CommunityRepository supplies `completeOwnCleanup(requestId)` throu
 `SparkMembershipCleanup`. It runs after M2 creates/resumes removalPending and before
 observing completion/finalizing. Only the authenticated user's records are touched.
 Related participation is saved as goal unfinished, its seat is released, and rooms
-the user hosts within the SIG/subgroup close. The account acknowledges only its
+the user hosts within the SIG/subgroup transfer to the oldest eligible seated learner, or close if empty. The account acknowledges only its
 exact pending request with a server timestamp; rules require no active participation
 or active claim and unchanged request ownership/scope. Another account cannot
 acknowledge it. Parent ownership transfer/closure and subgroup membership cascade
-remain M2 responsibilities. Room host transfer is not attempted on Spark.
+remain M2 responsibilities. Room handover uses the ordered-queue protocol below.
 
 Retrying SIG leave does not require the SIG to remain visible in the active catalog:
 owner departure may already have closed it. Discover's pending-leave recovery
 retries cleanup and idempotent finalization after response loss or app restart.
 An unrelated active seat/session blocks acknowledgement until the user ends it.
-Self-service acknowledgement/host-close permissions must be deployed in rules
+Self-service acknowledgement/host-handover permissions must be deployed in rules
 before this version is installed; the optional Admin worker remains compatible.
+
+## Room host queue and invitation revocation (Spark)
+
+`subgroups/{sg}/rooms/{room}` adds `hostQueue: List<seatId>` and `hostReleased: bool`.
+Fresh claims atomically remove that desk's former position and append it; renewals
+cannot reorder. Rules couple append to a fresh paired seat claim. Explicit release
+removes the desk and records host departure. Reclaiming a stale desk gets a new
+queue position. A host may yield setup grace only without a live claim in that room.
+
+`RoomHostCoordinator.maintainRoomHost` retries transactions against that queue.
+Only the confirmed oldest unexpired seat with a matching room/claim and active
+SIG/subgroup membership can succeed an unavailable host. Invalid queue heads are
+pruned individually under rules. Concurrent checks reread the room; no client can
+nominate a newer occupant or reset the running session. Foreground seated clients
+check immediately and after the existing 30-second renewal tick. Host absence uses
+the claim lease, with 125 seconds of setup grace for a newly created unseated host.
+Legacy rooms are initialized once by their existing host from server claim times;
+new clients must upgrade old rooms before expecting absent-host recovery.
+
+`FirestoreInvitationService` adds bounded room invitation observation, single-code
+observation and idempotent revocation. List access is restricted to the issuer or
+eligible room host/creator. Only issuer or eligible current host/creator may set
+`revoked: true`; token metadata/expiry cannot be changed and unrevocation is denied.
+Revocation invalidates future uses of the token, including a preview opened before
+revocation. Existing `roomAccess` grants/seat holders are intentionally retained.

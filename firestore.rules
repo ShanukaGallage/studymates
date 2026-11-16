@@ -401,6 +401,71 @@ service cloud.firestore {
         && activeSigMemberOrOwner(group.sigId, request.auth.uid)
         && get(subgroupMember(sg, request.auth.uid)).data.status == 'active';
     }
+    function eligibleUser(sg, uid) {
+      let group = get(subgroupDoc(sg)).data;
+      let sig = getAfter(sigDoc(group.sigId)).data;
+      let member = sigMember(group.sigId, uid);
+      return group.get('status', 'active') == 'active' && sig.status == 'active'
+        && getAfter(subgroupMember(sg, uid)).data.status == 'active'
+        && (sig.ownerId == uid
+          ? (!existsAfter(member) || getAfter(member).data.status == 'active')
+          : getAfter(member).data.status == 'active');
+    }
+    function liveRoomClaim(uid, sg, room) {
+      let path = claimPath(uid);
+      let claim = exists(path) ? get(path).data : {};
+      return claim.get('subgroupId', '') == sg && claim.get('roomId', '') == room
+        && claim.get('leaseExpiresAt', request.time) > request.time;
+    }
+    function hostAvailable(data, sg, room) {
+      return liveRoomClaim(data.hostUid, sg, room)
+        || (!data.get('hostReleased', false)
+          && data.createdAt + duration.value(125, 's') > request.time);
+    }
+    function canMaintainHost(data, sg, room) {
+      return signedIn() && (data.hostUid == request.auth.uid
+        || liveRoomClaim(request.auth.uid, sg, room));
+    }
+    function queueHeadInvalid(data, sg, room) {
+      let head = get(seatPath(sg, room, data.hostQueue[0])).data;
+      return head.status == 'available' || head.leaseExpiresAt <= request.time
+        || !liveRoomClaim(head.userId, sg, room)
+        || get(claimPath(head.userId)).data.seatId != data.hostQueue[0]
+        || get(claimPath(head.userId)).data.claimId != head.claimId
+        || !eligibleUser(sg, head.userId);
+    }
+    function freshQueueClaim(sg, room, tail) {
+      let before = get(seatPath(sg, room, tail)).data;
+      let after = getAfter(seatPath(sg, room, tail)).data;
+      return (before.status == 'available' || before.leaseExpiresAt <= request.time)
+        && after.status == 'occupied' && after.userId == request.auth.uid
+        && after.claimedAt == request.time
+        && request.resource.data.get('hostReleased', false) == resource.data.get('hostReleased', false);
+    }
+    function appendedClaim(sg, room) {
+      let next = request.resource.data.hostQueue;
+      let tail = next[next.size() - 1];
+      return validSeatId(tail, resource.data.get('capacity', 6))
+        && next == resource.data.hostQueue.removeAll([tail]).concat([tail])
+        && freshQueueClaim(sg, room, tail);
+    }
+    function removedOwnClaim(sg, room) {
+      let claim = get(claimPath(request.auth.uid)).data;
+      return claim.subgroupId == sg && claim.roomId == room
+        && request.resource.data.hostQueue == resource.data.hostQueue.removeAll([claim.seatId])
+        && getAfter(seatPath(sg, room, claim.seatId)).data.status == 'available'
+        && request.resource.data.get('hostReleased', false)
+          == (resource.data.hostUid == request.auth.uid || resource.data.get('hostReleased', false));
+    }
+    function validHostSuccessor(sg, room) {
+      let head = get(seatPath(sg, room, resource.data.hostQueue[0])).data;
+      let claim = get(claimPath(head.userId)).data;
+      return request.resource.data.hostUid == head.userId
+        && head.status == 'occupied' && head.leaseExpiresAt > request.time
+        && claim.subgroupId == sg && claim.roomId == room
+        && claim.seatId == resource.data.hostQueue[0] && claim.claimId == head.claimId
+        && claim.leaseExpiresAt == head.leaseExpiresAt && eligibleUser(sg, head.userId);
+    }
     function validSeatId(id, capacity) {
       return id.matches('seat-([1-9]|[1-3][0-9]|40)')
         && int(id.split('-')[1]) <= capacity;
@@ -476,10 +541,12 @@ service cloud.firestore {
     match /subgroups/{sg}/rooms/{room} {
       allow read: if signedIn();
       allow create: if eligible(sg)
-        && request.resource.data.keys().hasOnly(['roomId', 'subgroupId', 'sigId', 'title', 'createdBy', 'hostUid', 'status', 'createdAt', 'updatedAt', 'capacity', 'isPrivate'])
+        && request.resource.data.keys().hasOnly(['roomId', 'subgroupId', 'sigId', 'title', 'createdBy', 'hostUid', 'status', 'createdAt', 'updatedAt', 'capacity', 'isPrivate', 'hostQueue', 'hostReleased'])
         && request.resource.data.roomId == room && request.resource.data.subgroupId == sg
         && request.resource.data.sigId == get(subgroupDoc(sg)).data.sigId
         && request.resource.data.createdBy == request.auth.uid && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.get('hostQueue', []) == []
+        && request.resource.data.get('hostReleased', false) == false
         && request.resource.data.status == 'waiting'
         && request.resource.data.get('capacity', 6) is int
         && request.resource.data.get('capacity', 6) >= 2 && request.resource.data.get('capacity', 6) <= 40
@@ -487,15 +554,48 @@ service cloud.firestore {
         && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 80
         && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time
         && getAfter(/databases/$(database)/documents/roomDirectory/$(room)).data.subgroupId == sg;
-      allow update: if signedIn() && resource.data.hostUid == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && signedIn() && resource.data.hostUid == request.auth.uid
         && request.resource.data.status == 'closed' && request.resource.data.updatedAt == request.time;
-      allow update: if eligible(sg) && resource.data.hostUid == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sessionId', 'status', 'updatedAt'])
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sessionId', 'status', 'updatedAt'])
+        && eligible(sg) && resource.data.hostUid == request.auth.uid
         && request.resource.data.status == 'active' && request.resource.data.updatedAt == request.time
         && getAfter(sessionPath(request.resource.data.sessionId)).data.roomId == room
         && getAfter(sessionPath(request.resource.data.sessionId)).data.startsAt == request.time
         && (!('sessionId' in resource.data) || sessionBreakEnd(get(sessionPath(resource.data.sessionId)).data) <= request.time);
+      // Ordered queue changes are coupled to actual atomic seat transitions.
+      // A departing host with no live seat can explicitly yield its setup grace.
+      allow update: if signedIn() && resource.data.hostUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hostReleased', 'updatedAt'])
+        && request.resource.data.hostReleased == true
+        && request.resource.data.updatedAt == request.time
+        && !liveRoomClaim(request.auth.uid, sg, room);
+      allow update: if signedIn() && resource.data.status in ['waiting', 'active']
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hostQueue', 'hostReleased', 'updatedAt'])
+        && request.resource.data.hostQueue is list
+        && request.resource.data.hostQueue.size() <= resource.data.get('capacity', 6)
+        && request.resource.data.hostQueue.toSet().size() == request.resource.data.hostQueue.size()
+        && (
+          (!('hostQueue' in resource.data) && resource.data.hostUid == request.auth.uid
+            && request.resource.data.get('hostReleased', false) == resource.data.get('hostReleased', false))
+          || (('hostQueue' in resource.data) && (
+            (request.resource.data.hostQueue.size() > 0 && appendedClaim(sg, room) && eligible(sg))
+            || removedOwnClaim(sg, room)
+            || (resource.data.hostQueue.size() > 0
+              && request.resource.data.hostQueue == resource.data.hostQueue.removeAll([resource.data.hostQueue[0]])
+              && canMaintainHost(resource.data, sg, room) && !hostAvailable(resource.data, sg, room)
+              && queueHeadInvalid(resource.data, sg, room)
+              && request.resource.data.get('hostReleased', false) == resource.data.get('hostReleased', false))
+          ))
+        );
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hostUid', 'updatedAt'])
+        && canMaintainHost(resource.data, sg, room)
+        && resource.data.status in ['waiting', 'active']
+        && !hostAvailable(resource.data, sg, room)
+        && resource.data.get('hostQueue', []).size() > 0
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hostUid', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time && validHostSuccessor(sg, room);
       allow delete: if false;
 
       match /seats/{seat} {
@@ -517,6 +617,9 @@ service cloud.firestore {
             && (
               ((resource.data.status == 'available' || resource.data.leaseExpiresAt <= request.time)
                 && request.resource.data.claimedAt == request.time
+                && (!('hostQueue' in get(roomPath(sg, room)).data)
+                  || getAfter(roomPath(sg, room)).data.hostQueue
+                    == get(roomPath(sg, room)).data.hostQueue.removeAll([seat]).concat([seat]))
                 && !exists(activePath(request.auth.uid))
                 && (resource.data.status == 'available' || resource.data.userId == request.auth.uid
                   || !existsAfter(claimPath(resource.data.userId))))
@@ -593,7 +696,10 @@ service cloud.firestore {
     }
     match /roomInvites/{token} {
       allow get: if signedIn();
-      allow list: if false;
+      allow list: if signedIn() && (resource.data.issuedBy == request.auth.uid
+        || (eligible(resource.data.subgroupId)
+          && (get(roomPath(resource.data.subgroupId, resource.data.roomId)).data.hostUid == request.auth.uid
+            || get(roomPath(resource.data.subgroupId, resource.data.roomId)).data.createdBy == request.auth.uid)));
       allow create: if signedIn() && eligible(request.resource.data.subgroupId)
         && (!get(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.get('isPrivate', false)
           || get(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.hostUid == request.auth.uid
@@ -603,7 +709,10 @@ service cloud.firestore {
         && request.resource.data.issuedBy == request.auth.uid && request.resource.data.revoked == false
         && request.resource.data.expiresAt > request.time && request.resource.data.expiresAt <= request.time + duration.value(1, 'd')
         && get(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.status in ['waiting', 'active'];
-      allow update: if signedIn() && resource.data.issuedBy == request.auth.uid
+      allow update: if signedIn() && (resource.data.issuedBy == request.auth.uid
+        || (eligible(resource.data.subgroupId)
+          && (get(roomPath(resource.data.subgroupId, resource.data.roomId)).data.hostUid == request.auth.uid
+            || get(roomPath(resource.data.subgroupId, resource.data.roomId)).data.createdBy == request.auth.uid)))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['revoked'])
         && request.resource.data.revoked == true;
       allow delete: if false;

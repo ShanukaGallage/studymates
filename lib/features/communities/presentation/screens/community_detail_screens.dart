@@ -57,7 +57,7 @@ class SigDetailScreen extends ConsumerWidget {
                 joined: sig.membership == MembershipState.joined,
                 leaveMessage: ref.watch(appModeProvider) == AppMode.preview
                     ? 'Leaving this SIG also clears its subgroup memberships in this preview.'
-                    : 'Leaving ends your related participation and releases your seat. Rooms you host in this community will close. Other learners can save their own participation.',
+                    : 'Leaving ends your related participation and releases your seat. Hosting passes to the longest-seated eligible learner; an empty hosted room closes. Other learners can save their own participation.',
                 onChange: (value) => ref
                     .read(communityCatalogProvider.notifier)
                     .setSigMembership(id, value),
@@ -242,7 +242,7 @@ class SubgroupDetailScreen extends ConsumerWidget {
                 subject: 'subgroup',
                 leaveMessage: ref.watch(appModeProvider) == AppMode.preview
                     ? null
-                    : 'Leaving ends your participation and releases your seat. Rooms you host in this subgroup will close.',
+                    : 'Leaving ends your participation and releases your seat. Hosting passes to the longest-seated eligible learner; an empty hosted room closes.',
                 enabled: parentJoined,
                 joined: group.membership == MembershipState.joined,
                 onChange: (value) => ref

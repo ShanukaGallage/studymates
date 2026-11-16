@@ -2,9 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/models/completion_record.dart';
 import '../../study/data/firestore_study_repository.dart';
+import '../../study/data/room_host_coordinator.dart';
 
 /// Spark-compatible self-service cleanup. Never writes another user's seats,
-/// goals or memberships. Hosted rooms close rather than transferring ownership.
+/// goals or memberships. Hosting passes to the oldest eligible occupied desk.
 class SparkMembershipCleanup {
   SparkMembershipCleanup(this.study);
   final FirestoreStudyRepository study;
@@ -67,19 +68,7 @@ class SparkMembershipCleanup {
           .where('hostUid', isEqualTo: user)
           .get(const GetOptions(source: Source.server));
       for (final room in rooms.docs) {
-        await db.runTransaction((tx) async {
-          final current = (await tx.get(room.reference)).data();
-          if (current?['hostUid'] != user || current?['status'] == 'closed') {
-            return;
-          }
-          if (study.uid != user) {
-            throw const StudyFailure('Account changed. Reopen the app.');
-          }
-          tx.update(room.reference, {
-            'status': 'closed',
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-        });
+        await study.maintainRoomHost(group, room.id, closeIfEmpty: true);
       }
     }
     await db.runTransaction((tx) async {
