@@ -82,7 +82,8 @@ Firebase or live users yet.
 | Membership | SIG membership is keyed by `(userId, sigId)`; the SIG owner automatically counts as a SIG member. Subgroup membership is keyed by `(userId, sigId, subgroupId)` and must reference a subgroup under that SIG. SIG membership does not by itself imply subgroup membership. Existing summaries expose `membership` as `MembershipState.joined` or `notJoined`. The proposed backend concepts `member` / `nonMember` should map to these values; agree any API rename before changing consumers. Missing, denied, and unavailable data must remain distinguishable from non-membership. |
 | Membership verification | M2 provides authoritative SIG and subgroup membership information for the authenticated user. M3 requires active membership in both the room's parent SIG and subgroup for room creation and seat claims. Do not trust preview state or a user ID supplied by the UI. M2 and M3 must agree on the service interface; its names and signatures are not finalized. Membership absence and inability to verify must remain distinguishable. |
 | Subgroup owner permission | Only the owner of the parent SIG may create, edit or delete its subgroups in the first version. Membership alone grants no subgroup administration permission. Enforce this in repository/backend access rules, not just by hiding UI controls. |
-| Leaving a parent SIG | Proposed cascade: leaving a SIG also removes that user's memberships in its subgroups, so subgroup membership cannot outlive parent membership. This denies future room admission through either membership. The room/seat agreement below requires seat release when subgroup membership ends; cleanup authorization and transaction coordination remain open. Whether a current SIG owner may leave before transferring ownership or deleting the SIG still needs M2/M3 agreement. |
+| Leaving a parent SIG (agreed M2/M3 behavior; implementation pending) | Leaving a SIG also removes the user's subgroup memberships and denies future room admission through them. If the user occupies a room seat or participates in a session, M2's SIG-leave operation coordinates with M3, who removes the user from the room, releases the seat, and ends their participation at the leave time. If the user is host, M3 transfers hosting to another eligible participant; if none is available, M3 closes the room. |
+| SIG owner leaving (agreed behavior; implementation pending) | Ownership transfers to another eligible SIG member. If no eligible member exists, M2 marks the SIG `Closed` and notifies its remaining members. Existing membership records, subgroup information, and historical activity are retained. A closed SIG accepts no new memberships and allows no subgroup or room creation. |
 
 ## Proposed cross-feature operations
 
@@ -93,8 +94,9 @@ consume those boundaries rather than Firebase directly.
 | Proposed operation | Responsibility / consumer |
 | --- | --- |
 | Observe identity/profile state | M2 exposes the four states above and the current `userId`/profile when available. Shanuka can use this state for the startup gate: show loading while resolving, route signed-out users to welcome/sign-in, route incomplete profiles to setup, and allow ready users into the authenticated app. M2/M1 agree on route names and pending-link behavior before any global routing changes. |
-| Membership-backed room creation and seat claims | M2 owns authoritative SIG/subgroup membership data and the production authentication/current-user and membership services; these interfaces are not yet implemented or finalized for M3 integration. M3 requires an authenticated user and active membership in both the parent SIG and relevant subgroup for room creation and seat claims. M2 and M3 must agree on the actual service interface before integration. Backend authorization must recheck membership at the point of each operation. Preview/cached membership and user IDs supplied by the UI are not authoritative. |
-| Leave SIG or subgroup | M2 owns membership changes, subgroup membership cleanup, SIG ownership transfer or closure, and member notifications. M3 coordinates room eligibility and removes associated participants from active rooms, releases seats, ends participation, and performs applicable room host transfer or room closure. Membership changes must not leave active room/session state orphaned. Exact sequencing and transaction coordination remain pending. |
+| `isMember(userId, sigId, subgroupId?)` or equivalent | M2 provides authoritative membership lookup for UI and other feature repositories. It is not itself sufficient authorization if data can change between check and action. |
+| `checkRoomAdmission(sigId, subgroupId)` or equivalent | M2/M3 agree a single membership-aware boundary for Aradhana (M3) to use during room admission. It derives the caller from authenticated state, checks both parent SIG and subgroup membership, and the backend rechecks membership at the point of seating to avoid stale-check races. Return `membershipRequired` when either membership is absent and `unavailable` when membership cannot be verified. A UI membership lookup alone is not authorization. |
+| Leave SIG | M2 owns the SIG membership change and subgroup cascade, including ownership transfer or closure status and member notifications, and coordinates with M3. M3 owns room removal, seat release, ending session participation at the leave time, and host transfer or room closure as described above. Do not treat a client-side membership cache as authoritative. |
 
 ## Implemented repository boundaries
 
@@ -113,7 +115,9 @@ consume those boundaries rather than Firebase directly.
 Preview membership rules: joining a subgroup requires its parent SIG membership;
 leaving a SIG clears all its subgroup memberships; rejoining does not restore
 those memberships. Explicit set operations are idempotent. Leave actions ask for
-confirmation. These local rules are preview behavior, not server-side enforcement.
+confirmation. These local rules are preview behavior, not server-side enforcement;
+M2/M3 must agree on their live backend enforcement before production membership
+is enabled.
 
 ## Fixtures and routes
 
