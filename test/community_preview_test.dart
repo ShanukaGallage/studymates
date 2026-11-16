@@ -212,7 +212,10 @@ void main() {
     container.read(appRouterProvider).go('/discover');
     await tester.pumpAndSettle();
     await tap(tester, 'Create a SIG');
-    final sigFields = find.byType(TextFormField);
+    final sigFields = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byType(TextFormField),
+    );
     await tester.enterText(sigFields.at(0), 'Study Systems');
     await tester.enterText(sigFields.at(1), 'Technology');
     await tester.enterText(sigFields.at(2), 'Study and build together.');
@@ -222,7 +225,10 @@ void main() {
     container.read(appRouterProvider).go('/sigs/preview-sig-1');
     await tester.pumpAndSettle();
     await tap(tester, 'Create subgroup');
-    final subgroupFields = find.byType(TextFormField);
+    final subgroupFields = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byType(TextFormField),
+    );
     await tester.enterText(subgroupFields.at(0), 'Methods');
     await tester.enterText(subgroupFields.at(1), 'Compare study methods.');
     await tester.tap(find.text('Create subgroup').last);

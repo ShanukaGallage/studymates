@@ -8,8 +8,12 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/state_views.dart';
+import '../../../../app/app_mode.dart';
 import '../widgets/community_management_dialogs.dart';
 import '../widgets/catalog_view.dart';
+import '../../../study/data/firestore_study_repository.dart';
+import '../../../study/presentation/study_dialogs.dart';
+import '../controllers/community_providers.dart';
 
 class DiscoverScreen extends ConsumerStatefulWidget {
   const DiscoverScreen({super.key});
@@ -39,24 +43,37 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
           AppColors.background,
         ],
       ),
-      const SizedBox(height: 12),
-      AppButton(
-        label: 'Create a SIG',
-        variant: AppButtonVariant.secondary,
-        onPressed: () => showCreateSigDialog(context),
-      ),
-      if (_query.isNotEmpty)
-        TextButton(
-          onPressed: () {
-            _search.clear();
-            setState(() => _query = '');
-          },
-          child: const Text('Clear search'),
+    ),
+    child: ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Discover', style: Theme.of(context).textTheme.headlineSmall),
+                  const SizedBox(height: 4),
+                  Text('Your next study circle', style: Theme.of(context).textTheme.titleMedium),
+                ],
+              ),
+            ),
+            ExcludeSemantics(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.softAccent,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: const Icon(Icons.groups_outlined, color: AppColors.primary, size: 32),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
-        const Text(
-          'Find a shared interest. Take the next small step together.',
-        ),
+        const Text('Find a shared interest. Take the next small step together.'),
         if (ref.watch(appModeProvider) == AppMode.connected) ...[
           const SizedBox(height: 12),
           AppButton(
@@ -71,23 +88,25 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
               } catch (_) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Community creation failed. Check your connection and retry.',
-                      ),
-                    ),
+                    const SnackBar(content: Text('Community creation failed. Check your connection and retry.')),
                   );
                 }
               }
             },
+          ),
+        ] else if (ref.watch(appModeProvider) == AppMode.preview) ...[
+          const SizedBox(height: 12),
+          AppButton(
+            label: 'Create a SIG',
+            variant: AppButtonVariant.secondary,
+            onPressed: () => showCreateSigDialog(context),
           ),
         ],
         const SizedBox(height: 24),
         AppTextField(
           label: 'Search communities',
           controller: _search,
-          onChanged: (value) =>
-              setState(() => _query = value.trim().toLowerCase()),
+          onChanged: (value) => setState(() => _query = value.trim().toLowerCase()),
         ),
         if (_query.isNotEmpty)
           TextButton(
@@ -126,11 +145,8 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
             final matches = catalog.sigs
                 .where(
                   (sig) =>
-                      (!_joinedOnly ||
-                          sig.membership == MembershipState.joined) &&
-                      '${sig.name} ${sig.category} ${sig.description}'
-                          .toLowerCase()
-                          .contains(_query),
+                      (!_joinedOnly || sig.membership == MembershipState.joined) &&
+                      '${sig.name} ${sig.category} ${sig.description}'.toLowerCase().contains(_query),
                 )
                 .toList();
             if (catalog.sigs.isEmpty) {
@@ -143,9 +159,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
             }
             if (matches.isEmpty) {
               return EmptyView(
-                title: _joinedOnly && _query.isEmpty
-                    ? 'Your study circle starts here'
-                    : 'No matches',
+                title: _joinedOnly && _query.isEmpty ? 'Your study circle starts here' : 'No matches',
                 message: _joinedOnly && _query.isEmpty
                     ? 'Choose All communities to find a group and join from its details.'
                     : 'Try another interest or clear your search.',

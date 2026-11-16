@@ -1,4 +1,4 @@
-enum TimerCompletionStatus { completed, endedEarly, cancelled }
+﻿enum TimerCompletionStatus { completed, endedEarly, cancelled }
 
 enum GoalOutcome { completed, unfinished }
 

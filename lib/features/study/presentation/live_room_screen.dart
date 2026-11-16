@@ -193,7 +193,6 @@ class _LiveRoomScreenState extends ConsumerState<LiveRoomScreen> {
                             final goal = await showPreviewGoalSheet(
                               context,
                               _goal,
-                              preview: false,
                             );
                             if (mounted && goal != null) {
                               setState(() => _goal = goal);
@@ -284,14 +283,12 @@ class _LiveRoomScreenState extends ConsumerState<LiveRoomScreen> {
     if (data == null) {
       return RoomSeat(
         number: number,
-        isPreview: false,
         status: RoomSeatStatus.failed,
       );
     }
     if (number == _pendingSeat) {
       return RoomSeat(
         number: number,
-        isPreview: false,
         status: RoomSeatStatus.pending,
       );
     }
@@ -300,7 +297,6 @@ class _LiveRoomScreenState extends ConsumerState<LiveRoomScreen> {
         time(data['leaseExpiresAt']).isAfter(DateTime.now().toUtc());
     return RoomSeat(
       number: number,
-      isPreview: false,
       status: occupied
           ? (data['userId'] == user
                 ? RoomSeatStatus.yours

@@ -81,11 +81,14 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Welcome back'), findsOneWidget);
+      await tester.ensureVisible(find.text('Create an account'));
       await tester.tap(find.text('Create an account'));
       await tester.pumpAndSettle();
       expect(find.text('Create your account'), findsOneWidget);
+      await tester.ensureVisible(find.text('Sign in'));
       await tester.tap(find.text('Sign in'));
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Forgot password?'));
       await tester.tap(find.text('Forgot password?'));
       await tester.pumpAndSettle();
       expect(

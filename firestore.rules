@@ -411,44 +411,18 @@ service cloud.firestore {
 
     match /roomDirectory/{roomId} {
       allow read: if signedIn();
-      allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['subgroupId', 'sigId'])
-        && getAfter(roomPath(request.resource.data.subgroupId, roomId)).data.createdBy == request.auth.uid
-        && request.resource.data.sigId == get(subgroupDoc(request.resource.data.subgroupId)).data.sigId;
-      allow update, delete: if false;
+      allow create, update, delete: if false;
     }
     match /activeSeatClaims/{uid} {
-      // Minimal seat locator only; no goals or profile data are stored here.
-      allow read: if signedIn();
-      allow create: if self(uid) && request.resource.data.keys().hasOnly([
-          'userId', 'subgroupId', 'roomId', 'seatId', 'claimId', 'leaseExpiresAt'])
-        && request.resource.data.userId == uid && matchingSeat(request.resource.data, uid);
-      allow update: if self(uid) && request.resource.data.keys().hasOnly([
-          'userId', 'subgroupId', 'roomId', 'seatId', 'claimId', 'leaseExpiresAt'])
-        && request.resource.data.userId == uid && matchingSeat(request.resource.data, uid)
-        && (resource.data.leaseExpiresAt <= request.time
-          || (request.resource.data.claimId == resource.data.claimId
-            && request.resource.data.roomId == resource.data.roomId
-            && request.resource.data.subgroupId == resource.data.subgroupId
-            && request.resource.data.seatId == resource.data.seatId));
-      allow delete: if signedIn() && (
-        (self(uid) && getAfter(seatPath(resource.data.subgroupId, resource.data.roomId, resource.data.seatId)).data.status == 'available')
-        || (resource.data.leaseExpiresAt <= request.time
-          && getAfter(seatPath(resource.data.subgroupId, resource.data.roomId, resource.data.seatId)).data.userId == request.auth.uid)
-      );
+      allow read: if self(uid);
+      allow create, update, delete: if false;
     }
     match /subgroups/{sg}/rooms/{room} {
       allow read: if signedIn();
-      allow create: if eligible(sg)
-        && request.resource.data.keys().hasOnly(['roomId', 'subgroupId', 'sigId', 'title', 'createdBy', 'hostUid', 'status', 'createdAt', 'updatedAt'])
-        && request.resource.data.roomId == room && request.resource.data.subgroupId == sg
-        && request.resource.data.sigId == get(subgroupDoc(sg)).data.sigId
-        && request.resource.data.createdBy == request.auth.uid && request.resource.data.hostUid == request.auth.uid
-        && request.resource.data.status == 'waiting'
-        && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 80
-        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time
-        && getAfter(/databases/$(database)/documents/roomDirectory/$(room)).data.subgroupId == sg;
-      allow update: if eligible(sg) && resource.data.hostUid == request.auth.uid
+      allow create: if false;
+      allow update: if eligible(sg)
+        && resource.data.status in ['waiting', 'active']
+        && resource.data.hostUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sessionId', 'status', 'updatedAt'])
         && request.resource.data.status == 'active' && request.resource.data.updatedAt == request.time
         && getAfter(sessionPath(request.resource.data.sessionId)).data.roomId == room
@@ -458,38 +432,7 @@ service cloud.firestore {
 
       match /seats/{seat} {
         allow read: if signedIn();
-        allow create: if signedIn() && validSeatId(seat)
-          && !exists(roomPath(sg, room)) && getAfter(roomPath(sg, room)).data.createdBy == request.auth.uid
-          && request.resource.data.keys().hasOnly(['seatId', 'status'])
-          && request.resource.data.seatId == seat && request.resource.data.status == 'available';
-        allow update: if signedIn() && validSeatId(seat) && request.resource.data.seatId == seat && (
-          // Claiming and renewal both require membership and the paired locator.
-          (eligible(sg) && get(roomPath(sg, room)).data.status in ['waiting', 'active']
-            && request.resource.data.keys().hasOnly(['seatId', 'status', 'userId', 'claimId', 'claimedAt', 'lastRenewedAt', 'leaseExpiresAt', 'displayName', 'avatarId'])
-            && request.resource.data.status == 'occupied' && request.resource.data.userId == request.auth.uid
-            && request.resource.data.claimId is string && request.resource.data.claimId.size() > 0
-            && request.resource.data.displayName == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName
-            && request.resource.data.avatarId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('avatarId', 'default')
-            && request.resource.data.lastRenewedAt == request.time && boundedLease(request.resource.data)
-            && pairedClaim(request.resource.data, sg, room, seat)
-            && (
-              ((resource.data.status == 'available' || resource.data.leaseExpiresAt <= request.time)
-                && request.resource.data.claimedAt == request.time
-                && !exists(activePath(request.auth.uid))
-                && (resource.data.status == 'available' || resource.data.userId == request.auth.uid
-                  || !existsAfter(claimPath(resource.data.userId))))
-              || (resource.data.status == 'occupied' && resource.data.userId == request.auth.uid
-                && resource.data.leaseExpiresAt > request.time
-                && request.resource.data.claimId == resource.data.claimId
-                && request.resource.data.claimedAt == resource.data.claimedAt)
-            ))
-          || (resource.data.status == 'occupied' && resource.data.userId == request.auth.uid
-            && !exists(activePath(request.auth.uid))
-            && request.resource.data.keys().hasOnly(['seatId', 'status']) && request.resource.data.status == 'available'
-            && (!existsAfter(claimPath(request.auth.uid))
-              || getAfter(claimPath(request.auth.uid)).data.claimId != resource.data.claimId))
-        );
-        allow delete: if false;
+        allow create, update, delete: if false;
       }
     }
     function sessionFocusEnd(data) {
@@ -505,6 +448,7 @@ service cloud.firestore {
         && request.resource.data.sessionId == id && request.resource.data.hostUid == request.auth.uid
         && request.resource.data.roomTitle == get(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.title
         && get(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.hostUid == request.auth.uid
+        && get(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.status in ['waiting', 'active']
         && getAfter(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.sessionId == id
         && request.resource.data.startsAt == request.time && request.resource.data.isDemo is bool;
       allow update, delete: if false;

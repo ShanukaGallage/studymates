@@ -13,6 +13,7 @@ import {
 export interface CreatedRoomDocument {
   readonly roomId: string;
   readonly subgroupId: string;
+  readonly sigId: string;
   readonly title: string;
   readonly createdBy: string;
   readonly hostUid: string;
@@ -81,7 +82,7 @@ export async function createRoomDocument(
   const roomId = roomReference.id;
 
   return firestore.runTransaction(async (transaction: Transaction) => {
-    await verifyEligibility({
+    const { sigId } = await verifyEligibility({
       firestore,
       transaction,
       uid: authenticatedUid,
@@ -92,6 +93,7 @@ export async function createRoomDocument(
     const room: CreatedRoomDocument = {
       roomId,
       subgroupId,
+      sigId,
       title,
       createdBy: authenticatedUid,
       hostUid: authenticatedUid,
@@ -101,6 +103,10 @@ export async function createRoomDocument(
     };
 
     transaction.create(roomReference, room);
+    transaction.create(firestore.doc(`roomDirectory/${roomId}`), {
+      subgroupId,
+      sigId,
+    });
     for (const seatId of INITIAL_ROOM_SEAT_IDS) {
       const seat: InitialSeatDocument = {
         seatId,

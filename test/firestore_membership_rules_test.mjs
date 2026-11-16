@@ -370,6 +370,12 @@ await mustAllow('SIG owner can close a subgroup', owner.token, [
     updatedAt: new Date(),
   }),
 ]);
+await mustDeny('closed subgroup cannot be reopened by its SIG owner', owner.token, [
+  update(`subgroups/${deleteProbeId}`, {
+    status: 'active',
+    updatedAt: new Date(),
+  }),
+]);
 await mustAllow('active SIG member joins the subgroup', successor.token, [
   {
     update: {

@@ -1,4 +1,4 @@
-import '../../../core/models/completion_record.dart';
+﻿import '../../../core/models/completion_record.dart';
 
 final class CompletionHistoryPage {
   CompletionHistoryPage({

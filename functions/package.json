@@ -9,6 +9,7 @@
     "build": "tsc --project tsconfig.json",
     "build:watch": "tsc --project tsconfig.json --watch",
     "test": "npm run build && node --test",
+    "test:emulator": "node --test emulator-tests/seat-operations.cjs",
     "check": "npm run build && node --check membership_cleanup.js && node --check run-local-cleanup.js"
   },
   "dependencies": {

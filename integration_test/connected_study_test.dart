@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -59,6 +60,10 @@ void main() {
         repos.add(
           FirestoreStudyRepository(
             db: db,
+            functions: FirebaseFunctions.instanceFor(
+              app: app,
+              region: 'us-central1',
+            ),
             membership: membership,
             currentUid: () => auth.currentUser?.uid,
           ),

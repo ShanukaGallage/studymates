@@ -189,25 +189,38 @@ These describe live data; `RoomSummary` remains the discovery model and
 
 - An authenticated member of a subgroup may create a room in that subgroup.
   The creator is the initial host.
-- Every room has exactly six seats. A user must be authenticated and an active
-  subgroup member to claim a seat.
+- Every room has exactly six seats. Room creation and seat operations require an
+  authenticated caller with active membership in both the parent SIG and
+  subgroup. SIG owners count as SIG members only while the SIG is active; an
+  active subgroup membership is still required.
 - The Firebase Authentication UID is the common user ID. A user may occupy only
-  one active seat across all rooms. The Team Playbook calls for a coordinated
-  active-room record; its storage and transaction implementation are not
-  specified here.
-- Seat claims, releases and renewals are protected by Firestore transactions.
-  Claims check expired leases before deciding whether a seat is available.
+  one active seat across all rooms. `activeSeatClaims/{uid}` is the private
+  locator used to enforce this invariant.
+- Clients read room and seat documents but cannot create, update or delete seat
+  documents or active seat claim markers. Trusted callable Functions
+  `createRoom`, `claimSeat`, `releaseSeat` and `renewSeat` derive the UID from
+  verified Firebase Authentication context and use Admin SDK transactions for
+  writes. Room creation atomically creates its room, directory entry and six
+  available seats. Each callable rechecks current membership and applicable
+  room/subgroup state.
+- Seat claims, releases and renewals are atomic across the seat and its claim
+  marker. Claims check expired leases before deciding whether a seat is
+  available and keep a lease for two minutes. A user cannot take another
+  participant's live seat or hold a second live seat.
 - Claiming the same seat as its current occupant is an idempotent success.
   Claiming another user's occupied seat returns `seatTaken`; claiming when the
   user already occupies a different seat in this or another room returns
   `alreadySeated`. A room with no claimable seat returns `fullRoom`.
-- A user may release only their own seat, subject to the host permissions still
-  to be confirmed below.
+- A user may release only their own seat. A participant with a saved active
+  session must end it before releasing; trusted membership cleanup may release
+  the seat after membership becomes `removalPending`.
 - When a user leaves a subgroup, any seat they occupy in that subgroup's rooms
-  must be released under the membership-leaving policy. Cleanup must remain
-  possible after their membership becomes inactive. The authorizing actor and
-  transaction coordination between membership removal and seat release are
-  pending confirmation.
+  must be released by trusted cleanup after membership becomes
+  `removalPending`. M2 creates a durable cleanup request, M3 completes the
+  cleanup and acknowledges it only after the seat, claim marker and applicable
+  participation state are consistent, then M2 finalizes membership. Any
+  inconsistent occupied seat/claim pair leaves the request pending for retry or
+  repair; cleanup must not discard evidence or acknowledge completion.
 - A seat lease lasts two minutes from claim. Active users periodically renew
   their lease. A disconnected user's seat remains reserved until lease expiry.
 - If the host leaves the subgroup, hosting transfers to another eligible member
@@ -224,17 +237,19 @@ subgroups/{subgroupId}/rooms/{roomId}
 subgroups/{subgroupId}/rooms/{roomId}/seats/{seatId}
 ```
 
-This is the agreed proposed structure for coordination with M2; it does not mean
-that Firebase, the collections, transactions or security rules are configured.
+These are the live Firestore paths. Firestore rules deny all client writes to
+seat documents and active seat claim markers; Admin SDK callables and cleanup
+are the trusted write paths.
 
 ### Repository responsibilities and operations
 
-The M3 room repository uses M2's current-UID and membership services. It owns
-room creation and observation, and transactional seat claim, release and renewal
-operations. It reports agreed domain errors rather than exposing raw database
-errors. Presentation-facing providers/controllers connect the repository to M1's
-room UI; widgets do not access Firestore. M4's QR flow must enter through the
-same membership-checked admission operation.
+The M3 room repository observes room/seat data from Firestore and calls the
+trusted room Functions for creation and seat claim, release and renewal. It
+reports domain errors rather than exposing raw database errors.
+Presentation-facing providers/controllers connect the repository to M1's room
+UI; widgets do not access Firestore. M4's QR flow passes its invitation token to
+the same membership-checked claim operation, where invitation validity and seat
+claim are checked in one server transaction.
 
 Expected operations are: create a titled room for a subgroup; observe rooms in a
 subgroup; observe a room and its seat changes; claim a seat; release the current
@@ -264,20 +279,19 @@ membership, `seatTaken` when another user occupies the requested seat,
 `fullRoom` when no seat is available, and `unavailable` when an operation cannot
 be completed.
 
-These errors and policies are not yet implemented.
+The callable boundary maps these errors to the repository's domain results.
 
 Still requiring team confirmation:
 
-- The exact host permissions for releasing another user's seat.
-- How to choose among multiple eligible participants when transferring host,
-  and how the room-close notification is delivered.
-- Whether membership must still be active to renew an existing seat. Membership
-  removal must not prevent release of that user's seat; the authorization and
-  transaction coordination for this cleanup remain pending confirmation.
-- The renewal cadence within the two-minute lease, and whether any grace period
-  applies after expiry.
-- The behavior of repeated release/renew requests and a repeated claim after
-  that seat's previous lease has expired.
+- Host transfer selects an eligible participant with a matching live seat claim;
+  if none exists, cleanup closes the room. Push notifications are not part of
+  this implementation.
+- Renewal requires active SIG and subgroup membership and an unexpired lease.
+  Membership cleanup uses the trusted Admin SDK path after membership becomes
+  `removalPending`.
+- Release is idempotent when the target seat is already available. Renewal uses
+  the expected claim ID to reject delayed requests; expired leases must be
+  claimed again.
 - Whether and how to schedule backend cleanup of expired seats. Cleanup is only
   a consideration; no scheduled process is agreed or implemented.
 - The exact nullability and update semantics of seat timestamps when a seat is

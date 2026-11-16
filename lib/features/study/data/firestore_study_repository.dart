@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/active_room_session.dart';
@@ -20,6 +21,7 @@ import '../../sessions/data/completion_history_repository.dart';
 final studyRepositoryProvider = Provider<FirestoreStudyRepository>(
   (ref) => FirestoreStudyRepository(
     db: FirebaseFirestore.instance,
+    functions: FirebaseFunctions.instanceFor(region: 'us-central1'),
     membership: ref.watch(membershipRepositoryProvider),
     currentUid: () => ref.read(authStateProvider).userId,
   ),
@@ -40,10 +42,12 @@ class FirestoreStudyRepository
         CompletionHistoryRepository {
   FirestoreStudyRepository({
     required this.db,
+    required this.functions,
     required this.membership,
     required this.currentUid,
   });
   final FirebaseFirestore db;
+  final FirebaseFunctions functions;
   final MembershipRepository membership;
   final String? Function() currentUid;
   String get uid =>
@@ -154,37 +158,13 @@ class FirestoreStudyRepository
     if (name.isEmpty || name.length > 80) {
       throw const StudyFailure('Enter a room title of 1–80 characters.');
     }
-    final reference = roomRef(
-      subgroupId,
-      db.collection('roomDirectory').doc().id,
-    );
-    await db.runTransaction((tx) async {
-      final sig = await _eligible(tx, subgroupId);
-      _sameUser(user);
-      final data = {
-        'roomId': reference.id,
-        'subgroupId': subgroupId,
-        'sigId': sig,
-        'title': name,
-        'createdBy': user,
-        'hostUid': user,
-        'status': 'waiting',
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      };
-      tx.set(reference, data);
-      tx.set(db.doc('roomDirectory/${reference.id}'), {
-        'subgroupId': subgroupId,
-        'sigId': sig,
-      });
-      for (final seat in fixedRoomSeatIds) {
-        tx.set(reference.collection('seats').doc(seat), {
-          'seatId': seat,
-          'status': 'available',
-        });
-      }
+    final response = await functions.httpsCallable('createRoom').call({
+      'subgroupId': subgroupId,
+      'title': name,
     });
-    return (await getRoomSnapshot(reference.id))!;
+    final roomId = (response.data as Map)['roomId'] as String;
+    _sameUser(user);
+    return (await getRoomSnapshot(roomId))!;
   }
 
   @override
@@ -290,121 +270,46 @@ class FirestoreStudyRepository
       return const SeatClaimFailed(SeatClaimFailure.seatNotFound);
     }
     try {
-      return await db.runTransaction((tx) async {
-        if (token != null) {
-          final invite = (await tx.get(db.doc('roomInvites/$token'))).data();
-          if (invite == null ||
-              invite['revoked'] == true ||
-              invite['roomId'] != roomId ||
-              invite['subgroupId'] != subgroupId ||
-              !time(invite['expiresAt']).isAfter(DateTime.now().toUtc())) {
-            throw const StudyFailure('Invitation expired or revoked.');
-          }
-        }
-        await _eligible(tx, subgroupId);
-        final room = (await tx.get(roomRef(subgroupId, roomId))).data();
-        if (room == null) {
-          return const SeatClaimFailed(SeatClaimFailure.roomUnavailable);
-        }
-        final seats = <SeatState>[];
-        for (final id in fixedRoomSeatIds) {
-          final data = (await tx.get(seatRef(subgroupId, roomId, id))).data();
-          if (data == null) {
-            return const SeatClaimFailed(SeatClaimFailure.unavailable);
-          }
-          seats.add(decodeSeat(data));
-        }
-        final target = seats.firstWhere((s) => s.seatId == seatId);
-        final claims = <String, ActiveSeatClaimSnapshot>{};
-        for (final owner in {user, ?target.userId}) {
-          final data = (await tx.get(claimRef(owner))).data();
-          if (data == null) {
-            claims[owner] = const ActiveSeatClaimSnapshot.missing();
-            continue;
-          }
-          final reference = ActiveSeatClaimReference(
-            subgroupId: data['subgroupId'],
-            roomId: data['roomId'],
-            seatId: data['seatId'],
-          );
-          final prior = (await tx.get(
-            seatRef(reference.subgroupId, reference.roomId, reference.seatId),
-          )).data();
-          claims[owner] = ActiveSeatClaimSnapshot.valid(
-            reference: reference,
-            referencedSeat: prior == null ? null : decodeSeat(prior),
-          );
-        }
-        final profile = (await tx.get(db.doc('users/$user'))).data();
-        final activeParticipation = (await tx.get(activeRef(user))).data();
-        _sameUser(user);
-        final decision = SeatClaimPolicy.evaluate(
-          roomStatus: decodeRoom(room).status,
-          subgroupId: subgroupId,
-          roomId: roomId,
-          seats: seats,
-          requestedSeatId: seatId,
-          userId: user,
-          nowUtc: DateTime.now().toUtc(),
-          activeClaimsByUser: claims,
-        );
-        final result = decision.result;
-        if (result is SeatClaimSucceeded &&
-            !result.wasAlreadyClaimed &&
-            activeParticipation != null) {
-          throw const StudyFailure(
-            'End your saved participation before claiming another seat.',
-          );
-        }
-        if (result is! SeatClaimSucceeded || result.wasAlreadyClaimed) {
-          return result;
-        }
-        for (final cleanup in decision.staleClaimsToClean) {
-          tx.delete(claimRef(cleanup.userId));
-          final old = cleanup.reference;
-          if (cleanup.userId == user &&
-              !old.identifies(
-                subgroupId: subgroupId,
-                roomId: roomId,
-                seatId: seatId,
-              )) {
-            tx.set(seatRef(old.subgroupId, old.roomId, old.seatId), {
-              'seatId': old.seatId,
-              'status': 'available',
-            });
-          }
-        }
-        final claimId = db.collection('roomDirectory').doc().id;
-        final expiry = Timestamp.fromDate(result.seat.leaseExpiresAt!);
-        tx.set(seatRef(subgroupId, roomId, seatId), {
-          'seatId': seatId,
-          'status': 'occupied',
-          'userId': user,
-          'claimedAt': FieldValue.serverTimestamp(),
-          'lastRenewedAt': FieldValue.serverTimestamp(),
-          'leaseExpiresAt': expiry,
-          'claimId': claimId,
-          'displayName': profile?['displayName'] ?? 'Study mate',
-          'avatarId': profile?['avatarId'] ?? 'default',
-        });
-        tx.set(claimRef(user), {
-          'userId': user,
-          'subgroupId': subgroupId,
-          'roomId': roomId,
-          'seatId': seatId,
-          'claimId': claimId,
-          'leaseExpiresAt': expiry,
-        });
-        return result;
-      });
-    } on StudyFailure catch (error) {
-      return SeatClaimFailed(
-        error.message.startsWith('Active community')
-            ? SeatClaimFailure.membershipRequired
-            : error.message.startsWith('End your saved')
-            ? SeatClaimFailure.alreadySeated
-            : SeatClaimFailure.unavailable,
+      final request = <String, Object?>{
+        'subgroupId': subgroupId,
+        'roomId': roomId,
+        'seatId': seatId,
+        'invitationToken': ?token,
+      };
+      final response = await functions.httpsCallable('claimSeat').call(request);
+      final data = Map<String, dynamic>.from(response.data as Map);
+      final leaseEnd = DateTime.fromMillisecondsSinceEpoch(
+        (data['leaseExpiresAt'] as num).toInt(),
+        isUtc: true,
       );
+      final claimedAt = DateTime.fromMillisecondsSinceEpoch(
+        (data['claimedAt'] as num).toInt(),
+        isUtc: true,
+      );
+      return SeatClaimSucceeded(
+        seat: SeatState(
+          seatId: seatId,
+          status: SeatStatus.occupied,
+          userId: user,
+          claimedAt: claimedAt,
+          lastRenewedAt: claimedAt,
+          leaseExpiresAt: leaseEnd,
+        ),
+        wasAlreadyClaimed: data['alreadyClaimed'] == true,
+      );
+    } on FirebaseFunctionsException catch (error) {
+      final failure = switch (error.code) {
+        'permission-denied' =>
+          error.message?.startsWith('Active SIG') == true
+              ? SeatClaimFailure.membershipRequired
+              : SeatClaimFailure.permissionDenied,
+        'already-exists' => SeatClaimFailure.alreadySeated,
+        'resource-exhausted' => SeatClaimFailure.seatTaken,
+        'not-found' => SeatClaimFailure.roomUnavailable,
+        'invalid-argument' => SeatClaimFailure.seatNotFound,
+        _ => SeatClaimFailure.unavailable,
+      };
+      return SeatClaimFailed(failure);
     } on FirebaseException catch (error) {
       return SeatClaimFailed(
         error.code == 'permission-denied'
@@ -460,6 +365,21 @@ class FirestoreStudyRepository
           ? SeatLeaseFailure.membershipRequired
           : SeatLeaseFailure.unavailable;
       return SeatLeaseFailed(reason, error.message);
+    } on FirebaseFunctionsException catch (error) {
+      final reason = switch (error.code) {
+        'unauthenticated' => SeatLeaseFailure.notAuthenticated,
+        'permission-denied'
+            when error.message?.startsWith('Active SIG') == true =>
+          SeatLeaseFailure.membershipRequired,
+        'permission-denied' => SeatLeaseFailure.permissionDenied,
+        'failed-precondition'
+            when error.message?.toLowerCase().contains('lease expired') ==
+                true =>
+          SeatLeaseFailure.leaseExpired,
+        'failed-precondition' => SeatLeaseFailure.seatChanged,
+        _ => SeatLeaseFailure.unavailable,
+      };
+      return SeatLeaseFailed(reason, error.message ?? 'Seat operation failed.');
     } on FirebaseException catch (error) {
       return SeatLeaseFailed(
         error.code == 'permission-denied'
@@ -478,37 +398,11 @@ class FirestoreStudyRepository
     required String expectedClaimId,
     bool release = false,
   }) async {
-    final user = uid;
-    await db.runTransaction((tx) async {
-      if (!release) await _eligible(tx, subgroup);
-      final reference = seatRef(subgroup, room, seat);
-      final data = (await tx.get(reference)).data();
-      final claim = (await tx.get(claimRef(user))).data();
-      _sameUser(user);
-      if (release && (data?['status'] == 'available' || claim == null)) return;
-      if (data?['userId'] != user ||
-          data?['claimId'] != expectedClaimId ||
-          claim?['claimId'] != expectedClaimId) {
-        throw const StudyFailure(
-          'Your seat changed. Reopen the room to check it.',
-        );
-      }
-      if (release) {
-        tx.set(reference, {'seatId': seat, 'status': 'available'});
-        tx.delete(claimRef(user));
-      } else {
-        if (!time(data!['leaseExpiresAt']).isAfter(DateTime.now().toUtc())) {
-          throw const StudyFailure('Seat lease expired. Choose a seat again.');
-        }
-        final expiry = Timestamp.fromDate(
-          DateTime.now().toUtc().add(seatLeaseDuration),
-        );
-        tx.update(reference, {
-          'lastRenewedAt': FieldValue.serverTimestamp(),
-          'leaseExpiresAt': expiry,
-        });
-        tx.update(claimRef(user), {'leaseExpiresAt': expiry});
-      }
+    await functions.httpsCallable(release ? 'releaseSeat' : 'renewSeat').call({
+      'subgroupId': subgroup,
+      'roomId': room,
+      'seatId': seat,
+      'expectedClaimId': expectedClaimId,
     });
   }
 

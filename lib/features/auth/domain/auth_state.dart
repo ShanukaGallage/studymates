@@ -49,7 +49,23 @@ class AuthState {
          errorCode: errorCode,
        );
 
-  /// Resolves readiness from persisted profile data, never Auth metadata alone.
+  /// Maps the Firebase Auth identity for identity-only consumers.
+  ///
+  /// Application access must also wait for the matching persisted profile.
+  factory AuthState.fromIdentity({String? userId, String? displayName}) {
+    final stableId = userId?.trim();
+    if (stableId == null || stableId.isEmpty) {
+      return const AuthState.signedOut();
+    }
+    final name = displayName?.trim();
+    if (name == null || name.isEmpty) {
+      return AuthState.incompleteProfile(userId: stableId);
+    }
+    return AuthState.ready(userId: stableId, displayName: name);
+  }
+
+  /// Resolves application readiness from persisted profile data, never Auth
+  /// metadata alone.
   factory AuthState.fromPersistedProfile({
     required String userId,
     String? displayName,

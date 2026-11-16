@@ -27,9 +27,14 @@
       "source": "functions",
       "codebase": "studymates-cleanup",
       "runtime": "nodejs22",
-      "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run build"
-      ]
+      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
     }
-  ]
+  ],
+  "emulators": {
+    "auth": { "host": "127.0.0.1", "port": 9199 },
+    "firestore": { "host": "127.0.0.1", "port": 8181 },
+    "functions": { "host": "127.0.0.1", "port": 5002 },
+    "ui": { "enabled": false },
+    "singleProjectMode": true
+  }
 }

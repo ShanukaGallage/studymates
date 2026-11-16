@@ -1,4 +1,4 @@
-enum RoomStatus { waiting, active, completed, closed }
+﻿enum RoomStatus { waiting, active, completed, closed }
 
 enum SeatStatus { available, occupied }
 

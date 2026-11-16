@@ -69,7 +69,7 @@ test('creates and returns a waiting room using the Firestore-generated ID', asyn
   );
 
   assert.equal(eligibilityTransaction, context.transaction);
-  assert.equal(context.writes.length, 7);
+  assert.equal(context.writes.length, 8);
   assert.equal(context.writes[0].reference, context.roomReference);
   assert.equal(
     context.writes[0].reference.path,
@@ -78,6 +78,7 @@ test('creates and returns a waiting room using the Firestore-generated ID', asyn
   assert.deepEqual(Object.keys(context.writes[0].data), [
     'roomId',
     'subgroupId',
+    'sigId',
     'title',
     'createdBy',
     'hostUid',
@@ -94,14 +95,14 @@ test('creates and returns a waiting room using the Firestore-generated ID', asyn
   assert.equal(room.createdAt.toMillis(), room.updatedAt.toMillis());
   assert.deepEqual(room, context.writes[0].data);
   assert.deepEqual(
-    context.writes.slice(1).map(({ reference }) => reference.path),
+    context.writes.slice(2).map(({ reference }) => reference.path),
     [1, 2, 3, 4, 5, 6].map(
       (number) =>
         `subgroups/subgroup-a/rooms/auto-generated-room-id/seats/seat-${number}`,
     ),
   );
   assert.deepEqual(
-    context.writes.slice(1).map(({ data }) => data),
+    context.writes.slice(2).map(({ data }) => data),
     [1, 2, 3, 4, 5, 6].map((number) => ({
       seatId: `seat-${number}`,
       status: 'available',
@@ -111,6 +112,8 @@ test('creates and returns a waiting room using the Firestore-generated ID', asyn
       lastRenewedAt: null,
     })),
   );
+  assert.equal(context.writes[1].reference.path, 'roomDirectory/auto-generated-room-id');
+  assert.deepEqual(context.writes[1].data, { subgroupId: 'subgroup-a', sigId: 'sig-a' });
   assert.equal(
     context.writes.every(({ transaction }) => transaction === context.transaction),
     true,
@@ -156,7 +159,7 @@ test('default M2 verifier reads membership and creates the room in one transacti
     `sigs/sig-a/members/${uid}`,
     `subgroups/subgroup-a/members/${uid}`,
   ]);
-  assert.equal(context.writes.length, 7);
+  assert.equal(context.writes.length, 8);
   assert.equal(context.writes[0].reference, context.roomReference);
 });
 

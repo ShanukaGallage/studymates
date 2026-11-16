@@ -22,7 +22,8 @@ async function run() {
   [roomPath,{subgroupId:sg,hostUid:uid,status:'active'}],
   [`${roomPath}/seats/seat-1`,{seatId:'seat-1',status:'occupied',userId:uid,claimId,leaseExpiresAt:expiry}],
   [`${roomPath}/seats/seat-2`,{seatId:'seat-2',status:'occupied',userId:successor,claimId:'next',leaseExpiresAt:expiry}],
-  [`activeSeatClaims/${uid}`,{subgroupId:sg,roomId:room,seatId:'seat-1',claimId}],
+  [`activeSeatClaims/${uid}`,{userId:uid,subgroupId:sg,roomId:room,seatId:'seat-1',claimId,leaseExpiresAt:expiry}],
+  [`activeSeatClaims/${successor}`,{userId:successor,subgroupId:sg,roomId:room,seatId:'seat-2',claimId:'next',leaseExpiresAt:expiry}],
   [`users/${uid}/activeSession/current`,{sessionId:suffix,subgroupId:sg,roomId:room,seatId:'seat-1',claimId,goalText:'Learn'}],
   [`roomSessions/${suffix}`,{isDemo:true}],
   [`membershipCleanupRequests/${requestId}`,{userId:uid,sigId:sig,subgroupId:sg,scope:'subgroup',status:'pending'}],
@@ -38,6 +39,33 @@ async function run() {
  assert.equal((await db.doc(`membershipCleanupRequests/${requestId}`).get()).data().status,'completed');
  assert.equal((await db.collection(`users/${uid}/completions`).get()).size,1);
  console.log('PASS trusted membership cleanup, host transfer and retry idempotency');
+
+ for (const mode of ['claim-mismatch', 'missing-claim']) {
+  const suffix=crypto.randomUUID(), orphanUid=`orphan-${suffix}`;
+  const orphanSig=`orphan-sig-${suffix}`, orphanGroup=`orphan-group-${suffix}`;
+  const orphanRoom=`orphan-room-${suffix}`, orphanRequest=`orphan-request-${suffix}`;
+  const orphanRoomPath=`subgroups/${orphanGroup}/rooms/${orphanRoom}`;
+  const orphanSeatPath=`${orphanRoomPath}/seats/seat-1`;
+  const orphanClaimId='seat-claim-id';
+  const batch=db.batch();
+  for (const [path,data] of [
+   [`sigs/${orphanSig}`,{ownerId:'someone-else',status:'active'}],
+   [`subgroups/${orphanGroup}`,{sigId:orphanSig}],
+   [`subgroups/${orphanGroup}/members/${orphanUid}`,{status:'removalPending',removalRequestId:orphanRequest}],
+   [orphanRoomPath,{subgroupId:orphanGroup,hostUid:'someone-else',status:'active'}],
+   [orphanSeatPath,{seatId:'seat-1',status:'occupied',userId:orphanUid,claimId:orphanClaimId,leaseExpiresAt:expiry}],
+   [`membershipCleanupRequests/${orphanRequest}`,{userId:orphanUid,sigId:orphanSig,subgroupId:orphanGroup,scope:'subgroup',status:'pending'}],
+  ]) batch.set(db.doc(path),data);
+  if (mode === 'claim-mismatch') batch.set(db.doc(`activeSeatClaims/${orphanUid}`),{
+   userId:orphanUid,subgroupId:orphanGroup,roomId:orphanRoom,seatId:'seat-1',claimId:'different-claim',
+  });
+  await batch.commit();
+  await assert.rejects(completeMembershipCleanup(db,orphanRequest));
+  assert.equal((await db.doc(orphanSeatPath).get()).get('userId'),orphanUid);
+  assert.equal((await db.doc(`membershipCleanupRequests/${orphanRequest}`).get()).get('status'),'pending');
+  assert.equal((await db.doc(`activeSeatClaims/${orphanUid}`).get()).exists,mode==='claim-mismatch');
+ }
+ console.log('PASS inconsistent/missing seat claim markers remain intact and cleanup stays retryable');
  await db.terminate();
 }
 run().catch(e=>{console.error(e);process.exitCode=1});

@@ -9,12 +9,12 @@ import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../rooms/data/room_providers.dart';
 import '../controllers/community_providers.dart';
-import '../widgets/community_management_dialogs.dart';
 import '../widgets/catalog_view.dart';
 import '../../../../app/app_mode.dart';
 import '../../../study/data/firestore_study_repository.dart';
 import '../../../study/data/study_providers.dart';
 import '../../../study/presentation/study_dialogs.dart';
+import '../widgets/community_management_dialogs.dart';
 
 class SigDetailScreen extends ConsumerWidget {
   const SigDetailScreen({super.key, required this.id});
@@ -28,6 +28,9 @@ class SigDetailScreen extends ConsumerWidget {
           final sig = catalog.sig(id);
           if (sig == null) return const MissingPreviewItem();
           final isOwner = sig.ownerId == catalog.profile.id;
+          final mode = ref.watch(appModeProvider);
+          final preview = mode == AppMode.preview;
+          final canManage = isOwner && mode != AppMode.foundation;
           final groups = catalog.activeSubgroups.where(
             (group) => group.sigId == id,
           );
@@ -45,7 +48,7 @@ class SigDetailScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               Text(
                 sig.membership == MembershipState.joined
-                    ? ref.watch(appModeProvider) == AppMode.preview
+                    ? preview
                           ? 'You joined this SIG in preview.'
                           : 'You joined this community.'
                     : 'Join this SIG to join its subgroups.',
@@ -55,7 +58,7 @@ class SigDetailScreen extends ConsumerWidget {
                 key: ValueKey(id),
                 subject: 'SIG',
                 joined: sig.membership == MembershipState.joined,
-                leaveMessage: ref.watch(appModeProvider) == AppMode.preview
+                leaveMessage: preview
                     ? 'Leaving this SIG also clears its subgroup memberships in this preview.'
                     : 'Leaving ends your related participation and releases your seat. Hosting may transfer or the room may close.',
                 onChange: (value) => ref
@@ -92,14 +95,13 @@ class SigDetailScreen extends ConsumerWidget {
                     }
                   },
                 ),
-              const SizedBox(height: 16),
-              if (isOwner)
+              if (canManage && mode != AppMode.connected)
                 AppButton(
                   label: 'Create subgroup',
                   variant: AppButtonVariant.secondary,
                   onPressed: () => showCreateSubgroupDialog(context, sigId: id),
                 ),
-              if (isOwner) const SizedBox(height: 16),
+              const SizedBox(height: 16),
               if (groups.isEmpty)
                 EmptyView(
                   title: 'No subgroups yet',
@@ -123,7 +125,9 @@ class SigDetailScreen extends ConsumerWidget {
                         const SizedBox(height: 8),
                         Text(
                           group.membership == MembershipState.joined
-                              ? 'Joined • Preview'
+                              ? preview
+                                    ? 'Joined • Preview'
+                                    : 'Joined'
                               : 'Not joined',
                         ),
                         const SizedBox(height: 12),
@@ -135,7 +139,7 @@ class SigDetailScreen extends ConsumerWidget {
                             pathParameters: {'subgroupId': group.id},
                           ),
                         ),
-                        if (isOwner) ...[
+                        if (canManage) ...[
                           const SizedBox(height: 8),
                           Wrap(
                             spacing: 8,
