@@ -117,6 +117,54 @@ class FirestoreStudyRepository
     if (result is SeatLeaseFailed) throw StudyFailure(result.message);
   }
 
+  Future<void> _verifyRoomInvitation(
+    String subgroup,
+    String roomId,
+    String token,
+  ) async {
+    final user = uid;
+    await db.runTransaction((tx) async {
+      final room = (await tx.get(roomRef(subgroup, roomId))).data();
+      final invite = (await tx.get(db.doc('roomInvites/$token'))).data();
+      final grantRef = db.doc('users/$user/roomAccess/$roomId');
+      final grant = await tx.get(grantRef);
+      await _eligible(tx, subgroup);
+      _sameUser(user);
+      if (room == null ||
+          invite == null ||
+          invite['roomId'] != roomId ||
+          invite['subgroupId'] != subgroup ||
+          invite['revoked'] == true ||
+          !time(invite['expiresAt']).isAfter(DateTime.now().toUtc())) {
+        throw const StudyFailure('Invitation expired or revoked.');
+      }
+      if (room['isPrivate'] == true &&
+          room['createdBy'] != user &&
+          room['hostUid'] != user &&
+          !grant.exists) {
+        tx.set(grantRef, {
+          'userId': user,
+          'roomId': roomId,
+          'subgroupId': subgroup,
+          'invitationToken': token,
+          'admittedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    });
+  }
+
+  Future<bool> canAccessRoom(RoomSnapshot room) async {
+    final user = uid;
+    if (!room.isPrivate || room.createdBy == user || room.hostUid == user) {
+      return true;
+    }
+    final grant = await db
+        .doc('users/$user/roomAccess/${room.roomId}')
+        .get(const GetOptions(source: Source.server));
+    _sameUser(user);
+    return grant.exists && grant.data()?['subgroupId'] == room.subgroupId;
+  }
+
   Future<Map<String, dynamic>> locator(String room) async {
     final value =
         (await db
@@ -148,7 +196,10 @@ class FirestoreStudyRepository
   Future<RoomSnapshot> createRoom({
     required String subgroupId,
     required String title,
+    int capacity = 6,
+    bool isPrivate = false,
   }) async {
+    roomSeatIds(capacity); // Validate before issuing database writes.
     final user = uid;
     final name = title.trim();
     if (name.isEmpty || name.length > 80) {
@@ -162,6 +213,8 @@ class FirestoreStudyRepository
       final sig = await _eligible(tx, subgroupId);
       _sameUser(user);
       final data = {
+        'capacity': capacity,
+        'isPrivate': isPrivate,
         'roomId': reference.id,
         'subgroupId': subgroupId,
         'sigId': sig,
@@ -177,7 +230,7 @@ class FirestoreStudyRepository
         'subgroupId': subgroupId,
         'sigId': sig,
       });
-      for (final seat in fixedRoomSeatIds) {
+      for (final seat in roomSeatIds(capacity)) {
         tx.set(reference.collection('seats').doc(seat), {
           'seatId': seat,
           'status': 'available',
@@ -234,28 +287,41 @@ class FirestoreStudyRepository
   Future<List<RoomSummary>> listRooms(String subgroupId) async {
     final rooms = await listRoomSnapshots(subgroupId);
     return Future.wait(
-      rooms.map(
-        (room) async => _summary(
-          room,
-          (await roomRef(subgroupId, room.roomId).collection('seats').get())
-              .docs
-              .map((d) => decodeSeat(d.data()))
-              .toList(),
-        ),
-      ),
+      rooms.map((room) async {
+        if (room.isPrivate && !await canAccessRoom(room)) {
+          return _summary(room, const [], occupancyKnown: false);
+        }
+        final seats =
+            (await roomRef(subgroupId, room.roomId).collection('seats').get())
+                .docs
+                .map((d) => decodeSeat(d.data()))
+                .toList();
+        return _summary(room, seats);
+      }),
     );
   }
 
   @override
   Future<RoomSummary?> getRoom(String id) async {
     final room = await getRoomSnapshot(id);
-    return room == null ? null : _summary(room, await watchSeats(id).first);
+    if (room == null) return null;
+    if (room.isPrivate && !await canAccessRoom(room)) {
+      return _summary(room, const [], occupancyKnown: false);
+    }
+    return _summary(room, await watchSeats(id).first);
   }
 
-  RoomSummary _summary(RoomSnapshot room, List<SeatState> seats) => RoomSummary(
+  RoomSummary _summary(
+    RoomSnapshot room,
+    List<SeatState> seats, {
+    bool occupancyKnown = true,
+  }) => RoomSummary(
     id: room.roomId,
     subgroupId: room.subgroupId,
     title: room.title,
+    capacity: room.capacity,
+    isPrivate: room.isPrivate,
+    occupancyKnown: occupancyKnown,
     occupiedSeats: seats
         .where(
           (s) => s.leaseExpiresAt?.isAfter(DateTime.now().toUtc()) ?? false,
@@ -286,10 +352,11 @@ class FirestoreStudyRepository
       return const SeatClaimFailed(SeatClaimFailure.permissionDenied);
     }
     final user = uid;
-    if (!fixedRoomSeatIds.contains(seatId)) {
+    if (!RegExp(r'^seat-([1-9]|[1-3][0-9]|40)$').hasMatch(seatId)) {
       return const SeatClaimFailed(SeatClaimFailure.seatNotFound);
     }
     try {
+      if (token != null) await _verifyRoomInvitation(subgroupId, roomId, token);
       return await db.runTransaction((tx) async {
         if (token != null) {
           final invite = (await tx.get(db.doc('roomInvites/$token'))).data();
@@ -306,8 +373,22 @@ class FirestoreStudyRepository
         if (room == null) {
           return const SeatClaimFailed(SeatClaimFailure.roomUnavailable);
         }
+        final capacity = room['capacity'] as int? ?? 6;
+        if (!roomSeatIds(capacity).contains(seatId)) {
+          return const SeatClaimFailed(SeatClaimFailure.seatNotFound);
+        }
+        final accessReference = db.doc('users/$user/roomAccess/$roomId');
+        final access = await tx.get(accessReference);
+        final needsInvitation =
+            room['isPrivate'] == true &&
+            room['createdBy'] != user &&
+            room['hostUid'] != user &&
+            !access.exists;
+        if (needsInvitation && token == null) {
+          return const SeatClaimFailed(SeatClaimFailure.invitationRequired);
+        }
         final seats = <SeatState>[];
-        for (final id in fixedRoomSeatIds) {
+        for (final id in roomSeatIds(capacity)) {
           final data = (await tx.get(seatRef(subgroupId, roomId, id))).data();
           if (data == null) {
             return const SeatClaimFailed(SeatClaimFailure.unavailable);
@@ -339,6 +420,7 @@ class FirestoreStudyRepository
         final activeParticipation = (await tx.get(activeRef(user))).data();
         _sameUser(user);
         final decision = SeatClaimPolicy.evaluate(
+          capacity: capacity,
           roomStatus: decodeRoom(room).status,
           subgroupId: subgroupId,
           roomId: roomId,
@@ -358,6 +440,15 @@ class FirestoreStudyRepository
         }
         if (result is! SeatClaimSucceeded || result.wasAlreadyClaimed) {
           return result;
+        }
+        if (needsInvitation) {
+          tx.set(accessReference, {
+            'userId': user,
+            'roomId': roomId,
+            'subgroupId': subgroupId,
+            'invitationToken': token,
+            'admittedAt': FieldValue.serverTimestamp(),
+          });
         }
         for (final cleanup in decision.staleClaimsToClean) {
           tx.delete(claimRef(cleanup.userId));
@@ -528,6 +619,11 @@ class FirestoreStudyRepository
     return db.runTransaction((tx) async {
       await _eligible(tx, subgroup);
       final roomData = (await tx.get(roomRef(subgroup, room))).data()!;
+      if (roomData['status'] == 'closed') {
+        throw const StudyFailure(
+          'Room is closed. Save any existing participation, then choose another room.',
+        );
+      }
       final seatData = (await tx.get(seatRef(subgroup, room, seat))).data()!;
       final currentActive = (await tx.get(activeRef(user))).data();
       final oldId = roomData['sessionId'] as String?;
@@ -824,6 +920,8 @@ RoomSnapshot decodeRoom(Map<String, dynamic> data) => RoomSnapshot(
   roomId: data['roomId'],
   subgroupId: data['subgroupId'],
   title: data['title'],
+  capacity: data['capacity'] as int? ?? 6,
+  isPrivate: data['isPrivate'] as bool? ?? false,
   createdBy: data['createdBy'],
   hostUid: data['hostUid'],
   status: RoomStatus.values.byName(data['status']),

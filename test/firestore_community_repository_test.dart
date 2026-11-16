@@ -52,6 +52,40 @@ void main() {
     repository = _repository(store: catalogStore, membership: membership);
   });
 
+  test('self-service cleanup runs before observing completion and finalizing leave', () async {
+    membership.cleanupStatus = MembershipCleanupStatus.pending;
+    final repo = FirestoreCommunityRepository(
+      membershipRepository: membership,
+      catalogStore: catalogStore,
+      currentUserId: () => 'user-a',
+      loadCurrentProfile: () async =>
+          UserProfile(id: 'user-a', displayName: 'Learner'),
+      completeOwnCleanup: (id) async {
+        expect(membership.finalizedRequestIds, isEmpty);
+        expect(id, 'request-iot');
+        membership.cleanupStatus = MembershipCleanupStatus.completed;
+      },
+    );
+    await repo.setSigMembership('iot', MembershipState.notJoined);
+    expect(membership.finalizedRequestIds, ['request-iot']);
+  });
+  test(
+    'pending owner leave can resume after the SIG is already closed',
+    () async {
+      final repo = FirestoreCommunityRepository(
+        membershipRepository: membership,
+        catalogStore: catalogStore,
+        currentUserId: () => 'user-a',
+        loadCurrentProfile: () async =>
+            UserProfile(id: 'user-a', displayName: 'Learner'),
+        completeOwnCleanup: (_) async {},
+      );
+      await repo.setSigMembership('closed', MembershipState.notJoined);
+      expect(membership.sigLeaveRequests, ['closed']);
+      expect(membership.finalizedRequestIds, ['request-closed']);
+    },
+  );
+
   test(
     'loads available SIG catalog and maps current user SIG membership',
     () async {

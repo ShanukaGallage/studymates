@@ -66,6 +66,9 @@ final connectedRoomSummariesProvider = StreamProvider.autoDispose
                     subgroupId: r.subgroupId,
                     title: r.title,
                     occupiedSeats: 0,
+                    occupancyKnown: false,
+                    capacity: r.capacity,
+                    isPrivate: r.isPrivate,
                   ),
                 )
                 .toList(),

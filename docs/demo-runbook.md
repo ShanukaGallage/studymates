@@ -34,30 +34,30 @@ flutter test integration_test/connected_study_test.dart -d DEVICE_ID \
 The Android integration test creates two independent test identities only in the
 emulators and uses real Firebase SDK transactions. It must never target production.
 
-## Production prerequisites
+## Hosted Firebase on Spark (no billing upgrade)
 
-The checked-in rules, index and trusted cleanup function must be reviewed and
-published to `studymates-dev` before treating account mode as a verified live demo.
-No client should bypass rules or set test security settings in the console.
-Deployment requires Firebase CLI login, suitable project permissions and a project
-plan supporting Cloud Functions. Do not silently change the billing plan.
+The connected app performs room/session operations and membership self-cleanup
+with Firestore transactions and rules. Cloud Functions are optional and must not
+be included in Spark deployment. Use the existing `studymates-dev` project.
 
 ```bash
-npm ci --prefix functions
-npm test --prefix functions
+npm exec --yes --package firebase-tools -- firebase login
 npm exec --yes --package firebase-tools -- firebase deploy \
-  --project studymates-dev --only firestore:rules,firestore:indexes,functions:cleanupMembership
+  --project studymates-dev --only firestore:rules,firestore:indexes
 flutter run -t lib/main.dart
 ```
 
-The Firebase CLI had no authorized accounts during this implementation, so
-production deployment was not performed. Run `firebase login` (or the equivalent
-`npm exec --package firebase-tools -- firebase login`) on your own machine first.
+Leave SIG/subgroup ends the current user's related session as goal unfinished,
+releases their seat, closes rooms they host in that scope, acknowledges their own
+pending request and finalizes membership removal. It never edits another user's
+seat or goal. Other participants can save their own participation and release
+their seats; a closed room cannot start/admit another session. SIG ownership still
+transfers or the SIG closes according to M2's existing protocol. Room host transfer
+on departure requires the optional trusted worker and is not used in Spark mode.
 
-The cleanup worker is required for SIG/subgroup leave: it releases the departed
-user's seat, ends their participation with zero credit, transfers room hosting to
-an eligible seated member or closes the room, then acknowledges M2's leave request.
-Normal users cannot mark that trusted work complete. Function retries are idempotent.
+For a request that timed out in the old version, deploy the updated rules and
+open Discover → Finish pending leave requests. Interrupted cleanup is retryable.
+If a seat/session in another community is still active, finish/release it first.
 
 ## Five-minute sequence
 
@@ -133,8 +133,19 @@ npm exec --yes --package firebase-tools -- firebase projects:list
 ```
 
 Confirm Email/Password Authentication and the default Firestore database in the
-console. Deploy the rules/indexes and cleanup function with the command above.
-Cloud Functions requires Blaze; the project owner must approve linking billing.
+console. Deploy the rules/indexes only with the command above.
+Cloud Functions requires Blaze and is optional; keep Spark and deploy Firestore only.
 Do not run `firebase init` over this existing configuration. Run `lib/main.dart`
 without the emulator define after successful deployment. Local emulator test users
 are separate from hosted Firebase users.
+
+## Capacity/private-room check
+
+Create a 40-desk public room and confirm the last desk is reachable. Create a
+two-desk private room. The second member should see a lock label and invitation
+prompt when opening its tile or direct route. A wrong/expired/revoked/other-room
+code must fail; a host-issued code grants room access and the atomic seating operation confirms
+one seat before returning admitted. Both
+phones then see the same two desks. All membership requirements still apply.
+Previously admitted users can return without retyping the invitation. Redeploy
+Firestore rules for this update; no new Function or billing plan is needed.

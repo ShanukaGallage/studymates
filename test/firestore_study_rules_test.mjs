@@ -78,3 +78,61 @@ const race=await Promise.all([commit(a.token,claim(a,'race-a')),commit(b.token,c
 assert.deepEqual(race.map(r=>r.status).sort(),[200,403]);
 console.log('PASS simultaneous seat claims yield exactly one winner');
 console.log('All connected session and completion security checks passed');
+
+function configuredRoom(id,capacity,isPrivate) {
+ const path=`subgroups/${sg}/rooms/${id}`;
+ return [write(path,{roomId:id,subgroupId:sg,sigId:sig,title:'Configured room',createdBy:a.uid,hostUid:a.uid,status:'waiting',capacity,isPrivate},['createdAt','updatedAt']),
+  write(`roomDirectory/${id}`,{subgroupId:sg,sigId:sig}),
+  ...Array.from({length:Math.max(0,Math.min(capacity,40))},(_,i)=>write(`${path}/seats/seat-${i+1}`,{seatId:`seat-${i+1}`,status:'available'}))];
+}
+await deny('capacity below two rejected',a.token,configuredRoom(`small-${run}`,1,false));
+await deny('capacity over forty rejected',a.token,configuredRoom(`large-${run}`,41,false));
+const forty=`forty-${run}`;
+await allow('forty-desk room initializes all forty seats atomically',a.token,configuredRoom(forty,40,false));
+await deny('room capacity is immutable after creation',a.token,[patch(`subgroups/${sg}/rooms/${forty}`,{capacity:39})]);
+// Reset the independent race test's claim before checking configured rooms.
+await allow('clear fixture claims for capacity tests','owner',[{delete:name(claimPath(a.uid))},{delete:name(claimPath(b.uid))}]);
+await allow('desk forty can be claimed',b.token,claim(b,'forty-claim','seat-40',forty));
+await deny('desk forty-one cannot be manufactured',a.token,[write(`subgroups/${sg}/rooms/${forty}/seats/seat-41`,{seatId:'seat-41',status:'available'})]);
+await allow('release desk forty',b.token,[write(`subgroups/${sg}/rooms/${forty}/seats/seat-40`,{seatId:'seat-40',status:'available'}),{delete:name(claimPath(b.uid))}]);
+const privateRoom=`private-${run}`, privatePath=`subgroups/${sg}/rooms/${privateRoom}`;
+await allow('create private two-desk room',a.token,configuredRoom(privateRoom,2,true));
+assert.equal((await request(`${root}/${privatePath}`,b.token)).status,200);
+console.log('PASS private room metadata remains discoverable');
+assert.equal((await request(`${root}/${privatePath}/seats/seat-1`,b.token)).status,403);
+console.log('PASS private room seats require admission');
+await deny('member cannot bypass private invitation by claiming directly',b.token,claim(b,'private-claim','seat-1',privateRoom));
+const alphabet='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const token=Array.from(crypto.getRandomValues(new Uint8Array(16)),n=>alphabet[n%alphabet.length]).join('');
+const otherToken=Array.from(crypto.getRandomValues(new Uint8Array(16)),n=>alphabet[n%alphabet.length]).join('');
+await allow('host issues private invitation',a.token,[write(`roomInvites/${token}`,{roomId:privateRoom,subgroupId:sg,issuedBy:a.uid,expiresAt:new Date(Date.now()+3600000),revoked:false})]);
+await deny('uninvited member cannot issue private room invitation',b.token,[write(`roomInvites/${otherToken}`,{roomId:privateRoom,subgroupId:sg,issuedBy:b.uid,expiresAt:new Date(Date.now()+3600000),revoked:false})]);
+const grant=(invitationToken=token)=>write(`users/${b.uid}/roomAccess/${privateRoom}`,{userId:b.uid,roomId:privateRoom,subgroupId:sg,invitationToken},['admittedAt']);
+await deny('wrong invitation cannot grant private access',b.token,[grant(otherToken),...claim(b,'private-claim','seat-1',privateRoom)]);
+for (const [label,invite] of [
+ ['expired', {roomId:privateRoom,subgroupId:sg,issuedBy:a.uid,expiresAt:new Date(Date.now()-1000),revoked:false}],
+ ['revoked', {roomId:privateRoom,subgroupId:sg,issuedBy:a.uid,expiresAt:new Date(Date.now()+3600000),revoked:true}],
+ ['other-room', {roomId:forty,subgroupId:sg,issuedBy:a.uid,expiresAt:new Date(Date.now()+3600000),revoked:false}],
+]) {
+ const invalidCode=Array.from(crypto.getRandomValues(new Uint8Array(16)),n=>alphabet[n%alphabet.length]).join('');
+ await allow(`seed ${label} invitation fixture`,'owner',[write(`roomInvites/${invalidCode}`,invite)]);
+ await deny(`${label} invitation cannot admit private-room member`,b.token,[grant(invalidCode),...claim(b,'private-claim','seat-1',privateRoom)]);
+}
+await allow('verified invitation grants admission and claims seat atomically',b.token,[grant(),...claim(b,'private-claim','seat-1',privateRoom)]);
+assert.equal((await request(`${root}/${privatePath}/seats/seat-1`,b.token)).status,200);
+assert.equal((await request(`${root}/users/${b.uid}/roomAccess/${privateRoom}`,a.token)).status,403);
+console.log('PASS admitted member sees seats; invitation token remains private');
+await deny('private two-desk capacity cannot be exceeded',a.token,claim(a,'bad-third','seat-3',privateRoom));
+await deny('private seat cannot be reassigned to a nonmember',outsider.token,claim(outsider,'outside','seat-2',privateRoom));
+console.log('All configurable capacity and private-room security checks passed');
+const newcomer=await user('private-newcomer');
+await allow('seed separate code verification user','owner',[
+ write(`users/${newcomer.uid}`,{displayName:newcomer.uid,avatarId:'default'}),
+ write(`sigs/${sig}/members/${newcomer.uid}`,{userId:newcomer.uid,sigId:sig,status:'active'}),
+ write(`subgroups/${sg}/members/${newcomer.uid}`,{userId:newcomer.uid,sigId:sig,status:'active'}),
+]);
+await allow('code verification grants access before protected seat reads',newcomer.token,[
+ write(`users/${newcomer.uid}/roomAccess/${privateRoom}`,{userId:newcomer.uid,roomId:privateRoom,subgroupId:sg,invitationToken:token},['admittedAt'])
+]);
+assert.equal((await request(`${root}/${privatePath}/seats/seat-2`,newcomer.token)).status,200);
+await allow('verified user then atomically claims the second private desk',newcomer.token,claim(newcomer,'private-second','seat-2',privateRoom));

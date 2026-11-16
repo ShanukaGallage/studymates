@@ -9,6 +9,7 @@ import '../core/widgets/state_views.dart';
 import '../firebase_options.dart';
 import 'app.dart';
 import 'app_mode.dart';
+import 'startup_splash.dart';
 
 final firebaseBootstrapProvider = FutureProvider<void>((ref) async {
   if (!Firebase.apps.any((app) => app.name == '[DEFAULT]')) {
@@ -44,8 +45,12 @@ class FirebaseStartup extends ConsumerWidget {
           overrides: [appModeProvider.overrideWithValue(AppMode.connected)],
           child: const StudyMatesApp(),
         ),
-        loading: () =>
-            _startupPage(const LoadingView(message: 'Starting StudyMates…')),
+        loading: () => MaterialApp(
+          title: 'StudyMates',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          home: const StartupSplash(),
+        ),
         error: (_, _) => _startupPage(
           ErrorView(
             message: 'StudyMates could not connect to its account services.',

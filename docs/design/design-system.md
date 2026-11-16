@@ -1,5 +1,18 @@
 # StudyMates — UI design direction
 
+Launch update: lavender Android launch resources (including night and API 31+)
+replace the stock launch window. The original book/two-learner emblem continues in
+`lib/app/startup_splash.dart` during real Firebase startup, with a brief fade-in
+that respects reduced motion. Do not add a timer to keep the splash on screen;
+startup errors retain the existing recovery action. No new package or raster
+asset is required.
+
+Launcher icon: `assets/branding/launcher-icon.svg` is the editable legacy artwork.
+Android uses separate purple background/vector foreground layers on API 26+,
+with a monochrome layer on API 33+ and density-specific legacy PNGs below API 26.
+The launcher label is **StudyMates**. Keep the book/two-learner emblem consistent
+with the native and Flutter splash; no launcher-icon dependency is needed.
+
 This plan extends the existing Flutter design system. Use it with
 [screens and states](screens.md), the [wireframe](studymates-wireframe.html) and the
 [current four-member ownership plan](../team/00-common-plan.md).

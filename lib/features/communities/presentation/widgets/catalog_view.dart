@@ -6,6 +6,8 @@ import '../../../../core/models/community_models.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../controllers/community_providers.dart';
+import '../../../study/data/firestore_study_repository.dart';
+import '../../data/membership_repository.dart';
 
 class CatalogView extends ConsumerWidget {
   const CatalogView({super.key, required this.builder});
@@ -104,10 +106,16 @@ class _MembershipActionState extends State<MembershipAction> {
     } catch (error) {
       if (mounted) {
         setState(
-          () => _error =
-              error is RepositoryException &&
-                  error.code == RepositoryError.membershipRequired
+          () => _error = error is StudyFailure
+              ? error.message
+              : error is MembershipRepositoryException &&
+                    error.code == MembershipRepositoryError.cleanupNotComplete
+              ? 'Leave cleanup is pending. Finish pending leave requests from Discover.'
+              : error is RepositoryException &&
+                    error.code == RepositoryError.membershipRequired
               ? 'Join the parent SIG first.'
+              : widget.joined
+              ? 'Leaving could not be confirmed. Use Finish pending leave requests in Discover to retry safely.'
               : 'Membership could not be updated. Please try again.',
         );
       }

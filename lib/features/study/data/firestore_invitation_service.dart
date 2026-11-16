@@ -118,7 +118,7 @@ class FirestoreInvitationService implements InvitationService {
       });
     }
     final room = preview.preview!.room;
-    for (var i = 1; i <= 6; i++) {
+    for (var i = 1; i <= room.capacity; i++) {
       final result = await study.claimSeatWithInvitation(
         subgroupId: room.subgroupId,
         roomId: room.id,

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<!-- StudyMates original launcher icon. Book and two learners match the splash. -->
+<rect x="16" y="16" width="480" height="480" rx="112" fill="#6548C7"/>
+<g transform="translate(256 256) scale(2.7) translate(-144 -144)">
+<path fill="#FFFFFF" d="M144,136Q118,119 94,126L94,178Q119,171 144,190Q169,171 194,178L194,126Q170,119 144,136Z"/>
+<path stroke="#6548C7" stroke-width="4" stroke-linecap="round" d="M144,139L144,180M107,140Q122,139 132,146M107,153Q122,152 132,159M156,146Q167,139 181,140M156,159Q167,152 181,153" fill="none"/>
+<path fill="#DEF4EB" d="M120,97a11,11 0,1 0,0 22a11,11 0,1 0,0 -22M164,91a11,11 0,1 0,0 22a11,11 0,1 0,0 -22"/>
+<path fill="#E4EEFF" d="M200,80L203,88L211,91L203,94L200,102L197,94L189,91L197,88Z"/>
+</g></svg>

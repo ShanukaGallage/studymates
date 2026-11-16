@@ -15,6 +15,7 @@ final class SeatClaimSucceeded extends SeatClaimResult {
 }
 
 enum SeatClaimFailure {
+  invitationRequired,
   seatTaken,
   fullRoom,
   alreadySeated,

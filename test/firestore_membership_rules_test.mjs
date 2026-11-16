@@ -191,9 +191,22 @@ await mustAllow('valid pending removal increments the revision atomically', memb
   },
 ]);
 
-await mustDeny('client cannot acknowledge cleanup completion', member.token, [
+await mustDeny('client cannot acknowledge cleanup with an unverified client timestamp', member.token, [
   update(requestPath, { status: 'completed', updatedAt: new Date() }),
 ]);
+
+function cleanupAck() {
+ return {update:{name:documentName(requestPath),fields:fields({status:'completed'})},
+  updateMask:{fieldPaths:['status']}, updateTransforms:[{fieldPath:'updatedAt',setToServerValue:'REQUEST_TIME'}]};
+}
+await mustAllow('seed active seat cleanup safety guard','owner', [{update:{name:documentName(`activeSeatClaims/${member.uid}`),fields:fields({userId:member.uid})}}]);
+await mustDeny('own cleanup acknowledgement blocked while seat remains',member.token,[cleanupAck()]);
+await mustAllow('remove active seat safety fixture','owner',[{delete:documentName(`activeSeatClaims/${member.uid}`)}]);
+await mustAllow('seed active participation cleanup safety guard','owner',[{update:{name:documentName(`users/${member.uid}/activeSession/current`),fields:fields({userId:member.uid})}}]);
+await mustDeny('own cleanup acknowledgement blocked while participation remains',member.token,[cleanupAck()]);
+await mustAllow('remove participation safety fixture','owner',[{delete:documentName(`users/${member.uid}/activeSession/current`)}]);
+await mustDeny('another account cannot acknowledge the leave request',successor.token,[cleanupAck()]);
+await mustAllow('Spark self-service acknowledgement after verified self cleanup',member.token,[cleanupAck()]);
 
 await mustAllow('trusted cleanup handler can acknowledge the same request', 'owner', [
   update(requestPath, { status: 'completed', updatedAt: new Date() }),

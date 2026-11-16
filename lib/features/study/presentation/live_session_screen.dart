@@ -12,6 +12,7 @@ import '../../progress/presentation/controllers/progress_history_controller.dart
 import '../../sessions/data/active_session_providers.dart';
 import '../../sessions/data/session_timing.dart';
 import '../../sessions/presentation/widgets/session_views.dart';
+import '../../sessions/presentation/widgets/keep_awake_control.dart';
 import '../data/firestore_study_repository.dart';
 
 class LiveSessionScreen extends ConsumerStatefulWidget {
@@ -177,6 +178,7 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
                               .clamp(0, 100000),
                         ),
                       const SizedBox(height: 12),
+                      KeepAwakeControl(key: ValueKey(session.sessionId)),
                       const Text(
                         'The shared schedule continues while away. Returning requires a fresh membership and seat check.',
                       ),

@@ -14,6 +14,8 @@ import '../../rooms/presentation/widgets/room_scene.dart';
 import '../../rooms/presentation/widgets/room_scene_models.dart';
 import '../data/firestore_study_repository.dart';
 import '../../invites/presentation/screens/invitation_display_screen.dart';
+import '../../invites/data/invitation_token.dart';
+import '../../invites/data/invitation_service.dart';
 import '../data/firestore_invitation_service.dart';
 
 class LiveRoomScreen extends ConsumerStatefulWidget {
@@ -25,7 +27,8 @@ class LiveRoomScreen extends ConsumerStatefulWidget {
 
 class _LiveRoomScreenState extends ConsumerState<LiveRoomScreen> {
   late Future<Map<String, dynamic>> _location;
-  bool _busy = false, _demo = true;
+  bool _busy = false, _demo = true, _accessGranted = false;
+  final _invitation = TextEditingController();
   String _goal = '', _message = '';
   int? _pendingSeat;
   Timer? _tick;
@@ -42,7 +45,11 @@ class _LiveRoomScreenState extends ConsumerState<LiveRoomScreen> {
 
   void _load() {
     final repo = ref.read(studyRepositoryProvider);
-    _location = repo.locator(widget.id).then((place) {
+    _accessGranted = false;
+    _location = repo.locator(widget.id).then((place) async {
+      final room = await repo.getRoomSnapshot(widget.id);
+      if (room == null) throw const StudyFailure('Room no longer exists.');
+      _accessGranted = await repo.canAccessRoom(room);
       _roomStream = repo.watchRoomDocument(place['subgroupId'], widget.id);
       _seatsStream = repo.watchSeatDocuments(place['subgroupId'], widget.id);
       return place;
@@ -51,6 +58,7 @@ class _LiveRoomScreenState extends ConsumerState<LiveRoomScreen> {
 
   @override
   void dispose() {
+    _invitation.dispose();
     _tick?.cancel();
     super.dispose();
   }
@@ -104,6 +112,76 @@ class _LiveRoomScreenState extends ConsumerState<LiveRoomScreen> {
           }
           final room = roomSnapshot.data?.data();
           if (room == null) return const LoadingView(message: 'Loading room…');
+          if (!_accessGranted) {
+            return ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                const Icon(Icons.lock_outline, size: 48),
+                Text(
+                  room['title'],
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const Text(
+                  'Private room. Enter an invitation code to join. Community and subgroup membership are still required.',
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _invitation,
+                  decoration: const InputDecoration(
+                    labelText: 'Invitation code',
+                  ),
+                  textCapitalization: TextCapitalization.characters,
+                ),
+                if (_message.isNotEmpty)
+                  Semantics(liveRegion: true, child: Text(_message)),
+                const SizedBox(height: 16),
+                AppButton(
+                  label: 'Verify invitation and join',
+                  isLoading: _busy,
+                  onPressed: () => _run(() async {
+                    final token = InvitationTokenParser.parseManual(
+                      _invitation.text,
+                    );
+                    if (token == null) {
+                      throw const StudyFailure(
+                        'Enter a valid 16-character invitation code.',
+                      );
+                    }
+                    final service = ref.read(
+                      firestoreInvitationServiceProvider,
+                    );
+                    final preview = await service.resolveInvitation(token);
+                    if (preview.preview?.room.id != widget.id ||
+                        preview.preview?.room.subgroupId != subgroup) {
+                      throw const StudyFailure(
+                        'This invitation is invalid, expired, or belongs to another room.',
+                      );
+                    }
+                    if (preview.status ==
+                        InvitationPreviewStatus.membershipRequired) {
+                      throw const StudyFailure(
+                        'Join this community and subgroup first, then retry the invitation.',
+                      );
+                    }
+                    final result = await service.admitInvitation(
+                      opaqueToken: token,
+                      membershipConsentGranted: false,
+                    );
+                    if (result.status != InvitationAdmissionStatus.admitted) {
+                      throw StudyFailure(
+                        'Admission not confirmed: ${result.status.name}.',
+                      );
+                    }
+                    if (mounted) setState(() => _accessGranted = true);
+                  }),
+                ),
+                TextButton(
+                  onPressed: () => context.go('/subgroups/$subgroup'),
+                  child: const Text('Back to subgroup'),
+                ),
+              ],
+            );
+          }
           return StreamBuilder(
             stream: _seatsStream,
             builder: (context, snapshot) {
@@ -143,6 +221,9 @@ class _LiveRoomScreenState extends ConsumerState<LiveRoomScreen> {
                         ? 'You host this room'
                         : 'Shared study room',
                   ),
+                  Text(
+                    '${room['capacity'] ?? 6} desks · ${room['isPrivate'] == true ? 'Private room' : 'Public room'}',
+                  ),
                   if (cached)
                     const Text(
                       'Connection unverified. Showing cached seats; actions are disabled.',
@@ -155,7 +236,11 @@ class _LiveRoomScreenState extends ConsumerState<LiveRoomScreen> {
                   RoomScene(
                     selectionEnabled: !_busy && !cached,
                     seats: [
-                      for (var number = 1; number <= 6; number++)
+                      for (
+                        var number = 1;
+                        number <= (room['capacity'] as int? ?? 6);
+                        number++
+                      )
                         _seat(number, documents, user),
                     ],
                     onSeatTap: (number) => _run(() async {
@@ -232,7 +317,12 @@ class _LiveRoomScreenState extends ConsumerState<LiveRoomScreen> {
                   AppButton(
                     label: 'Show room invitation',
                     variant: AppButtonVariant.secondary,
-                    onPressed: _busy || cached
+                    onPressed:
+                        _busy ||
+                            cached ||
+                            (room['isPrivate'] == true &&
+                                room['createdBy'] != user &&
+                                room['hostUid'] != user)
                         ? null
                         : () => _run(() async {
                             final token = await ref

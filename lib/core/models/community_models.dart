@@ -88,10 +88,14 @@ class RoomSummary {
     required this.title,
     required this.occupiedSeats,
     this.capacity = 6,
+    this.isPrivate = false,
+    this.occupancyKnown = true,
   }) : assert(occupiedSeats >= 0 && occupiedSeats <= capacity);
   final String id, subgroupId, title;
   final int occupiedSeats, capacity;
-  bool get isFull => occupiedSeats >= capacity;
+  final bool isPrivate;
+  final bool occupancyKnown;
+  bool get isFull => occupancyKnown && occupiedSeats >= capacity;
 }
 
 enum RepositoryError { notFound, membershipRequired, unavailable }

@@ -307,9 +307,21 @@ service cloud.firestore {
               request.auth.uid
             )).data.removalRequestId == requestId)
         );
-      // M3's trusted handler uses Admin SDK to acknowledge; clients cannot alter
-      // completion, status, or request ownership.
-      allow update, delete: if false;
+      // Spark self-service acknowledgement: only this account, only its exact
+      // pending request, after its active seat and participation are gone.
+      allow update: if self(resource.data.userId)
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && request.resource.data.status == 'completed' && request.resource.data.updatedAt == request.time
+        && !existsAfter(/databases/$(database)/documents/activeSeatClaims/$(request.auth.uid))
+        && !existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)/activeSession/current)
+        && ((resource.data.scope == 'sig'
+            && get(sigMember(resource.data.sigId, request.auth.uid)).data.status == 'removalPending'
+            && get(sigMember(resource.data.sigId, request.auth.uid)).data.removalRequestId == requestId)
+          || (resource.data.scope == 'subgroup'
+            && get(subgroupMember(resource.data.subgroupId, request.auth.uid)).data.status == 'removalPending'
+            && get(subgroupMember(resource.data.subgroupId, request.auth.uid)).data.removalRequestId == requestId));
+      allow delete: if false;
     }
     function roomPath(sg, room) {
       return /databases/$(database)/documents/subgroups/$(sg)/rooms/$(room);
@@ -332,8 +344,32 @@ service cloud.firestore {
         && activeSigMemberOrOwner(group.sigId, request.auth.uid)
         && get(subgroupMember(sg, request.auth.uid)).data.status == 'active';
     }
-    function validSeatId(id) {
-      return id in ['seat-1', 'seat-2', 'seat-3', 'seat-4', 'seat-5', 'seat-6'];
+    function validSeatId(id, capacity) {
+      return id.matches('seat-([1-9]|[1-3][0-9]|40)')
+        && int(id.split('-')[1]) <= capacity;
+    }
+    function roomAccessPath(uid, room) {
+      return /databases/$(database)/documents/users/$(uid)/roomAccess/$(room);
+    }
+    function admittedRoom(sg, room) {
+      let data = get(roomPath(sg, room)).data;
+      return signedIn() && (!data.get('isPrivate', false)
+        || data.createdBy == request.auth.uid || data.hostUid == request.auth.uid
+        || (existsAfter(roomAccessPath(request.auth.uid, room))
+          && getAfter(roomAccessPath(request.auth.uid, room)).data.subgroupId == sg));
+    }
+    match /users/{uid}/roomAccess/{room} {
+      allow read: if self(uid);
+      allow create: if self(uid) && eligible(request.resource.data.subgroupId)
+        && request.resource.data.keys().hasOnly(['userId', 'roomId', 'subgroupId', 'invitationToken', 'admittedAt'])
+        && request.resource.data.userId == uid && request.resource.data.roomId == room
+        && request.resource.data.admittedAt == request.time
+        && request.resource.data.invitationToken.matches('[A-HJ-KM-NP-Z2-9]{16}')
+        && get(/databases/$(database)/documents/roomInvites/$(request.resource.data.invitationToken)).data.roomId == room
+        && get(/databases/$(database)/documents/roomInvites/$(request.resource.data.invitationToken)).data.subgroupId == request.resource.data.subgroupId
+        && get(/databases/$(database)/documents/roomInvites/$(request.resource.data.invitationToken)).data.revoked == false
+        && get(/databases/$(database)/documents/roomInvites/$(request.resource.data.invitationToken)).data.expiresAt > request.time;
+      allow update, delete: if false;
     }
     function boundedLease(data) {
       return data.leaseExpiresAt is timestamp
@@ -383,14 +419,20 @@ service cloud.firestore {
     match /subgroups/{sg}/rooms/{room} {
       allow read: if signedIn();
       allow create: if eligible(sg)
-        && request.resource.data.keys().hasOnly(['roomId', 'subgroupId', 'sigId', 'title', 'createdBy', 'hostUid', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['roomId', 'subgroupId', 'sigId', 'title', 'createdBy', 'hostUid', 'status', 'createdAt', 'updatedAt', 'capacity', 'isPrivate'])
         && request.resource.data.roomId == room && request.resource.data.subgroupId == sg
         && request.resource.data.sigId == get(subgroupDoc(sg)).data.sigId
         && request.resource.data.createdBy == request.auth.uid && request.resource.data.hostUid == request.auth.uid
         && request.resource.data.status == 'waiting'
+        && request.resource.data.get('capacity', 6) is int
+        && request.resource.data.get('capacity', 6) >= 2 && request.resource.data.get('capacity', 6) <= 40
+        && request.resource.data.get('isPrivate', false) is bool
         && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 80
         && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time
         && getAfter(/databases/$(database)/documents/roomDirectory/$(room)).data.subgroupId == sg;
+      allow update: if signedIn() && resource.data.hostUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && request.resource.data.status == 'closed' && request.resource.data.updatedAt == request.time;
       allow update: if eligible(sg) && resource.data.hostUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sessionId', 'status', 'updatedAt'])
         && request.resource.data.status == 'active' && request.resource.data.updatedAt == request.time
@@ -400,14 +442,14 @@ service cloud.firestore {
       allow delete: if false;
 
       match /seats/{seat} {
-        allow read: if signedIn();
-        allow create: if signedIn() && validSeatId(seat)
+        allow read: if signedIn() && admittedRoom(sg, room);
+        allow create: if signedIn() && validSeatId(seat, getAfter(roomPath(sg, room)).data.get('capacity', 6))
           && !exists(roomPath(sg, room)) && getAfter(roomPath(sg, room)).data.createdBy == request.auth.uid
           && request.resource.data.keys().hasOnly(['seatId', 'status'])
           && request.resource.data.seatId == seat && request.resource.data.status == 'available';
-        allow update: if signedIn() && validSeatId(seat) && request.resource.data.seatId == seat && (
+        allow update: if signedIn() && validSeatId(seat, get(roomPath(sg, room)).data.get('capacity', 6)) && request.resource.data.seatId == seat && (
           // Claiming and renewal both require membership and the paired locator.
-          (eligible(sg) && get(roomPath(sg, room)).data.status in ['waiting', 'active']
+          (eligible(sg) && admittedRoom(sg, room) && get(roomPath(sg, room)).data.status in ['waiting', 'active']
             && request.resource.data.keys().hasOnly(['seatId', 'status', 'userId', 'claimId', 'claimedAt', 'lastRenewedAt', 'leaseExpiresAt', 'displayName', 'avatarId'])
             && request.resource.data.status == 'occupied' && request.resource.data.userId == request.auth.uid
             && request.resource.data.claimId is string && request.resource.data.claimId.size() > 0
@@ -455,6 +497,7 @@ service cloud.firestore {
     match /users/{uid}/activeSession/{id} {
       allow read: if self(uid);
       allow create: if self(uid) && id == 'current' && eligible(request.resource.data.subgroupId)
+        && admittedRoom(request.resource.data.subgroupId, request.resource.data.roomId)
         && request.resource.data.keys().hasOnly(['sessionId', 'roomId', 'subgroupId', 'seatId', 'claimId', 'userId', 'goalText', 'joinedAt'])
         && request.resource.data.userId == uid && request.resource.data.joinedAt == request.time
         && !exists(/databases/$(database)/documents/users/$(uid)/completions/$(request.resource.data.sessionId))
@@ -463,6 +506,7 @@ service cloud.firestore {
         && getAfter(sessionPath(request.resource.data.sessionId)).data.subgroupId == request.resource.data.subgroupId
         && sessionBreakEnd(getAfter(sessionPath(request.resource.data.sessionId)).data) > request.time
         && getAfter(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.sessionId == request.resource.data.sessionId
+        && getAfter(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.status == 'active'
         && get(seatPath(request.resource.data.subgroupId, request.resource.data.roomId, request.resource.data.seatId)).data.userId == uid
         && get(seatPath(request.resource.data.subgroupId, request.resource.data.roomId, request.resource.data.seatId)).data.claimId == request.resource.data.claimId
         && get(seatPath(request.resource.data.subgroupId, request.resource.data.roomId, request.resource.data.seatId)).data.leaseExpiresAt > request.time;
@@ -494,6 +538,9 @@ service cloud.firestore {
       allow get: if signedIn();
       allow list: if false;
       allow create: if signedIn() && eligible(request.resource.data.subgroupId)
+        && (!get(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.get('isPrivate', false)
+          || get(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.hostUid == request.auth.uid
+          || get(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.createdBy == request.auth.uid)
         && token.matches('^[A-HJ-KM-NP-Z2-9]{16}$')
         && request.resource.data.keys().hasOnly(['subgroupId', 'roomId', 'issuedBy', 'expiresAt', 'revoked'])
         && request.resource.data.issuedBy == request.auth.uid && request.resource.data.revoked == false

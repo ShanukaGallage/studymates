@@ -11,6 +11,13 @@ const fixedRoomSeatIds = <String>[
   'seat-6',
 ];
 
+List<String> roomSeatIds(int capacity) {
+  if (capacity < 2 || capacity > 40) {
+    throw ArgumentError.value(capacity, 'capacity');
+  }
+  return List.generate(capacity, (i) => 'seat-${i + 1}');
+}
+
 /// In-memory locator decoded from an active-claim record.
 ///
 /// This is a domain value for policy evaluation, not a Firestore schema.
@@ -89,6 +96,7 @@ final class SeatClaimPolicyDecision {
 /// caller; this class never accesses Firebase or the system clock.
 abstract final class SeatClaimPolicy {
   static SeatClaimPolicyDecision evaluate({
+    int capacity = 6,
     required RoomStatus roomStatus,
     required String subgroupId,
     required String roomId,
@@ -98,7 +106,11 @@ abstract final class SeatClaimPolicy {
     required DateTime nowUtc,
     required Map<String, ActiveSeatClaimSnapshot> activeClaimsByUser,
   }) {
-    if (!fixedRoomSeatIds.contains(requestedSeatId)) {
+    if (capacity < 2 || capacity > 40) {
+      return _failure(SeatClaimFailure.unavailable);
+    }
+    final expectedSeatIds = roomSeatIds(capacity);
+    if (!expectedSeatIds.contains(requestedSeatId)) {
       return _failure(SeatClaimFailure.seatNotFound);
     }
     if (roomStatus == RoomStatus.completed || roomStatus == RoomStatus.closed) {
@@ -107,14 +119,14 @@ abstract final class SeatClaimPolicy {
 
     late final List<SeatState> validatedSeats;
     try {
-      validatedSeats = validateSeatCollection(seats);
+      validatedSeats = validateSeatCollection(seats, capacity: capacity);
     } on ArgumentError {
       return _failure(SeatClaimFailure.unavailable);
     }
 
     final seatIds = validatedSeats.map((seat) => seat.seatId).toSet();
-    if (!seatIds.containsAll(fixedRoomSeatIds) ||
-        fixedRoomSeatIds.any((id) => !seatIds.contains(id))) {
+    if (!seatIds.containsAll(expectedSeatIds) ||
+        expectedSeatIds.any((id) => !seatIds.contains(id))) {
       return _failure(SeatClaimFailure.unavailable);
     }
 
@@ -215,7 +227,7 @@ abstract final class SeatClaimPolicy {
               seat.leaseExpiresAt!.toUtc().isAfter(now),
         )
         .length;
-    if (liveOccupiedSeats == fixedRoomSeatIds.length) {
+    if (liveOccupiedSeats == capacity) {
       return _failure(SeatClaimFailure.fullRoom);
     }
 

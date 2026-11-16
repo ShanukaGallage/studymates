@@ -35,10 +35,11 @@ unexpired seat. No automatic re-claim or schedule reset. A finalized user cannot
 rejoin the same cycle. History pages and complete summary remain independent.
 See [demo runbook](demo-runbook.md) for the conservative credit policy and limits.
 
-The trusted cleanup worker acknowledges M2 removalPending requests, releases the
-related seat, ends participation at zero credit and transfers host or closes rooms.
-It requires deployment and collection-group hostUid indexing. Client rules cannot
-acknowledge cleanup. Local emulator tests cover its retries and host transfer.
+Spark membership departure uses authenticated self-cleanup: finish related
+participation, release the user's seat, close hosted rooms and acknowledge the
+matching pending request. See the Spark departure contract below. The optional
+Admin cleanup worker retains its separate host-transfer behavior and tests;
+it is not required or deployed on Spark.
 
 ## Earlier agreements and implementation history
 
@@ -461,3 +462,51 @@ Next handoffs before connected room UI:
 `InvitationPreview`, result statuses and `InvitationService` already exist in
 `features/invites/data/invitation_service.dart`. They are contracts with fixtures,
 not a deployed lookup/admission backend. Scanner capture alone grants no admission.
+
+## Configurable rooms and private admission
+
+Connected creation accepts `capacity` (integer 2–40, default 6) and `isPrivate`
+(default false). Both are immutable after creation. Existing documents without
+these fields remain six-desk public rooms. Seats use stable `seat-1` through
+`seat-{capacity}` IDs. The shared claim policy and room scene consume capacity;
+preview fixtures stay six desks. Capacity and privacy are carried by RoomSnapshot
+and RoomSummary; other feature repository interfaces remain compatible.
+
+Public rooms retain SIG/subgroup eligibility checks. Private room metadata stays
+discoverable with a lock indicator, but seats require a verified admission or room
+creator/host identity. Opening a private tile/direct route prompts for an invitation
+code unless already admitted. Codes must match that exact room and subgroup and
+be unexpired/unrevoked. Code verification first creates the private room-access grant, allowing seat
+reads. The following seat claim rechecks the token inside its transaction and uses
+the same atomic claim path as public seating. Full/conflicting rooms never return
+admitted without a confirmed seat. Host/creator may issue private-room invitations.
+
+A private `users/{uid}/roomAccess/{roomId}` grant retains the original invitation
+proof for that account, so returning does not require retyping a code. Tokens are
+never copied into readable seat/claim projections. Only the account can read its
+grant; rules validate its token on creation and forbid client mutation. Once
+admitted, invitation expiry/revocation prevents new admissions, not existing grants.
+Membership remains mandatory for every future seat claim and renewal. Metadata
+visibility does not grant seat access or permission to start participation.
+
+Deploy the updated Firestore rules before using these options on hosted Firebase.
+These features use Firestore transactions and rules and do not require Blaze.
+
+## Spark membership departure
+
+The connected CommunityRepository supplies `completeOwnCleanup(requestId)` through
+`SparkMembershipCleanup`. It runs after M2 creates/resumes removalPending and before
+observing completion/finalizing. Only the authenticated user's records are touched.
+Related participation is saved as goal unfinished, its seat is released, and rooms
+the user hosts within the SIG/subgroup close. The account acknowledges only its
+exact pending request with a server timestamp; rules require no active participation
+or active claim and unchanged request ownership/scope. Another account cannot
+acknowledge it. Parent ownership transfer/closure and subgroup membership cascade
+remain M2 responsibilities. Room host transfer is not attempted on Spark.
+
+Retrying SIG leave does not require the SIG to remain visible in the active catalog:
+owner departure may already have closed it. Discover's pending-leave recovery
+retries cleanup and idempotent finalization after response loss or app restart.
+An unrelated active seat/session blocks acknowledgement until the user ends it.
+Self-service acknowledgement/host-close permissions must be deployed in rules
+before this version is installed; the optional Admin worker remains compatible.

@@ -53,7 +53,7 @@ class SigDetailScreen extends ConsumerWidget {
                 joined: sig.membership == MembershipState.joined,
                 leaveMessage: ref.watch(appModeProvider) == AppMode.preview
                     ? 'Leaving this SIG also clears its subgroup memberships in this preview.'
-                    : 'Leaving ends your related participation and releases your seat. Hosting may transfer or the room may close.',
+                    : 'Leaving ends your related participation and releases your seat. Rooms you host in this community will close. Other learners can save their own participation.',
                 onChange: (value) => ref
                     .read(communityCatalogProvider.notifier)
                     .setSigMembership(id, value),
@@ -185,7 +185,7 @@ class SubgroupDetailScreen extends ConsumerWidget {
                 subject: 'subgroup',
                 leaveMessage: ref.watch(appModeProvider) == AppMode.preview
                     ? null
-                    : 'Leaving ends your participation and releases your seat. Hosting may transfer or the room may close.',
+                    : 'Leaving ends your participation and releases your seat. Rooms you host in this subgroup will close.',
                 enabled: parentJoined,
                 joined: group.membership == MembershipState.joined,
                 onChange: (value) => ref
@@ -208,15 +208,17 @@ class SubgroupDetailScreen extends ConsumerWidget {
                 AppButton(
                   label: 'Create study room',
                   onPressed: () async {
-                    final name = await studyTitleDialog(
-                      context,
-                      'Create study room',
-                    );
-                    if (name == null || !context.mounted) return;
+                    final options = await studyRoomDialog(context);
+                    if (options == null || !context.mounted) return;
                     try {
                       final room = await ref
                           .read(studyRepositoryProvider)
-                          .createRoom(subgroupId: id, title: name);
+                          .createRoom(
+                            subgroupId: id,
+                            title: options.title,
+                            capacity: options.capacity,
+                            isPrivate: options.isPrivate,
+                          );
                       ref.invalidate(subgroupRoomsProvider(id));
                       if (context.mounted) {
                         context.push('/rooms/${room.roomId}');
@@ -246,7 +248,13 @@ class SubgroupDetailScreen extends ConsumerWidget {
                     loading: () => const LoadingView(message: 'Loading rooms…'),
                     error: (error, stack) => ErrorView(
                       message: 'Rooms are unavailable. Try again.',
-                      onRetry: () => ref.invalidate(subgroupRoomsProvider(id)),
+                      onRetry: () {
+                        if (ref.read(appModeProvider) == AppMode.preview) {
+                          ref.invalidate(subgroupRoomsProvider(id));
+                        } else {
+                          ref.invalidate(connectedRoomSummariesProvider(id));
+                        }
+                      },
                     ),
                     data: (rooms) => rooms.isEmpty
                         ? EmptyView(
@@ -267,6 +275,19 @@ class SubgroupDetailScreen extends ConsumerWidget {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
+                                        if (room.isPrivate)
+                                          const Row(
+                                            children: [
+                                              Icon(
+                                                Icons.lock_outline,
+                                                size: 18,
+                                              ),
+                                              SizedBox(width: 6),
+                                              Text(
+                                                'Private · invitation required',
+                                              ),
+                                            ],
+                                          ),
                                         Text(
                                           room.title,
                                           style: Theme.of(context)
@@ -277,7 +298,7 @@ class SubgroupDetailScreen extends ConsumerWidget {
                                         Text(
                                           ref.watch(appModeProvider) ==
                                                   AppMode.connected
-                                              ? 'Open to see live seats'
+                                              ? '${room.capacity} desks · Open to see live seats'
                                               : room.isFull
                                               ? 'Full • ${room.capacity} of ${room.capacity} seats'
                                               : '${room.occupiedSeats} of ${room.capacity} seats occupied',

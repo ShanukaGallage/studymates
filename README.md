@@ -29,7 +29,7 @@ an Android emulator. No Firebase configuration is needed for this milestone.
   Discover, classrooms, demo sessions, history and scanner remain independent.
 - `lib/main.dart`: Firebase-backed accounts, profiles, communities, rooms, atomic
   seating, immutable shared schedules, current-user session return, invitations
-  and private completion history. Deploy the checked-in rules/index/cleanup worker
+  and private completion history. Deploy the checked-in Firestore rules/indexes
   before production use; local implementation does not prove deployed configuration.
 - `--dart-define=STUDYMATES_EMULATOR_HOST=127.0.0.1`: explicitly labelled local
   backend with real Firebase SDK operations against shared emulator data. Debug
@@ -298,3 +298,76 @@ dependencies are no longer tracked. Analysis, **278 Flutter tests**, **35 backen
 tests**, membership/room/session rules and trusted cleanup emulator checks passed.
 The hosted-Firebase ARM64 debug APK built. Production deployment still requires
 Firebase CLI authentication and a project plan supporting Cloud Functions.
+
+## Room capacity and visibility
+
+Connected room creation asks for 2–40 desks and Public or Private. Public rooms
+are open to eligible subgroup members; private rooms remain discoverable with a
+lock label and ask for an invitation code before admission. Hosts/creators enter
+their own rooms directly. Previously admitted members may return. Existing rooms
+remain public with six desks. Private room codes are entered after opening the
+room, or through the existing scanner/invitation flow. Invite expiry/revocation
+blocks new admissions; membership checks continue for all seat operations.
+
+Redeploy rules before installing this update:
+
+```bash
+npm exec --yes --package firebase-tools -- firebase deploy \
+  --project studymates-dev --only firestore:rules
+```
+
+Capacity/privacy verification: analysis and **281 Flutter tests** passed. The
+expanded Android integration test passed against Firebase emulators, including
+40-desk creation, desk-40 claim, private direct-entry denial and verified-code
+admission. Rules tests cover capacity bounds, unknown/out-of-range desks, private
+seat reads, forged grants, expired/revoked/other-room invitations and token privacy.
+Membership rules and trusted cleanup regressions also passed. Hosted rules have
+not been redeployed by this task; repeat the two-phone rehearsal after deployment.
+
+## Spark-compatible membership leave
+
+Leave SIG/subgroup no longer waits for a Cloud Function. `SparkMembershipCleanup`
+ends only the current user's related participation, releases their seat and closes
+rooms they host in the departure scope before membership finalization. Their goal
+is recorded as unfinished; credit follows existing server-validated focus rules.
+It cannot transfer hosting or edit another user's participation. SIG ownership
+transfer/closure and subgroup cascade still use M2's membership protocol.
+
+Deploy current rules, then use Discover → **Finish pending leave requests** to
+recover an earlier timed-out departure. This may also finish owner departures
+after their SIG has already closed. Foreground errors preserve the retry path.
+Deploy only `firestore:rules,firestore:indexes` on Spark; Functions are optional.
+
+Leave verification: analysis is clean and **283 Flutter tests** passed. Firestore
+membership/security regressions passed. On the Xiaomi 23129RAA4G (Android 15),
+the connected integration test passed against Firebase emulators, including
+subgroup departure, SIG departure, seat release, hosted-room closure and cleanup
+retry. Hosted rules still require deployment and a two-account rehearsal.
+
+## Invitation sharing and screen sleep
+
+Live room invitations offer **Share invitation** through the Android share sheet,
+including the manual code and entry instructions. Preview fixtures cannot be
+shared. The selectable code remains available if sharing fails. Sharing does not
+reserve a seat, bypass membership, or configure Android deep links.
+
+The connected session screen offers **Keep screen awake**, off by default. It
+applies only while that screen is visible and the app is foregrounded, and releases
+on departure or completion. It does not run background work or extend seat leases.
+Packages: `share_plus` and `wakelock_plus`; existing dependencies remain pinned.
+
+Verification: formatting, analysis and 286 Flutter tests passed; the normal Android
+debug APK built successfully. The native integration test passed on the Xiaomi
+23129RAA4G (Android 15): screen-awake is off initially, enables on selection and
+releases after leaving. Manually check the invitation share sheet and screen-awake
+background/resume behavior. First builds may install SDK Platform 35 and CMake
+through Gradle.
+
+## Branded launch
+
+Android launch themes use lavender in both system light/dark modes, with an
+original book-and-two-learners vector emblem and Android 12+ splash resources.
+`lib/app/startup_splash.dart` continues the branding while Firebase initializes:
+gentle entrance, tagline and loading indicator, with no artificial delay. Startup
+errors still show Retry. Preview remains Firebase-free and shares the native
+launch artwork. Narrow/landscape layouts and 200% text scaling are tested.

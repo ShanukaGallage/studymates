@@ -12,6 +12,7 @@ import '../../../../app/app_mode.dart';
 import '../../../study/data/firestore_study_repository.dart';
 import '../../../study/presentation/study_dialogs.dart';
 import '../controllers/community_providers.dart';
+import '../../data/spark_membership_cleanup.dart';
 import '../widgets/catalog_view.dart';
 
 class DiscoverScreen extends ConsumerStatefulWidget {
@@ -24,6 +25,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
   final _search = TextEditingController();
   String _query = '';
   bool _joinedOnly = false;
+  bool _finishingLeave = false;
   @override
   void dispose() {
     _search.dispose();
@@ -87,6 +89,43 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
         ),
         if (ref.watch(appModeProvider) == AppMode.connected) ...[
           const SizedBox(height: 12),
+          AppButton(
+            label: 'Finish pending leave requests',
+            variant: AppButtonVariant.secondary,
+            isLoading: _finishingLeave,
+            onPressed: () async {
+              if (_finishingLeave) return;
+              setState(() => _finishingLeave = true);
+              try {
+                final count = await SparkMembershipCleanup(
+                  ref.read(studyRepositoryProvider),
+                ).resumeAll();
+                ref.invalidate(communityCatalogProvider);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        count == 0 ? 'No pending leave requests.' : 'Leave requests completed. Memberships refreshed.',
+                      ),
+                    ),
+                  );
+                }
+              } catch (error) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        error is StudyFailure ? error.message : 'Could not finish leaving. Check your connection and deployed rules, then retry.',
+                      ),
+                    ),
+                  );
+                }
+              } finally {
+                if (mounted) setState(() => _finishingLeave = false);
+              }
+            },
+          ),
+          const SizedBox(height: 8),
           AppButton(
             label: 'Create community',
             variant: AppButtonVariant.secondary,
