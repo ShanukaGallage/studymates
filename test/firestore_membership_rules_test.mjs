@@ -92,6 +92,28 @@ const membership = {
   updatedAt: new Date(),
 };
 
+await mustDeny('clients cannot write room seat documents directly', member.token, [
+  {
+    update: {
+      name: documentName(
+        `subgroups/${subgroupId}/rooms/room-${runId}/seats/seat-1`,
+      ),
+      fields: fields({ clientProbe: runId }),
+    },
+    currentDocument: { exists: false },
+  },
+]);
+
+await mustDeny('clients cannot write active seat claim locators directly', member.token, [
+  {
+    update: {
+      name: documentName(`activeSeatClaims/${member.uid}`),
+      fields: fields({ clientProbe: runId }),
+    },
+    currentDocument: { exists: false },
+  },
+]);
+
 await mustAllow('SIG owner initializes revision zero', owner.token, [
   {
     update: {
