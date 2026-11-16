@@ -4,9 +4,11 @@ const { Timestamp } = require('firebase-admin/firestore');
 
 const { createRoomDocument } = require('../lib/create-room-document.js');
 
-function makeFirestore({ createError, documents = {} } = {}) {
+function makeFirestore({ createError, createErrorAt = 1, documents = {} } = {}) {
   const reads = [];
   const writes = [];
+  const pendingWrites = [];
+  let createAttempts = 0;
   const roomReference = {
     id: 'auto-generated-room-id',
     path: 'subgroups/subgroup-a/rooms/auto-generated-room-id',
@@ -18,8 +20,9 @@ function makeFirestore({ createError, documents = {} } = {}) {
       return { exists: data !== undefined, data: () => data };
     },
     create(reference, data) {
-      if (createError) throw createError;
-      writes.push({ reference, data });
+      createAttempts += 1;
+      if (createError && createAttempts === createErrorAt) throw createError;
+      pendingWrites.push({ reference, data, transaction });
     },
   };
   const firestore = {
@@ -31,10 +34,21 @@ function makeFirestore({ createError, documents = {} } = {}) {
       return { doc: () => roomReference };
     },
     async runTransaction(callback) {
-      return callback(transaction);
+      const result = await callback(transaction);
+      writes.push(...pendingWrites);
+      return result;
     },
   };
-  return { firestore, transaction, roomReference, reads, writes };
+  return {
+    firestore,
+    transaction,
+    roomReference,
+    reads,
+    writes,
+    get createAttempts() {
+      return createAttempts;
+    },
+  };
 }
 
 const request = { subgroupId: 'subgroup-a', title: 'Study room' };
@@ -55,7 +69,7 @@ test('creates and returns a waiting room using the Firestore-generated ID', asyn
   );
 
   assert.equal(eligibilityTransaction, context.transaction);
-  assert.equal(context.writes.length, 1);
+  assert.equal(context.writes.length, 7);
   assert.equal(context.writes[0].reference, context.roomReference);
   assert.equal(
     context.writes[0].reference.path,
@@ -79,6 +93,28 @@ test('creates and returns a waiting room using the Firestore-generated ID', asyn
   assert.equal(room.updatedAt instanceof Timestamp, true);
   assert.equal(room.createdAt.toMillis(), room.updatedAt.toMillis());
   assert.deepEqual(room, context.writes[0].data);
+  assert.deepEqual(
+    context.writes.slice(1).map(({ reference }) => reference.path),
+    [1, 2, 3, 4, 5, 6].map(
+      (number) =>
+        `subgroups/subgroup-a/rooms/auto-generated-room-id/seats/seat-${number}`,
+    ),
+  );
+  assert.deepEqual(
+    context.writes.slice(1).map(({ data }) => data),
+    [1, 2, 3, 4, 5, 6].map((number) => ({
+      seatId: `seat-${number}`,
+      status: 'available',
+      userId: null,
+      claimedAt: null,
+      leaseExpiresAt: null,
+      lastRenewedAt: null,
+    })),
+  );
+  assert.equal(
+    context.writes.every(({ transaction }) => transaction === context.transaction),
+    true,
+  );
 });
 
 test('sets createdBy and hostUid only from the authenticated UID', async () => {
@@ -120,7 +156,7 @@ test('default M2 verifier reads membership and creates the room in one transacti
     `sigs/sig-a/members/${uid}`,
     `subgroups/subgroup-a/members/${uid}`,
   ]);
-  assert.equal(context.writes.length, 1);
+  assert.equal(context.writes.length, 7);
   assert.equal(context.writes[0].reference, context.roomReference);
 });
 
@@ -140,9 +176,9 @@ test('does not write when trusted membership verification rejects the user', asy
   assert.deepEqual(context.writes, []);
 });
 
-test('propagates Firestore transaction write failures', async () => {
+test('transaction failure after staged writes leaves no room or seats', async () => {
   const failure = new Error('transaction write failed');
-  const context = makeFirestore({ createError: failure });
+  const context = makeFirestore({ createError: failure, createErrorAt: 4 });
 
   await assert.rejects(
     createRoomDocument(
@@ -152,6 +188,7 @@ test('propagates Firestore transaction write failures', async () => {
     failure,
   );
   assert.deepEqual(context.writes, []);
+  assert.equal(context.createAttempts, 4);
 });
 
 test('rejects invalid identity or room input before starting a transaction', async () => {

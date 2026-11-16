@@ -21,6 +21,24 @@ export interface CreatedRoomDocument {
   readonly updatedAt: Timestamp;
 }
 
+export interface InitialSeatDocument {
+  readonly seatId: string;
+  readonly status: 'available';
+  readonly userId: null;
+  readonly claimedAt: null;
+  readonly leaseExpiresAt: null;
+  readonly lastRenewedAt: null;
+}
+
+export const INITIAL_ROOM_SEAT_IDS = [
+  'seat-1',
+  'seat-2',
+  'seat-3',
+  'seat-4',
+  'seat-5',
+  'seat-6',
+] as const;
+
 export interface CreateRoomDocumentInput {
   readonly firestore: Firestore;
   readonly request: CreateRoomRequest;
@@ -33,8 +51,9 @@ type EligibilityVerifier = (
 ) => Promise<{ sigId: string }>;
 
 /**
- * Creates only the room document. The membership verifier reads M2's four
- * documents through this same transaction before the room write is issued.
+ * Creates a room and its six available seats atomically. The membership
+ * verifier reads M2's four documents through this same transaction before any
+ * room or seat writes are issued.
  */
 export async function createRoomDocument(
   { firestore, request, uid }: CreateRoomDocumentInput,
@@ -82,6 +101,20 @@ export async function createRoomDocument(
     };
 
     transaction.create(roomReference, room);
+    for (const seatId of INITIAL_ROOM_SEAT_IDS) {
+      const seat: InitialSeatDocument = {
+        seatId,
+        status: 'available',
+        userId: null,
+        claimedAt: null,
+        leaseExpiresAt: null,
+        lastRenewedAt: null,
+      };
+      transaction.create(
+        firestore.doc(`${roomReference.path}/seats/${seatId}`),
+        seat,
+      );
+    }
     return room;
   });
 }
