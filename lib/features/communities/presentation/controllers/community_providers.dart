@@ -22,6 +22,7 @@ final communityCatalogProvider =
     AsyncNotifierProvider<CommunityController, CommunityCatalog>(
       CommunityController.new,
       retry: (count, error) => null, // Recovery is explicit through Retry.
+      dependencies: [appModeProvider],
     );
 
 class CommunityController extends AsyncNotifier<CommunityCatalog> {
@@ -29,7 +30,7 @@ class CommunityController extends AsyncNotifier<CommunityCatalog> {
   Future<CommunityCatalog> build() {
     // Rebuild on account changes so another user's cached membership snapshot
     // is never retained after authentication switches.
-    if (ref.watch(appModeProvider) == AppMode.foundation) {
+    if (ref.watch(appModeProvider) != AppMode.preview) {
       ref.watch(authStateProvider.select((identity) => identity.userId));
     }
     return ref.watch(communityRepositoryProvider).loadCatalog();

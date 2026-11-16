@@ -109,7 +109,7 @@ void main() {
       // Profile save emits a Firestore profile without changing Auth.displayName.
       profiles.add(UserProfile(id: 'u1', displayName: 'Learner'));
       await tester.pumpAndSettle();
-      expect(find.text('Home placeholder'), findsOneWidget);
+      expect(find.text('Small steps.\nShared focus.'), findsOneWidget);
       await tester.tap(find.text('Profile').last);
       await tester.pumpAndSettle();
       expect(find.text('Learner'), findsOneWidget);

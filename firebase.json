@@ -1,1 +1,31 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"studymates-dev","appId":"1:610967859488:android:bf78ae7074ee236e48e745","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"studymates-dev","configurations":{"android":"1:610967859488:android:bf78ae7074ee236e48e745"}}}}},"firestore":{"rules":"firestore.rules"}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "studymates-dev",
+          "appId": "1:610967859488:android:bf78ae7074ee236e48e745",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "studymates-dev",
+          "configurations": {
+            "android": "1:610967859488:android:bf78ae7074ee236e48e745"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "studymates-cleanup"
+    }
+  ]
+}

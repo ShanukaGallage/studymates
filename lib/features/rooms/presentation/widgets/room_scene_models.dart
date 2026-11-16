@@ -8,17 +8,23 @@ class SeatOccupant {
 }
 
 class RoomSeat {
-  const RoomSeat({required this.number, required this.status, this.occupant});
+  const RoomSeat({
+    required this.number,
+    required this.status,
+    this.occupant,
+    this.isPreview = true,
+  });
   final int number;
   final RoomSeatStatus status;
   final SeatOccupant? occupant;
+  final bool isPreview;
 
   String get description => switch (status) {
     RoomSeatStatus.available => 'Available',
-    RoomSeatStatus.occupied =>
-      'Occupied by ${occupant?.name ?? 'a sample learner'}',
+    RoomSeatStatus.occupied => 'Occupied by ${occupant?.name ?? 'a learner'}',
     RoomSeatStatus.selected => 'Selected in preview',
-    RoomSeatStatus.yours => 'Yours in sample data',
+    RoomSeatStatus.yours =>
+      isPreview ? 'Yours in sample data' : 'Your claimed seat',
     RoomSeatStatus.pending => 'Selection pending',
     RoomSeatStatus.failed => 'Selection failed. Tap to retry',
   };

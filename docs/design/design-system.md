@@ -1,4 +1,4 @@
-# StudyMates — initial UI design plan
+# StudyMates — UI design direction
 
 This plan extends the existing Flutter design system. Use it with
 [screens and states](screens.md), the [wireframe](studymates-wireframe.html) and the
@@ -13,20 +13,20 @@ library or competing theme is needed. Start with light mode and the platform fon
 
 | Token | Existing value | Intended use |
 |---|---|---|
-| Primary | #225B3B | Main action, selected state |
-| Background | #FAF7F0 | Page background |
+| Primary | #6548C7 | Main action, selected state |
+| Background | #F8F7FF | Page background |
 | Surface | #FFFFFF | Forms/cards |
-| Soft accent | #E4F0DF | Supportive and selected surfaces |
-| Main text | #1E2B24 | Body/headings |
-| Secondary text | #5F6D64 | Supporting labels |
+| Soft accent | #ECE6FF | Supportive and selected surfaces |
+| Main text | #211B3D | Body/headings |
+| Secondary text | #655F78 | Supporting labels |
 
 Use the existing error token for failures. Pair color with a label/icon; test actual
 foreground/background combinations when adding component states. Existing active
 text-pair tests passed, but that does not validate every future combination.
 
 Typography: page title 26–28, section 20, card title 18, body 16, secondary 14 logical
-pixels. Spacing: 4/8/12/16/24/32. Page padding 16–20, card radius 16, control radius
-12. These are existing targets, not reasons to scatter constants into screens.
+pixels. Spacing: 4/8/12/16/24/32. Page padding 16–20, card radius 24, control radius
+18. These are existing targets, not reasons to scatter constants into screens.
 
 ## Component handoff
 
@@ -105,3 +105,57 @@ passed. Android, TalkBack and Flutter behavior are not validated by this HTML.
 Publish one small reference/state change at a time. Changes to shared widget APIs
 or route contracts need the coordinating owner's handoff before teammates adapt.
 No report, slides or formal rubric are added by this design work.
+
+## Lavender Home refresh
+
+The user's StudyZen reference supersedes the original green/cream palette. Adopt
+its lavender atmosphere, purple feature cards, rounded white surfaces and soft
+blue (#E4EEFF) / mint (#DEF4EB) accents. Primary purple is deliberately darker
+than the reference for readable white button text. Hero gradients end at #7560C8.
+Use the shared tokens; do not add another theme or external font dependency.
+
+Home belongs to Shanuka. Its greeting consumes the existing profile; preview
+community cards observe the same catalog as Discover. Account mode explicitly
+marks community services as not connected. No fabricated progress, plans, streaks,
+AI tips or notification badges. Keep Home/Discover/Progress/Profile navigation;
+there is no floating add action without a supported creation flow.
+
+The book decoration is original Flutter-drawn artwork. This refresh does not copy
+the reference's logo, mascot or branded assets. Earlier HTML wireframes remain
+flow references and may show the superseded palette. Physical classroom scenery
+retains its original materials; its surrounding controls inherit the new theme.
+
+## Progress overview refresh
+
+Progress follows the reference's third screen: pastel metric cards, lavender
+background, rounded white chart panels and a ring breakdown. The existing
+CompletionHistoryRepository/controller remains unchanged. All-time normal totals
+come from its complete-source summary. Day/week/month/all-time filters apply only
+to loaded records and the history list, with partial-page disclosure; weeks start
+Monday and record dates display locally. The bar chart shows the last seven local
+calendar days. The ring groups goal outcomes, since records have no subject IDs.
+Demo records stay in their separate view and never change normal totals. No focus
+score, invented streak, percentage improvement or subject attribution is shown.
+At large text sizes the daily chart becomes a readable date/value list.
+
+## Annual study heatmap
+
+Progress includes a compact full-calendar-year overview and a horizontally
+scrollable Monday–Sunday calendar, with previous/next year and an accessible
+date picker for exact day totals. Daily credited seconds are grouped by local
+session end date and deduplicated by record ID. Intensity levels: zero, >0–<30m,
+30m–<2h, 2–<4h, and 4h+. Future dates are blank. Normal and demo views stay separate.
+The annual section is independent of short-period filters. While older pages
+remain, all values are explicitly partial and unfilled dates are unverified.
+A production year-aggregate query is still needed for complete coverage without
+paging through history; no new database interface or aggregation policy is imposed.
+
+## Discover community grid
+
+Discover uses the user's study-group reference for rounded cards, a clear section
+heading and category/membership badges, within the lavender theme. Search combines
+with All communities / My communities filters. Actual catalog subgroup counts are
+shown. Two columns fit at 340px of content width with up to 150% text scaling;
+smaller or larger-text layouts use natural-height single-column cards. Existing
+Explore routes and membership operations are retained. No member avatars, create
+action, online badges or video labels are invented without backing data/actions.

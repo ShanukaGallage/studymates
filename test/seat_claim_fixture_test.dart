@@ -266,32 +266,38 @@ void main() {
       },
     );
 
-    test('failed cleanup validation leaves every seat and claim unchanged', () async {
-      final callerRoom = await createRoom();
-      final targetRoom = await createRoom();
-      await claim(callerRoom, 'seat-1');
-      currentUid = 'old-user';
-      await claim(targetRoom, 'seat-1');
-      final callerClaim = repository.activeSeatClaimForTest('user-a');
-      final oldUserClaim = repository.activeSeatClaimForTest('old-user');
+    test(
+      'failed cleanup validation leaves every seat and claim unchanged',
+      () async {
+        final callerRoom = await createRoom();
+        final targetRoom = await createRoom();
+        await claim(callerRoom, 'seat-1');
+        currentUid = 'old-user';
+        await claim(targetRoom, 'seat-1');
+        final callerClaim = repository.activeSeatClaimForTest('user-a');
+        final oldUserClaim = repository.activeSeatClaimForTest('old-user');
 
-      nowUtc = nowUtc.add(const Duration(minutes: 2));
-      currentUid = 'user-a';
-      corruptTargetBeforeApply = true;
+        nowUtc = nowUtc.add(const Duration(minutes: 2));
+        currentUid = 'user-a';
+        corruptTargetBeforeApply = true;
 
-      final result = await claim(targetRoom, 'seat-1') as SeatClaimFailed;
+        final result = await claim(targetRoom, 'seat-1') as SeatClaimFailed;
 
-      expect(result.failure, SeatClaimFailure.unavailable);
-      expect(repository.activeSeatClaimForTest('user-a'), same(callerClaim));
-      expect(repository.activeSeatClaimForTest('old-user'), same(oldUserClaim));
-      expect(
-        (await repository.watchSeats(callerRoom).first).first.userId,
-        'user-a',
-      );
-      expect(
-        (await repository.watchSeats(targetRoom).first).first.userId,
-        'old-user',
-      );
-    });
+        expect(result.failure, SeatClaimFailure.unavailable);
+        expect(repository.activeSeatClaimForTest('user-a'), same(callerClaim));
+        expect(
+          repository.activeSeatClaimForTest('old-user'),
+          same(oldUserClaim),
+        );
+        expect(
+          (await repository.watchSeats(callerRoom).first).first.userId,
+          'user-a',
+        );
+        expect(
+          (await repository.watchSeats(targetRoom).first).first.userId,
+          'old-user',
+        );
+      },
+    );
   });
 }

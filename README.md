@@ -25,21 +25,19 @@ an Android emulator. No Firebase configuration is needed for this milestone.
 
 ## Entry points and current scope
 
-- `lib/main_preview.dart`: **UI Preview / Local sample data**. Discover and rooms
-  use in-memory repositories; Progress uses Sandali's history fixtures with normal/
-  demo separation. Home and Profile remain placeholders. No Firebase initialization.
-- `lib/main.dart`: **Account mode / Study features in development**. Initializes
-  Firebase using the existing Android configuration, then routes to login, signup,
-  reset, profile setup/view/edit and sign-out. Startup/profile failures have Retry.
-  Home, Discover and Progress explicitly remain unconnected study features.
-- App access combines authenticated UID with the matching Firestore profile;
-  Firebase Auth's display name alone does not establish profile completeness.
-- The preview's scanner icon opens camera/manual capture. Captured text is labelled
-  unverified; no invitation lookup, membership mutation or room admission occurs.
-- Live seating, shared sessions, invitation admission and persistent history are
-  not implemented. No preview repository is substituted into account mode.
-- Riverpod owns repository bindings and app access; go_router preserves tab stacks
-  and protects account routes. Development routes exist only in preview mode.
+- `lib/main_preview.dart`: labelled local UI samples without Firebase. Home,
+  Discover, classrooms, demo sessions, history and scanner remain independent.
+- `lib/main.dart`: Firebase-backed accounts, profiles, communities, rooms, atomic
+  seating, immutable shared schedules, current-user session return, invitations
+  and private completion history. Deploy the checked-in rules/index/cleanup worker
+  before production use; local implementation does not prove deployed configuration.
+- `--dart-define=STUDYMATES_EMULATOR_HOST=127.0.0.1`: explicitly labelled local
+  backend with real Firebase SDK operations against shared emulator data. Debug
+  Android permits cleartext only to localhost/emulator addresses.
+- App access requires authenticated UID plus its matching persisted profile.
+  No fixture repository substitutes for a backend failure.
+- See [demo runbook](docs/demo-runbook.md) for setup, deployment prerequisites,
+  credit policy, two-phone checks and the five-minute rehearsal sequence.
 
 ## Try account and feature integration
 
@@ -233,3 +231,62 @@ connection recovery, goal outcome, room-start handoff and 320px/200% text layout
 The preview APK built and launched on the Android 15 phone. The device showed its
 lock screen during automated inspection; Shanuka subsequently reported the
 session flow was working on the phone. This is a user-reported visual check. No live session, seat admission or completion persistence was tested.
+
+## Lavender Home
+
+Home now follows the approved lavender/purple visual direction, with a focus card,
+community list and study shortcuts. Preview memberships update Home and Discover
+together. Account Home uses the saved profile and explicitly identifies community
+services as pending. No active session, progress totals or AI features are invented.
+See `docs/design/design-system.md` for the updated shared palette and spacing.
+
+Lavender Home verification: analysis and all **231 tests** passed after the newly
+merged membership and seat-policy changes. Home tests cover membership updates,
+community navigation, loading/retry and 320px large text; contrast checks cover
+hero text and the new accent surfaces. A Flutter render with Roboto was inspected.
+The earlier Home APK launched, but the phone disconnected before the final
+provider fix could be installed; final on-device review remains pending.
+
+Progress overview now uses pastel summary cards, local day/week/month/all-time
+filters, a seven-day study-time chart and a goal-outcome ring. Charts/filter results
+use loaded pages only; the normal all-history summary stays independent. Demo
+records remain separate. Analysis and all **258 tests** passed; a Flutter render
+was visually checked. Android verification of this dashboard is pending.
+
+The Progress study-year heatmap shows daily credited time with purple intensity,
+a full-year overview, scrollable calendar, year navigation and day inspection.
+It uses loaded records, clearly marks incomplete history and updates on paging.
+Future dates are blank; demo activity stays separate. Complete annual coverage
+without paging requires a future current-user daily-aggregate repository method.
+Heatmap verification: analysis and all **260 tests** passed, including leap-day,
+year boundaries, duplicate records, intensity thresholds, demo exclusion and
+large-text date inspection. The ARM64 preview APK built successfully. Physical
+phone review of the heatmap remains pending.
+
+Discover now has a responsive community-card grid, category/membership badges,
+subgroup counts and All communities / My communities filters combined with search.
+Analysis and all **261 tests** passed; the 390px Flutter render was inspected.
+Final on-device visual verification of the Discover refresh remains pending.
+
+## Connected demo implementation checkpoint
+
+Shanuka is covering Aradhana's backend/integration work for the demo. The new
+`features/study/data` adapters reuse M2 membership transactions, M3 seat policy
+and active-session model, and M4 invitation/history consumers. Seat release and
+renewal accept an expected claim ID. The foreground app renews a valid seat every
+30 seconds. Session phase boundaries derive from a server-recorded start. Stable
+per-user/session completion IDs prevent duplicate writes; demo credit is separate.
+
+Firebase rules enforce paired claims, membership, private goals/history and bounded
+credit. `functions/` supplies trusted membership-leave cleanup and host transfer.
+The Firebase CLI currently has no authorized account; no production deployment
+was performed. Earlier milestone notes below/above are historical checkpoints.
+
+Connected verification (16 November): formatting and analysis passed; **262 Flutter
+tests** passed. The Android real-SDK integration test passed on 23129RAA4G /
+Android 15 using two emulator identities: conflicting claims, cross-room seat
+exclusion, renewal, invitation revocation, shared schedules, revalidation, stable
+completion retry and private history. Firestore rule tests passed for authorization,
+completion credit bounds, demo isolation and simultaneous claims. Trusted cleanup
+tests passed for seat release, host transfer and repeat execution. This is evidence
+for the local backend, not a production deployment or a two-physical-phone rehearsal.

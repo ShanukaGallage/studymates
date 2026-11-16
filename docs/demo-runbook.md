@@ -1,0 +1,123 @@
+# Tomorrow's five-minute Android demo
+
+Use account mode (`lib/main.dart`) for connected features. `main_preview.dart`
+remains a separate, labelled in-memory UI preview. Local backend mode is also
+explicitly labelled and uses Firebase emulators, never production accounts/data.
+
+## Local backend rehearsal
+
+```bash
+npm exec --yes --package firebase-tools -- firebase emulators:start \
+  --only auth,firestore --project studymates-dev --config firebase.emulators.json
+adb reverse tcp:8080 tcp:8080
+adb reverse tcp:9099 tcp:9099
+flutter run -t lib/main.dart --dart-define=STUDYMATES_EMULATOR_HOST=127.0.0.1
+```
+
+Run the commands with both USB devices selected using `adb -s DEVICE_ID reverse`
+and `flutter run -d DEVICE_ID`. The same emulator project gives both phones one
+shared backend. Emulator data is temporary unless explicitly exported/imported.
+Do not confuse this with a production Firebase deployment.
+
+## Automated backend checks
+
+With emulators running:
+
+```bash
+node test/firestore_membership_rules_test.mjs
+node test/firestore_study_rules_test.mjs
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 node test/membership_cleanup_emulator_test.cjs
+flutter test integration_test/connected_study_test.dart -d DEVICE_ID \
+  --dart-define=STUDYMATES_EMULATOR_HOST=127.0.0.1
+```
+
+The Android integration test creates two independent test identities only in the
+emulators and uses real Firebase SDK transactions. It must never target production.
+
+## Production prerequisites
+
+The checked-in rules, index and trusted cleanup function must be reviewed and
+published to `studymates-dev` before treating account mode as a verified live demo.
+No client should bypass rules or set test security settings in the console.
+Deployment requires Firebase CLI login, suitable project permissions and a project
+plan supporting Cloud Functions. Do not silently change the billing plan.
+
+```bash
+npm ci --prefix functions
+npm exec --yes --package firebase-tools -- firebase deploy \
+  --project studymates-dev --only firestore:rules,firestore:indexes,functions:cleanupMembership
+flutter run -t lib/main.dart
+```
+
+The Firebase CLI had no authorized accounts during this implementation, so
+production deployment was not performed. Run `firebase login` (or the equivalent
+`npm exec --package firebase-tools -- firebase login`) on your own machine first.
+
+The cleanup worker is required for SIG/subgroup leave: it releases the departed
+user's seat, ends their participation with zero credit, transfers room hosting to
+an eligible seated member or closes the room, then acknowledges M2's leave request.
+Normal users cannot mark that trusted work complete. Function retries are idempotent.
+
+## Five-minute sequence
+
+1. Use two accounts. Host creates a community and subgroup; both join.
+2. Host creates a room; both open it and claim different seats. Both phones must
+   show the same occupancy. A second claim on an occupied seat must fail safely.
+3. Set personal goals. Host starts the labelled 45s focus / 15s break demo;
+   guest joins the same schedule. Explain that late joins do not receive earlier time.
+4. Return Home, then Return to session. It checks membership, room, session and
+   the same unexpired seat lease without starting or claiming again.
+5. End/save each participation. Open Progress → Demo history; refresh/reopen must
+   not duplicate the completion. Normal totals and annual heatmap exclude demos.
+6. If time permits, show host invitation QR and scan/manual entry on the other
+   phone. Invite preview requires explicit admission and fresh membership/capacity
+   checks. Finish/release an existing seat before joining another room.
+
+## Scope and credit policy
+
+The foreground app renews its single seat lease every 30 seconds. Claims have an
+approximately two-minute lease (rules cap client timestamps at server time +125s;
+large device-clock drift fails safely). No hidden client success replaces a server
+result. Reconnection never automatically reclaims an expired seat.
+
+Credit is conservative elapsed focus time from the server-recorded participation
+join to focus end or save time, reduced by one second for clock/rounding tolerance,
+and bounded again by rules. The same unexpired claim must still be valid when
+saving; lost/expired/reassigned leases receive zero credit. This is a participation
+measure, not attention detection. Background intervals within a still-valid lease
+are not independently measured. Goal completion is a separate user-reported outcome.
+
+Sessions and participant goals survive app restart. Shared schedules are immutable;
+only the host starts a new cycle after the old one ends. Phase boundaries are
+derived from the single persisted server start; client wall clocks never write
+focus/break endpoints. Completion document IDs
+are the session ID within the current user's private collection. Retrying a save
+returns the existing record. Rejoining an already finalized cycle is blocked.
+
+History summary currently reads the user's complete completion collection; pages
+are bounded to 30 records. This is adequate for the small assignment dataset;
+large-scale aggregates/indexes remain future work. The annual heatmap explicitly
+marks partial pages. Room/seat display names and minimal claim locators are visible
+to signed-in learners; private profiles, goals and completion histories stay scoped
+to the authenticated owner. No public goals or whole profile documents are exposed.
+
+## Local cleanup rehearsal
+
+If Functions are not deployed, membership leave requests remain pending until
+the trusted worker runs. Keep leave out of the demo, or run the following local
+worker against emulators only after each request:
+
+```bash
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 node functions/run-local-cleanup.js
+```
+
+This is an explicit local administrative helper, not a client-side authorization
+bypass. Do not set it to a production endpoint.
+
+## Verified checkpoint
+
+16 November: analysis clean; 262 Flutter tests passed; real-SDK Android integration
+passed on 23129RAA4G / Android 15 against Auth/Firestore emulators with two separate
+identities. Membership and room/session rule suites passed. Trusted cleanup test
+passed including host transfer and repeated execution. A full manual walkthrough
+on two physical phones and production deployment remain pending.

@@ -1,5 +1,36 @@
 # StudyMates contracts — preview and backend agreements
 
+## Current connected implementation (16 November 2026)
+
+This checkpoint supersedes earlier “not implemented” statements below. Shanuka
+is covering M3 while Aradhana travels. `features/study/data/firestore_study_repository.dart`
+binds LiveRoomRepository, SeatLeaseRepository, ActiveSessionRepository and
+CompletionHistoryRepository. The original feature interfaces and fixtures remain.
+`firestore_invitation_service.dart` uses the same transactional seat admission.
+Production deployment/physical two-phone review remain separate verification gates.
+
+Persistence: existing `sigs`/`subgroups`; `subgroups/{id}/rooms/{room}/seats/{seat}`;
+`roomDirectory/{room}` locates subgroup; `activeSeatClaims/{uid}` holds a paired
+claim ID and expiry. Public seat projections contain display name/avatar only.
+Shared immutable `roomSessions/{session}` store server start and demo flag; exact
+45/15-second or 25/5-minute phase ends derive from that start. Private
+`users/{uid}/activeSession/current` stores participation/goal and claim identity.
+`users/{uid}/completions/{session}` stores one immutable result. Opaque
+`roomInvites/{token}` are bounded-lifetime, revocable room locators, not authorization.
+
+`SeatLeaseRepository` gives typed release/renewal results with expected claim ID.
+Return revalidates current membership, room/session association and the same
+unexpired seat. No automatic re-claim or schedule reset. A finalized user cannot
+rejoin the same cycle. History pages and complete summary remain independent.
+See [demo runbook](demo-runbook.md) for the conservative credit policy and limits.
+
+The trusted cleanup worker acknowledges M2 removalPending requests, releases the
+related seat, ends participation at zero credit and transfers host or closes rooms.
+It requires deployment and collection-group hostUid indexing. Client rules cannot
+acknowledge cleanup. Local emulator tests cover its retries and host transfer.
+
+## Earlier agreements and implementation history
+
 The local preview models and repository boundaries below are implemented.
 Identity/membership proposals still need M2/M3 review; the room/seat section
 records their agreed decisions and remaining questions. Its proposed Firestore

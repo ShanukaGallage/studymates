@@ -35,11 +35,19 @@ String? accountRedirect(AccountAccess access, Uri uri) {
     '/progress',
     '/profile',
     '/profile/edit',
+    '/session',
+    '/scan',
   };
   final requested = gates.contains(uri.path)
       ? uri.queryParameters['from']
       : uri.path;
-  final destination = destinations.contains(requested) ? requested! : '/home';
+  final allowed =
+      requested != null &&
+      (destinations.contains(requested) ||
+          RegExp(r'^/(sigs|subgroups|rooms)/[A-Za-z0-9_-]{1,128}$')
+              .hasMatch(requested) ||
+          RegExp(r'^/invitation/[A-HJ-KM-NP-Z2-9]{16}$').hasMatch(requested));
+  final destination = allowed ? requested : '/home';
   String target(String path) =>
       Uri(path: path, queryParameters: {'from': destination}).toString();
   return switch (access) {

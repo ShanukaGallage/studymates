@@ -69,6 +69,8 @@ void main() {
               ? 'Search communities'
               : name == 'Progress'
               ? 'Eligible recorded time: 1h 5m'
+              : name == 'Home'
+              ? 'Small steps.\nShared focus.'
               : '$name placeholder',
         ),
         findsOneWidget,
@@ -100,7 +102,7 @@ void main() {
     expect(find.text('Page not found'), findsOneWidget);
     await tester.tap(find.text('Go to Home'));
     await tester.pumpAndSettle();
-    expect(find.text('Home placeholder'), findsOneWidget);
+    expect(find.text('Small steps.\nShared focus.'), findsOneWidget);
   });
 
   testWidgets('normal app labels its status and has no gallery route', (
@@ -218,8 +220,9 @@ void main() {
     addTearDown(tester.view.resetViewInsets);
     await mount(tester, textScale: 2);
     expect(
-      MediaQuery.textScalerOf(tester.element(find.text('Home placeholder')))
-          .scale(16),
+      MediaQuery.textScalerOf(
+        tester.element(find.text('Small steps.\nShared focus.')),
+      ).scale(16),
       32,
     );
     for (final name in ['Discover', 'Progress', 'Profile', 'Home']) {
@@ -258,6 +261,11 @@ void main() {
       (scheme.onSurfaceVariant, scheme.surface),
       (scheme.onSurfaceVariant, AppColors.background),
       (scheme.onPrimaryContainer, scheme.primaryContainer),
+      (scheme.onSurface, AppColors.softAccent),
+      (scheme.onSurfaceVariant, AppColors.softAccent),
+      (Colors.white, AppColors.heroEnd),
+      (scheme.primary, AppColors.blueAccent),
+      (scheme.primary, AppColors.mintAccent),
       (scheme.error, scheme.surface),
       (scheme.error, scheme.errorContainer), // Failed classroom seat action.
     ]) {

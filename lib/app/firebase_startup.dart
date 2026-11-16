@@ -1,4 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -14,7 +16,23 @@ final firebaseBootstrapProvider = FutureProvider<void>((ref) async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
   }
-}, retry: (count, error) => null);
+  const host = String.fromEnvironment('STUDYMATES_EMULATOR_HOST');
+  if (host.isNotEmpty) {
+    await FirebaseAuth.instance.useAuthEmulator(
+      host,
+      9099,
+      automaticHostMapping: false,
+    );
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: false,
+    );
+    FirebaseFirestore.instance.useFirestoreEmulator(
+      host,
+      8080,
+      automaticHostMapping: false,
+    );
+  }
+}, retry: (attempt, error) => null);
 
 class FirebaseStartup extends ConsumerWidget {
   const FirebaseStartup({super.key});

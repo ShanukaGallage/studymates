@@ -2,15 +2,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/models/completion_record.dart';
 import '../../../sessions/data/completion_history_repository.dart';
+import '../../../study/data/firestore_study_repository.dart';
+import '../../../auth/presentation/controllers/auth_providers.dart';
+import '../../../../app/app_mode.dart';
 
 final progressHistoryRepositoryProvider = Provider<CompletionHistoryRepository>(
-  (ref) => throw StateError('No current-user history repository configured.'),
+  (ref) => ref.watch(studyRepositoryProvider),
 );
 
 final progressHistoryProvider =
     AsyncNotifierProvider<ProgressHistoryController, ProgressHistoryData>(
       ProgressHistoryController.new,
       retry: (count, error) => null,
+      dependencies: [appModeProvider],
     );
 
 /// Summary is provided by the complete source, never computed from loaded pages.
@@ -40,6 +44,9 @@ class ProgressHistoryController extends AsyncNotifier<ProgressHistoryData> {
 
   @override
   Future<ProgressHistoryData> build() async {
+    if (ref.watch(appModeProvider) == AppMode.connected) {
+      ref.watch(authStateProvider.select((value) => value.userId));
+    }
     _generation = Object();
     final repository = ref.watch(progressHistoryRepositoryProvider);
     // Start both independent reads together and observe errors from either.
