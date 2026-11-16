@@ -33,6 +33,141 @@ class FirestoreCommunityRepository implements CommunityRepository {
   final Duration cleanupTimeout;
 
   @override
+  Future<CommunityCatalog> createSig({
+    required String name,
+    required String category,
+    required String description,
+  }) async {
+    final uid = _requireCurrentUser();
+    final normalizedName = _requiredText(name, 80);
+    final normalizedCategory = _requiredText(category, 40);
+    final normalizedDescription = _requiredText(description, 500);
+    try {
+      await _catalog.createSig({
+        'name': normalizedName,
+        'category': normalizedCategory,
+        'description': normalizedDescription,
+        'ownerId': uid,
+        'status': 'active',
+        'membershipRevision': 0,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return await loadCatalog();
+    } on FirebaseException catch (error) {
+      throw _mapFirebaseError(error);
+    }
+  }
+
+  @override
+  Future<CommunityCatalog> createSubgroup({
+    required String sigId,
+    required String name,
+    required String description,
+  }) async {
+    final uid = _requireCurrentUser();
+    final sig = await _requireOwnedSig(sigId, uid);
+    final normalizedName = _requiredText(name, 80);
+    final normalizedDescription = _requiredText(description, 500);
+    try {
+      await _catalog.createSubgroup({
+        'sigId': sig.id,
+        'name': normalizedName,
+        'description': normalizedDescription,
+        'status': 'active',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return await loadCatalog();
+    } on FirebaseException catch (error) {
+      throw _mapFirebaseError(error);
+    }
+  }
+
+  @override
+  Future<CommunityCatalog> updateSubgroup({
+    required String sigId,
+    required String subgroupId,
+    required String name,
+    required String description,
+  }) async {
+    final uid = _requireCurrentUser();
+    await _requireOwnedSubgroup(sigId, subgroupId, uid);
+    final normalizedName = _requiredText(name, 80);
+    final normalizedDescription = _requiredText(description, 500);
+    try {
+      await _catalog.updateSubgroup(subgroupId, {
+        'name': normalizedName,
+        'description': normalizedDescription,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return await loadCatalog();
+    } on FirebaseException catch (error) {
+      throw _mapFirebaseError(error);
+    }
+  }
+
+  @override
+  Future<CommunityCatalog> deleteSubgroup({
+    required String sigId,
+    required String subgroupId,
+  }) async {
+    final uid = _requireCurrentUser();
+    await _requireOwnedSubgroup(sigId, subgroupId, uid);
+    try {
+      // Firestore does not cascade subcollection deletion. Closing keeps
+      // membership and historical documents intact while hiding the subgroup.
+      await _catalog.closeSubgroup(subgroupId);
+      return await loadCatalog();
+    } on FirebaseException catch (error) {
+      throw _mapFirebaseError(error);
+    }
+  }
+
+  Future<SigSummary> _requireOwnedSig(String sigId, String uid) async {
+    if (sigId.trim().isEmpty) {
+      throw const RepositoryException(RepositoryError.invalidData);
+    }
+    final sig = (await loadCatalog()).sig(sigId);
+    if (sig == null) throw const RepositoryException(RepositoryError.notFound);
+    if (sig.ownerId != uid) {
+      throw const RepositoryException(RepositoryError.permissionDenied);
+    }
+    return sig;
+  }
+
+  Future<void> _requireOwnedSubgroup(
+    String sigId,
+    String subgroupId,
+    String uid,
+  ) async {
+    final sig = await _requireOwnedSig(sigId, uid);
+    final subgroup = (await loadCatalog()).subgroup(subgroupId);
+    if (subgroup == null || subgroup.sigId != sig.id) {
+      throw const RepositoryException(RepositoryError.notFound);
+    }
+  }
+
+  String _requiredText(String value, int maxLength) {
+    final normalized = value.trim();
+    if (normalized.isEmpty || normalized.length > maxLength) {
+      throw const RepositoryException(RepositoryError.invalidData);
+    }
+    return normalized;
+  }
+
+  RepositoryException _mapFirebaseError(FirebaseException error) =>
+      switch (error.code) {
+        'permission-denied' || 'unauthenticated' => const RepositoryException(
+          RepositoryError.permissionDenied,
+        ),
+        'invalid-argument' => const RepositoryException(
+          RepositoryError.invalidData,
+        ),
+        _ => const RepositoryException(RepositoryError.unavailable),
+      };
+
+  @override
   Future<CommunityCatalog> loadCatalog() async {
     _requireCurrentUser();
     try {
@@ -237,6 +372,10 @@ final communityCatalogDocumentStoreProvider =
 abstract interface class CommunityCatalogDocumentStore {
   Future<List<CommunityCatalogDocument>> loadSigs();
   Future<List<CommunityCatalogDocument>> loadSubgroups();
+  Future<void> createSig(Map<String, dynamic> data);
+  Future<void> createSubgroup(Map<String, dynamic> data);
+  Future<void> updateSubgroup(String subgroupId, Map<String, dynamic> data);
+  Future<void> closeSubgroup(String subgroupId);
 }
 
 final class CommunityCatalogDocument {
@@ -277,4 +416,35 @@ final class FirestoreCommunityCatalogDocumentStore
             ),
           )
           .toList(growable: false);
+
+  @override
+  Future<void> createSig(Map<String, dynamic> data) async {
+    await _firestore
+        .collection(FirestoreMembershipRepository.sigsCollection)
+        .add(data);
+  }
+
+  @override
+  Future<void> createSubgroup(Map<String, dynamic> data) async {
+    await _firestore
+        .collection(FirestoreMembershipRepository.subgroupsCollection)
+        .add(data);
+  }
+
+  @override
+  Future<void> updateSubgroup(
+    String subgroupId,
+    Map<String, dynamic> data,
+  ) async {
+    await _firestore
+        .collection(FirestoreMembershipRepository.subgroupsCollection)
+        .doc(subgroupId)
+        .update(data);
+  }
+
+  @override
+  Future<void> closeSubgroup(String subgroupId) => updateSubgroup(subgroupId, {
+    'status': 'closed',
+    'updatedAt': FieldValue.serverTimestamp(),
+  });
 }

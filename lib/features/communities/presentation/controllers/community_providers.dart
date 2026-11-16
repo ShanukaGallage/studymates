@@ -42,6 +42,59 @@ class CommunityController extends AsyncNotifier<CommunityCatalog> {
     if (ref.mounted) state = AsyncData(result);
   }
 
+  Future<void> createSig({
+    required String name,
+    required String category,
+    required String description,
+  }) => _apply(
+    (repository) => repository.createSig(
+      name: name,
+      category: category,
+      description: description,
+    ),
+  );
+
+  Future<void> createSubgroup({
+    required String sigId,
+    required String name,
+    required String description,
+  }) => _apply(
+    (repository) => repository.createSubgroup(
+      sigId: sigId,
+      name: name,
+      description: description,
+    ),
+  );
+
+  Future<void> updateSubgroup({
+    required String sigId,
+    required String subgroupId,
+    required String name,
+    required String description,
+  }) => _apply(
+    (repository) => repository.updateSubgroup(
+      sigId: sigId,
+      subgroupId: subgroupId,
+      name: name,
+      description: description,
+    ),
+  );
+
+  Future<void> deleteSubgroup({
+    required String sigId,
+    required String subgroupId,
+  }) => _apply(
+    (repository) =>
+        repository.deleteSubgroup(sigId: sigId, subgroupId: subgroupId),
+  );
+
+  Future<void> _apply(
+    Future<CommunityCatalog> Function(CommunityRepository) action,
+  ) async {
+    final result = await action(ref.read(communityRepositoryProvider));
+    if (ref.mounted) state = AsyncData(result);
+  }
+
   Future<void> setSubgroupMembership(String id, MembershipState value) async {
     final result = await ref
         .read(communityRepositoryProvider)

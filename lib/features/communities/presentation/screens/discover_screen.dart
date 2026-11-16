@@ -8,6 +8,7 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/state_views.dart';
+import '../widgets/community_management_dialogs.dart';
 import '../widgets/catalog_view.dart';
 
 class DiscoverScreen extends ConsumerStatefulWidget {
@@ -38,6 +39,12 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
         controller: _search,
         onChanged: (value) =>
             setState(() => _query = value.trim().toLowerCase()),
+      ),
+      const SizedBox(height: 12),
+      AppButton(
+        label: 'Create a SIG',
+        variant: AppButtonVariant.secondary,
+        onPressed: () => showCreateSigDialog(context),
       ),
       if (_query.isNotEmpty)
         TextButton(

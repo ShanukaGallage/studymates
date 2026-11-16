@@ -49,21 +49,16 @@ class AuthState {
          errorCode: errorCode,
        );
 
-  /// Maps the currently available Firebase Auth identity fields.
-  ///
-  /// Until Firestore profile persistence is implemented, a non-empty Firebase
-  /// Auth display name is the signal that the required name is available.
-  factory AuthState.fromIdentity({String? userId, String? displayName}) {
-    final stableId = userId?.trim();
-    if (stableId == null || stableId.isEmpty) {
-      return const AuthState.signedOut();
-    }
-
+  /// Resolves readiness from persisted profile data, never Auth metadata alone.
+  factory AuthState.fromPersistedProfile({
+    required String userId,
+    String? displayName,
+  }) {
+    final stableId = userId.trim();
     final name = displayName?.trim();
-    if (name == null || name.isEmpty) {
+    if (stableId.isEmpty || name == null || name.isEmpty) {
       return AuthState.incompleteProfile(userId: stableId);
     }
-
     return AuthState.ready(userId: stableId, displayName: name);
   }
 

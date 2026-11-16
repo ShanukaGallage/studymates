@@ -1,5 +1,7 @@
 enum MembershipState { notJoined, joined }
 
+enum SubgroupStatus { active, closed }
+
 class UserProfile {
   static const defaultAvatarId = 'default';
 
@@ -43,15 +45,26 @@ class SubgroupSummary {
     required this.name,
     required this.description,
     this.membership = MembershipState.notJoined,
+    this.status = SubgroupStatus.active,
   });
   final String id, sigId, name, description;
   final MembershipState membership;
+  final SubgroupStatus status;
   SubgroupSummary withMembership(MembershipState value) => SubgroupSummary(
     id: id,
     sigId: sigId,
     name: name,
     description: description,
     membership: value,
+    status: status,
+  );
+  SubgroupSummary withStatus(SubgroupStatus value) => SubgroupSummary(
+    id: id,
+    sigId: sigId,
+    name: name,
+    description: description,
+    membership: membership,
+    status: value,
   );
 }
 
@@ -65,6 +78,8 @@ class CommunityCatalog {
   final UserProfile profile;
   final List<SigSummary> sigs;
   final List<SubgroupSummary> subgroups;
+  Iterable<SubgroupSummary> get activeSubgroups =>
+      subgroups.where((subgroup) => subgroup.status == SubgroupStatus.active);
   SigSummary? sig(String id) {
     for (final value in sigs) {
       if (value.id == id) return value;
@@ -94,7 +109,13 @@ class RoomSummary {
   bool get isFull => occupiedSeats >= capacity;
 }
 
-enum RepositoryError { notFound, membershipRequired, unavailable }
+enum RepositoryError {
+  notFound,
+  membershipRequired,
+  permissionDenied,
+  invalidData,
+  unavailable,
+}
 
 class RepositoryException implements Exception {
   const RepositoryException(this.code);
