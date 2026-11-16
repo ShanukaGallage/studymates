@@ -57,7 +57,7 @@ class _LongSessionRepository extends ProgressHistoryFixtureRepository {
         recordId: 'long',
         userId: 'preview-user-1',
         sessionId: 'Long session identifier ' * 15,
-        goalText: 'Complete a focused study session',
+        goalText: goalText,
         endedAt: DateTime.utc(2026, 11, 15),
         creditedSeconds: 1200,
         timerStatus: TimerCompletionStatus.completed,

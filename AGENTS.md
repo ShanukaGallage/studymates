@@ -18,8 +18,9 @@
   contrast; do not communicate status only with color.
 - App configuration/routes live in lib/app; development gallery/fixtures belong
   in lib/preview. Four tabs: Home, Discover, Progress, Profile.
-- Keep preview explicitly labelled. Normal mode is currently a disconnected
-  foundation, never silently substitute fake data for a failed backend.
+- Keep preview explicitly labelled. Normal mode initializes Firebase for accounts
+  and profiles; app access uses authenticated UID plus the matching Firestore profile.
+  Study features there remain unconnected. Never substitute fixtures on backend failure.
 - Keep feature presentation separate from data repositories. Shared domain models
   belong in lib/core/models only when needed by consumers. Agree contracts with
   M2/M3 before implementation; do not add speculative empty classes.
@@ -28,7 +29,9 @@
   exclude demo sessions from normal progress. No database operations in widgets.
 - The current preview implements community discovery/local membership, a six-seat
   room presentation and local goals. Selection is never a server reservation.
-  Authentication, Firestore, room/session logic, QR and community creation
-  are later milestones. No chat, AI, voice/video or game engine expansion.
+  Auth/profile screens are integrated in account mode. Progress fixtures and QR/manual
+  capture are integrated in preview only. Live room/session services, invitation
+  admission, community persistence and history persistence remain later work.
+  No chat, AI, voice/video or game engine expansion.
 - Run formatting, analysis and relevant independent tests; report unavailable
   Android runtime checks honestly. Never commit secrets or weaken access rules.

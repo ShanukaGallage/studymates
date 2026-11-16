@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'app_mode.dart';
+import 'account_screens.dart';
 
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -13,6 +14,19 @@ class AppShell extends ConsumerWidget {
     appBar: AppBar(
       title: const Text('StudyMates'),
       actions: [
+        if (ref.watch(appModeProvider) == AppMode.connected)
+          IconButton(
+            tooltip: 'Sign out',
+            icon: const Icon(Icons.logout),
+            onPressed: () => signOutAccount(context, ref),
+          ),
+        if (ref.watch(appModeProvider) == AppMode.preview)
+          IconButton(
+            tooltip: 'Scanner preview',
+            icon: const Icon(Icons.qr_code_scanner),
+            onPressed: () => context.push('/preview-scanner'),
+          ),
+
         if (ref.watch(appModeProvider) == AppMode.preview)
           IconButton(
             tooltip: 'Preview data',

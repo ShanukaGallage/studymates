@@ -10,7 +10,7 @@ class StudyMatesApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final preview = ref.watch(appModeProvider) == AppMode.preview;
+    final mode = ref.watch(appModeProvider);
     return MaterialApp.router(
       title: 'StudyMates',
       debugShowCheckedModeBanner: false,
@@ -31,9 +31,12 @@ class StudyMatesApp extends ConsumerWidget {
                 child: SizedBox(
                   width: double.infinity,
                   child: Text(
-                    preview
-                        ? 'UI Preview • Local sample data'
-                        : 'Foundation only • Not connected',
+                    switch (mode) {
+                      AppMode.preview => 'UI Preview • Local sample data',
+                      AppMode.connected =>
+                        'Account mode • Study features in development',
+                      AppMode.foundation => 'Foundation only • Not connected',
+                    },
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: AppColors.primary),

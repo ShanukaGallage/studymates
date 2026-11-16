@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:studymates/app/app.dart';
+import 'package:studymates/preview/progress_history_fixtures.dart';
+import 'package:studymates/features/progress/presentation/controllers/progress_history_controller.dart';
 import 'package:studymates/features/communities/presentation/controllers/community_providers.dart';
 import 'package:studymates/preview/preview_repositories.dart';
 import 'package:studymates/app/app_mode.dart';
@@ -25,6 +27,9 @@ void main() {
           (ref) => MemoryCommunityRepository(),
         ),
         appRouterProvider.overrideWithValue(router),
+        progressHistoryRepositoryProvider.overrideWith(
+          (ref) => ProgressHistoryFixtureRepository(),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -60,7 +65,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         find.text(
-          name == 'Discover' ? 'Search communities' : '$name placeholder',
+          name == 'Discover'
+              ? 'Search communities'
+              : name == 'Progress'
+              ? 'Eligible recorded time: 1h 5m'
+              : '$name placeholder',
         ),
         findsOneWidget,
       );

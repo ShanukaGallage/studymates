@@ -7,6 +7,7 @@ import '../features/communities/presentation/controllers/community_providers.dar
 import '../features/rooms/data/room_providers.dart';
 import 'preview_repositories.dart';
 import 'preview_scope.dart';
+import '../features/progress/presentation/controllers/progress_history_controller.dart';
 
 class PreviewDataScreen extends ConsumerWidget {
   const PreviewDataScreen({super.key});
@@ -66,6 +67,7 @@ class PreviewDataScreen extends ConsumerWidget {
             onPressed: () {
               ref.invalidate(communityRepositoryProvider);
               ref.invalidate(roomRepositoryProvider);
+              ref.invalidate(progressHistoryRepositoryProvider);
             },
           ),
           const SizedBox(height: 16),

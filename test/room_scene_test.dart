@@ -16,6 +16,7 @@ void main() {
     bool member = true,
     bool narrow = false,
     VoidCallback? onLeave,
+    void Function(int, String)? onStart,
   }) async {
     if (narrow) {
       tester.view.physicalSize = const Size(320, 740);
@@ -41,6 +42,7 @@ void main() {
                   seats: roomSceneFixtures('first-sensor'),
                   isMember: member,
                   onLeave: onLeave ?? () {},
+                  onStart: onStart,
                 ),
               ],
             ),
@@ -249,6 +251,30 @@ void main() {
       expect(status(tester, 5), RoomSeatStatus.available);
     },
   );
+
+  testWidgets('start forwards only a selected seat and saved goal', (
+    tester,
+  ) async {
+    int? selected;
+    String? goal;
+    await mount(
+      tester,
+      onStart: (seat, value) {
+        selected = seat;
+        goal = value;
+      },
+    );
+    await tapText(tester, 'Start · preview');
+    expect(selected, isNull);
+    await tapSeat(tester, 4);
+    await tester.pump(const Duration(milliseconds: 500));
+    await tapText(tester, 'Set preview goal');
+    await tester.enterText(find.byType(AppTextField), '  Build a sensor  ');
+    await tapText(tester, 'Save preview goal');
+    await tapText(tester, 'Start · preview');
+    expect(selected, 4);
+    expect(goal, 'Build a sensor');
+  });
 
   testWidgets(
     'goal validates, saves and cancels edits; leave clears draft after confirmation',

@@ -110,8 +110,8 @@ state is gallery-only. The goal is trimmed and limited to 160 characters.
 
 Drafts last only while the page remains mounted and membership is retained.
 Switching tabs preserves the page. Popping it, losing membership, resetting the
-scenario or restarting clears the draft and cancels pending timers. Invite and
-Start open explanatory placeholders; they create no code, session or completion.
+scenario or restarting clears the draft and cancels pending timers. Invite remains explanatory. Start opens the local session UI harness described
+below; neither action creates a server session or completion.
 M3 should supply the same scene inputs/callbacks from real room state later.
 
 ## Room and seat management agreement
@@ -294,9 +294,26 @@ completion.
 breakTime or completed, with explicit invalid-timestamp results. It does not
 start a live session, synchronize devices or write completion records.
 
+## App integration
+
+The normal entry point initializes Firebase before auth/profile consumers mount.
+`lib/app/account_access.dart` combines M2's authenticated UID and
+`currentProfileProvider`: resolving → loading; no UID → signed out; missing profile
+→ setup; matching valid profile → ready; lookup failure → unavailable. The latter
+is an access error, not an additional identity state. Auth display name is not the
+profile-completion signal. Existing auth/profile repository APIs are unchanged.
+
+PreviewScope explicitly binds M4's history fixture repository for the Progress tab.
+The scanner preview forwards raw capture to an unverified result view through a
+root Navigator route observer; it does not parse or admit invitations. Persistent
+history, invitation format and admission remain owned by their feature contracts.
+
+RoomSnapshot and SeatState are implemented models in `core/models/room_models.dart`;
+this does not imply live observation or transactional seat operations exist.
+
 ## Later contracts — not implemented
 
-Auth/profile services, community creation/owner edits, RoomSnapshot/SeatState,
+Community creation/owner edits, live room/seat operations,
 SessionSnapshot, Participation, completion finalization/history adapter and
 InvitationPreview remain future work. Aradhana (M3) owns live seat claims, timing,
 completion writes and invitation services; Sandali (M4) consumes completion
@@ -309,3 +326,20 @@ credit. Goal outcome is separate from timer completion. Demo records stay outsid
 normal totals. The agreed seat lease is two minutes; renewal cadence, cleanup,
 credit policy and final storage details remain subject to the decisions above
 and the M2/M3 two-device spike. This preview does not implement those guarantees.
+
+## Session presentation handoff (local preview)
+
+`SessionView` and `SessionSummaryView` in
+`features/sessions/presentation/widgets/session_views.dart` render supplied timing,
+goal, seat, elapsed display duration and the existing timer/goal outcome enums.
+`preview/session_preview_screen.dart` owns disposable display ticks, fixed UTC
+fixture boundaries, confirmation and failure simulations. RoomLobbyPreview forwards
+`onStart(int seat, String goal)` only after a local selection and non-empty goal.
+This callback is not admission. The preview uses a root Navigator page so tab
+switching cannot silently bypass end confirmation.
+
+No CompletionRecord is fabricated, persisted or injected into Progress. Summary
+time is elapsed fixture time, not eligible credit. M3 must supply authoritative
+session timestamps, admission/connection state and finalization results before
+live integration. Production retry must use M3's idempotent finalization; the
+preview's delayed summary callback only demonstrates pending/failure/retry UI.

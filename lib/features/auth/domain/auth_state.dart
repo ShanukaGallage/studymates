@@ -51,8 +51,9 @@ class AuthState {
 
   /// Maps the currently available Firebase Auth identity fields.
   ///
-  /// Until Firestore profile persistence is implemented, a non-empty Firebase
-  /// Auth display name is the signal that the required name is available.
+  /// These statuses describe the Auth identity only. App routing uses
+  /// accountAccessProvider to verify the matching persisted Firestore profile;
+  /// a non-empty Auth display name alone does not grant application access.
   factory AuthState.fromIdentity({String? userId, String? displayName}) {
     final stableId = userId?.trim();
     if (stableId == null || stableId.isEmpty) {

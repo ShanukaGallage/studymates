@@ -9,121 +9,231 @@ import '../preview/preview_data_screen.dart';
 import '../features/communities/presentation/screens/discover_screen.dart';
 import '../features/communities/presentation/screens/community_detail_screens.dart';
 import '../features/rooms/presentation/screens/room_preview_screen.dart';
+import '../features/auth/presentation/screens/login_screen.dart';
+import '../features/auth/presentation/screens/sign_up_screen.dart';
+import '../features/auth/presentation/screens/forgot_password_screen.dart';
+import '../features/profile/presentation/screens/profile_setup_screen.dart';
+import '../features/profile/presentation/screens/profile_view_screen.dart';
+import '../features/progress/presentation/screens/progress_history_screen.dart';
+import '../features/invites/presentation/screens/invite_scanner_screen.dart';
+import '../preview/scanner_preview_screen.dart';
+import 'account_access.dart';
+import 'account_screens.dart';
 import 'app_mode.dart';
 import 'app_shell.dart';
 import 'placeholder_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final router = createAppRouter(mode: ref.watch(appModeProvider));
-  ref.onDispose(router.dispose);
+  final mode = ref.watch(appModeProvider);
+  final refresh = ValueNotifier<int>(0);
+  if (mode == AppMode.connected) {
+    ref.listen(accountAccessProvider, (_, next) => refresh.value++);
+  }
+  final router = createAppRouter(
+    mode: mode,
+    refreshListenable: refresh,
+    access: mode == AppMode.connected
+        ? () => ref.read(accountAccessProvider)
+        : null,
+  );
+  ref.onDispose(() {
+    router.dispose();
+    refresh.dispose();
+  });
   return router;
-});
+}, dependencies: [appModeProvider]);
 
 GoRouter createAppRouter({
   required AppMode mode,
   String initialLocation = '/home',
-}) => GoRouter(
-  initialLocation: initialLocation,
-  routes: [
-    GoRoute(path: '/', redirect: (context, state) => '/home'),
-    StatefulShellRoute.indexedStack(
-      builder: (context, state, shell) => AppShell(navigationShell: shell),
-      branches: [
-        for (final tab in const [
-          (
-            'home',
-            'Home',
-            'Your joined communities and study shortcuts will appear here. No account is connected.',
+  Listenable? refreshListenable,
+  AccountAccess Function()? access,
+}) {
+  final scannerObserver = RouteObserver<ModalRoute<dynamic>>();
+  String authPath(BuildContext context, String path) => Uri(
+    path: path,
+    queryParameters: GoRouterState.of(context).uri.queryParameters,
+  ).toString();
+  return GoRouter(
+    initialLocation: initialLocation,
+    refreshListenable: refreshListenable,
+    observers: [scannerObserver],
+    redirect: mode == AppMode.connected
+        ? (context, state) => accountRedirect(
+            access?.call() ?? AccountAccess.loading,
+            state.uri,
+          )
+        : null,
+    routes: [
+      if (mode == AppMode.connected) ...[
+        GoRoute(
+          path: '/account-status',
+          builder: (_, _) => const AccountStatusScreen(),
+        ),
+        GoRoute(
+          path: '/login',
+          builder: (context, _) => LoginScreen(
+            onSignUp: () => context.go(authPath(context, '/signup')),
+            onForgotPassword: () =>
+                context.go(authPath(context, '/reset-password')),
           ),
-          (
-            'discover',
-            'Discover',
-            'Community discovery and membership are planned. No live groups are loaded.',
+        ),
+        GoRoute(
+          path: '/signup',
+          builder: (context, _) => SignUpScreen(
+            onSignIn: () => context.go(authPath(context, '/login')),
           ),
-          (
-            'progress',
-            'Progress',
-            'Session history and recorded time are planned. No study records are loaded.',
+        ),
+        GoRoute(
+          path: '/reset-password',
+          builder: (context, _) => ForgotPasswordScreen(
+            onBackToLogin: () => context.go(authPath(context, '/login')),
           ),
-          (
-            'profile',
-            'Profile',
-            'Profile setup and account settings are planned. You are not signed in.',
+        ),
+        GoRoute(
+          path: '/profile/setup',
+          builder: (context, _) => Consumer(
+            builder: (context, ref, _) => ProfileSetupScreen(
+              onCancel: () => signOutAccount(context, ref),
+            ),
           ),
-        ])
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/${tab.$1}',
-                name: tab.$1,
-                pageBuilder: (context, state) => _tabPage(
-                  state,
-                  mode == AppMode.preview && tab.$1 == 'discover'
-                      ? const DiscoverScreen()
-                      : PlaceholderScreen(title: tab.$2, message: tab.$3),
-                ),
-              ),
-              if (mode == AppMode.preview && tab.$1 == 'discover') ...[
+        ),
+        GoRoute(
+          path: '/profile/edit',
+          builder: (_, _) => const AccountProfileEditScreen(),
+        ),
+      ],
+      if (mode == AppMode.preview) ...[
+        GoRoute(
+          path: '/preview-scanner',
+          builder: (_, _) => const ScannerPreviewScreen(),
+        ),
+        GoRoute(
+          path: '/preview-scanner/capture',
+          builder: (context, _) => InviteScannerScreen(
+            routeObserver: scannerObserver,
+            onResult: (value) => context.canPop()
+                ? context.pop(value)
+                : context.go('/preview-scanner'),
+            onCancel: () => context.canPop()
+                ? context.pop()
+                : context.go('/preview-scanner'),
+          ),
+        ),
+      ],
+      GoRoute(path: '/', redirect: (context, state) => '/home'),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) => AppShell(navigationShell: shell),
+        branches: [
+          for (final tab in const [
+            (
+              'home',
+              'Home',
+              'Your joined communities and study shortcuts will appear here. No account is connected.',
+            ),
+            (
+              'discover',
+              'Discover',
+              'Community discovery and membership are planned. No live groups are loaded.',
+            ),
+            (
+              'progress',
+              'Progress',
+              'Session history and recorded time are planned. No study records are loaded.',
+            ),
+            (
+              'profile',
+              'Profile',
+              'Profile setup and account settings are planned. You are not signed in.',
+            ),
+          ])
+            StatefulShellBranch(
+              routes: [
                 GoRoute(
-                  path: '/sigs/:sigId',
-                  name: 'sig-detail',
+                  path: '/${tab.$1}',
+                  name: tab.$1,
                   pageBuilder: (context, state) => _tabPage(
                     state,
-                    SigDetailScreen(id: state.pathParameters['sigId']!),
+                    mode == AppMode.preview && tab.$1 == 'discover'
+                        ? const DiscoverScreen()
+                        : mode == AppMode.preview && tab.$1 == 'progress'
+                        ? const ProgressHistoryScreen()
+                        : mode == AppMode.connected && tab.$1 == 'profile'
+                        ? ProfileViewScreen(
+                            onEdit: (_) => context.go('/profile/edit'),
+                            onSetUpProfile: () => context.go('/profile/setup'),
+                          )
+                        : PlaceholderScreen(
+                            title: tab.$2,
+                            message: mode == AppMode.connected
+                                ? 'This study feature is not connected yet. Your account and profile are available in Profile.'
+                                : tab.$3,
+                          ),
                   ),
                 ),
-                GoRoute(
-                  path: '/subgroups/:subgroupId',
-                  name: 'subgroup-detail',
-                  pageBuilder: (context, state) => _tabPage(
-                    state,
-                    SubgroupDetailScreen(
-                      id: state.pathParameters['subgroupId']!,
+                if (mode == AppMode.preview && tab.$1 == 'discover') ...[
+                  GoRoute(
+                    path: '/sigs/:sigId',
+                    name: 'sig-detail',
+                    pageBuilder: (context, state) => _tabPage(
+                      state,
+                      SigDetailScreen(id: state.pathParameters['sigId']!),
                     ),
                   ),
-                ),
-                GoRoute(
-                  path: '/rooms/:roomId',
-                  name: 'room-preview',
-                  pageBuilder: (context, state) => _tabPage(
-                    state,
-                    RoomPreviewScreen(id: state.pathParameters['roomId']!),
+                  GoRoute(
+                    path: '/subgroups/:subgroupId',
+                    name: 'subgroup-detail',
+                    pageBuilder: (context, state) => _tabPage(
+                      state,
+                      SubgroupDetailScreen(
+                        id: state.pathParameters['subgroupId']!,
+                      ),
+                    ),
                   ),
-                ),
+                  GoRoute(
+                    path: '/rooms/:roomId',
+                    name: 'room-preview',
+                    pageBuilder: (context, state) => _tabPage(
+                      state,
+                      RoomPreviewScreen(id: state.pathParameters['roomId']!),
+                    ),
+                  ),
+                ],
               ],
-            ],
-          ),
-      ],
-    ),
-    if (mode == AppMode.preview)
-      GoRoute(
-        path: '/preview-data',
-        name: 'preview-data',
-        builder: (context, state) => const PreviewDataScreen(),
-      ),
-    if (mode == AppMode.preview)
-      GoRoute(
-        path: '/components',
-        name: 'components',
-        builder: (context, state) => const ComponentGallery(),
-      ),
-  ],
-  errorBuilder: (context, state) => Scaffold(
-    appBar: AppBar(title: const Text('Page not found')),
-    body: SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          const Text(
-            'This page is not available in the StudyMates foundation.',
-          ),
-          const SizedBox(height: 24),
-          AppButton(label: 'Go to Home', onPressed: () => context.go('/home')),
+            ),
         ],
       ),
+      if (mode == AppMode.preview)
+        GoRoute(
+          path: '/preview-data',
+          name: 'preview-data',
+          builder: (context, state) => const PreviewDataScreen(),
+        ),
+      if (mode == AppMode.preview)
+        GoRoute(
+          path: '/components',
+          name: 'components',
+          builder: (context, state) => const ComponentGallery(),
+        ),
+    ],
+    errorBuilder: (context, state) => Scaffold(
+      appBar: AppBar(title: const Text('Page not found')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            const Text('This page is not available in StudyMates.'),
+            const SizedBox(height: 24),
+            AppButton(
+              label: 'Go to Home',
+              onPressed: () => context.go('/home'),
+            ),
+          ],
+        ),
+      ),
     ),
-  ),
-);
+  );
+}
 
 // The shell owns the Scaffold; each branch page paints its own opaque surface.
 Page<void> _tabPage(GoRouterState state, Widget child) =>

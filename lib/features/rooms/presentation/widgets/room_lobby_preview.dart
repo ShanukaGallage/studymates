@@ -17,11 +17,13 @@ class RoomLobbyPreview extends StatefulWidget {
     required this.seats,
     required this.isMember,
     required this.onLeave,
+    this.onStart,
   });
   final RoomSummary room;
   final List<RoomSeat> seats;
   final bool isMember;
   final VoidCallback onLeave;
+  final void Function(int seat, String goal)? onStart;
   @override
   State<RoomLobbyPreview> createState() => _RoomLobbyPreviewState();
 }
@@ -251,21 +253,19 @@ class _RoomLobbyPreviewState extends State<RoomLobbyPreview> {
             AppButton(
               label: 'Start · preview',
               onPressed:
-                  widget.isMember &&
+                  widget.onStart != null &&
+                      widget.isMember &&
                       _selected != null &&
                       _goal.isNotEmpty &&
                       _pending == null
-                  ? () => _explain(
-                      'Session preview',
-                      'Your local seat selection and goal are ready. Shared timing is a later milestone; no session was started.',
-                    )
+                  ? () => widget.onStart?.call(_selected!, _goal)
                   : null,
             ),
           ],
         ),
         const SizedBox(height: 8),
         const Text(
-          'Select an available seat and save a goal to inspect the Start placeholder.',
+          'Select an available seat and save a goal to start a local demo session.',
         ),
         const SizedBox(height: 16),
         ExpansionTile(

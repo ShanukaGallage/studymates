@@ -5,6 +5,8 @@ import '../app/app_mode.dart';
 import '../features/communities/presentation/controllers/community_providers.dart';
 import '../features/rooms/data/room_providers.dart';
 import 'preview_repositories.dart';
+import 'progress_history_fixtures.dart';
+import '../features/progress/presentation/controllers/progress_history_controller.dart';
 import 'room_scene_fixtures.dart';
 import '../features/rooms/presentation/controllers/room_scene_provider.dart';
 
@@ -27,6 +29,17 @@ class PreviewScope extends StatelessWidget {
   Widget build(BuildContext context) => ProviderScope(
     overrides: [
       appModeProvider.overrideWithValue(AppMode.preview),
+      progressHistoryRepositoryProvider.overrideWith((ref) {
+        final scenario = ref.watch(previewScenarioProvider);
+        return ProgressHistoryFixtureRepository(
+          scenario: switch (scenario) {
+            PreviewScenario.sample => ProgressHistoryScenario.sample,
+            PreviewScenario.empty => ProgressHistoryScenario.empty,
+            PreviewScenario.loading => ProgressHistoryScenario.loading,
+            PreviewScenario.errorOnce => ProgressHistoryScenario.errorOnce,
+          },
+        );
+      }),
       roomSceneSeatsProvider.overrideWith((ref, roomId) {
         ref.watch(
           roomRepositoryProvider,

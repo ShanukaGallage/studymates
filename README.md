@@ -25,16 +25,56 @@ an Android emulator. No Firebase configuration is needed for this milestone.
 
 ## Entry points and current scope
 
-- `lib/main_preview.dart`: labelled **UI Preview / Local sample data**. Discover
-  uses in-memory community/room repositories; the other three tabs remain placeholders.
-- `lib/main.dart`: labelled **Foundation only / Not connected**. All four tabs
-  remain placeholders, with no preview services or development routes.
-- No authentication, Firestore, live rooms, QR scanning or session history exists.
-- Riverpod owns repository bindings, catalog state and router lifecycle. go_router
-  keeps Discover selected for SIG, subgroup and room detail routes and retains
-  tab stacks. Unknown routes/IDs have recovery actions.
-- Initial models, membership rules and repository operations are documented in
-  [contracts](docs/contracts.md); M2/M3 review is pending before backend integration.
+- `lib/main_preview.dart`: **UI Preview / Local sample data**. Discover and rooms
+  use in-memory repositories; Progress uses Sandali's history fixtures with normal/
+  demo separation. Home and Profile remain placeholders. No Firebase initialization.
+- `lib/main.dart`: **Account mode / Study features in development**. Initializes
+  Firebase using the existing Android configuration, then routes to login, signup,
+  reset, profile setup/view/edit and sign-out. Startup/profile failures have Retry.
+  Home, Discover and Progress explicitly remain unconnected study features.
+- App access combines authenticated UID with the matching Firestore profile;
+  Firebase Auth's display name alone does not establish profile completeness.
+- The preview's scanner icon opens camera/manual capture. Captured text is labelled
+  unverified; no invitation lookup, membership mutation or room admission occurs.
+- Live seating, shared sessions, invitation admission and persistent history are
+  not implemented. No preview repository is substituted into account mode.
+- Riverpod owns repository bindings and app access; go_router preserves tab stacks
+  and protects account routes. Development routes exist only in preview mode.
+
+## Try account and feature integration
+
+```bash
+flutter run -t lib/main.dart          # Existing Firebase Android configuration
+flutter run -t lib/main_preview.dart  # Explicit fixtures, no Firebase required
+```
+
+Account mode: signed out → login/signup → missing profile → setup → Home; open
+Profile to edit the display name or use the toolbar to sign out. Profile save is
+observed from Firestore before access is granted. Errors remain errors, never fake
+signed-out identities or sample profiles. Return navigation accepts only known
+local account destinations. No invitation-link contract is implemented yet.
+
+Before live account verification, Poojani must confirm email/password sign-in is
+enabled and access to `users/{uid}` is restricted to its authenticated owner in
+`studymates-dev`. Deployed rules have not been inspected; this checkout contains
+no Firestore rules file. No backend configuration or rules were deployed here.
+
+Preview mode: open Progress to view sample history and the separate demo view.
+Preview data's sample/empty/loading/error-once controls also configure history;
+Reset resets its repository. Use the scanner toolbar icon to capture a QR or enter
+text manually, then return to the same tab. Camera access starts only on opening
+capture; its route observer stops the camera when covered.
+
+The integration tests use fake identity/profile streams and a fake camera. They
+cover profile-based access, stale-user data rejection, redirects, sign-out, startup
+retry, Progress navigation and camera lifecycle through the real app router.
+Live account writes and physical camera capture require separate device testing.
+
+Integration verification (16 November 2026): formatting, `flutter analyze`, all
+**146 tests**, and ARM64 debug APK builds for both entry points passed. No Android
+device was connected for this integration pass, so phone checks of the new account,
+history and scanner flows remain pending. Earlier classroom checks below apply
+only to that earlier milestone.
 
 ## Try the community preview
 
@@ -67,8 +107,8 @@ sample occupancy or grants access to a live room.
   prior goal. The sheet scrolls above the keyboard and supports larger text.
 - Expand **Preview controls**, enable the next selection conflict, then tap an
   available seat. Retry that seat after the simulated error.
-- Select a seat and save a goal to enable **Start · preview**. It explains the
-  future session step; it does not start a timer. **Invite · preview** likewise
+- Select a seat and save a goal to enable **Start · preview**. It opens a local
+  45-second focus / 15-second break demo with end confirmation and goal review. **Invite · preview** likewise
   explains the future QR/code step without creating an invitation.
 - **Leave room preview** confirms before clearing an existing draft. Navigating
   back out of the page also discards the local draft. Tab switches retain it.
@@ -172,3 +212,24 @@ The four-member common plan supersedes the original five-member allocations.
 Keep the two original StudyMates guides as design/product background; do not
 repeat their completed startup tasks. The five-minute demo requires no slides,
 report or formal rubric. Current implementation status remains documented above.
+
+## Study-session UI preview
+
+From Discover → IoT → ESP32 → First Sensor Project, join the sample communities,
+select an available seat, save a goal and tap **Start · preview**. The full-screen
+flow hides tab navigation while studying. Wait for focus/break completion or end
+early, mark the goal outcome, then review the summary. Return to the room or open
+sample Progress; no completion is written and history totals remain unchanged.
+
+Expand **Session preview controls** for connection interruption, seat-unavailable
+and one-shot summary failure/retry. These are UI simulations. The display derives
+phases from M3's existing UTC timestamp calculator, with an injectable clock for
+tests; it does not implement participation credit or backend session operations.
+The 45/15 split is a preview fixture, pending confirmation for live demo timing.
+
+Session UI verification (16 November 2026): formatting, analysis and all **164
+tests** passed, including UTC phase changes, early-end confirmation, failure/retry,
+connection recovery, goal outcome, room-start handoff and 320px/200% text layout.
+The preview APK built and launched on the Android 15 phone. The device showed its
+lock screen during automated inspection; Shanuka subsequently reported the
+session flow was working on the phone. This is a user-reported visual check. No live session, seat admission or completion persistence was tested.
