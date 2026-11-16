@@ -9,6 +9,7 @@ import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../rooms/data/room_providers.dart';
 import '../controllers/community_providers.dart';
+import '../widgets/community_management_dialogs.dart';
 import '../widgets/catalog_view.dart';
 import '../../../../app/app_mode.dart';
 import '../../../study/data/firestore_study_repository.dart';
@@ -26,7 +27,10 @@ class SigDetailScreen extends ConsumerWidget {
         builder: (catalog) {
           final sig = catalog.sig(id);
           if (sig == null) return const MissingPreviewItem();
-          final groups = catalog.subgroups.where((group) => group.sigId == id);
+          final isOwner = sig.ownerId == catalog.profile.id;
+          final groups = catalog.activeSubgroups.where(
+            (group) => group.sigId == id,
+          );
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -89,12 +93,19 @@ class SigDetailScreen extends ConsumerWidget {
                   },
                 ),
               const SizedBox(height: 16),
+              if (isOwner)
+                AppButton(
+                  label: 'Create subgroup',
+                  variant: AppButtonVariant.secondary,
+                  onPressed: () => showCreateSubgroupDialog(context, sigId: id),
+                ),
+              if (isOwner) const SizedBox(height: 16),
               if (groups.isEmpty)
                 EmptyView(
                   title: 'No subgroups yet',
-                  message: ref.watch(appModeProvider) == AppMode.preview
-                      ? 'Subgroup creation will come in a later milestone.'
-                      : 'The community owner can create the first subgroup.',
+                  message: isOwner
+                      ? 'Create a subgroup for members to explore.'
+                      : 'The SIG owner has not added any subgroups yet.',
                 ),
               for (final group in groups)
                 Padding(
@@ -124,6 +135,55 @@ class SigDetailScreen extends ConsumerWidget {
                             pathParameters: {'subgroupId': group.id},
                           ),
                         ),
+                        if (isOwner) ...[
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              AppButton(
+                                label: 'Edit ${group.name}',
+                                variant: AppButtonVariant.secondary,
+                                onPressed: () => showEditSubgroupDialog(
+                                  context,
+                                  sigId: id,
+                                  subgroup: group,
+                                ),
+                              ),
+                              AppButton(
+                                label: 'Delete ${group.name}',
+                                variant: AppButtonVariant.secondary,
+                                onPressed: () async {
+                                  if (!await confirmSubgroupDeletion(
+                                    context,
+                                    group.name,
+                                  )) {
+                                    return;
+                                  }
+                                  try {
+                                    await ref
+                                        .read(communityCatalogProvider.notifier)
+                                        .deleteSubgroup(
+                                          sigId: id,
+                                          subgroupId: group.id,
+                                        );
+                                  } catch (_) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Subgroup could not be deleted. Try again.',
+                                              ),
+                                            ),
+                                          );
+                                    }
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -149,6 +209,32 @@ class SubgroupDetailScreen extends ConsumerWidget {
           if (group == null) return const MissingPreviewItem();
           final sig = catalog.sig(group.sigId);
           if (sig == null) return const MissingPreviewItem();
+          if (group.status == SubgroupStatus.closed) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextButton(
+                  onPressed: () => context.canPop()
+                      ? context.pop()
+                      : context.goNamed(
+                          'sig-detail',
+                          pathParameters: {'sigId': sig.id},
+                        ),
+                  child: Text('Back to ${sig.name}'),
+                ),
+                Text(
+                  group.name,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 12),
+                Text(group.description),
+                const SizedBox(height: 16),
+                const Text(
+                  'This subgroup is closed. Its membership and history are retained.',
+                ),
+              ],
+            );
+          }
           final parentJoined = sig.membership == MembershipState.joined;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

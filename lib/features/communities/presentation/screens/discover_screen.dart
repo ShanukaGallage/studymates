@@ -8,10 +8,7 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/state_views.dart';
-import '../../../../app/app_mode.dart';
-import '../../../study/data/firestore_study_repository.dart';
-import '../../../study/presentation/study_dialogs.dart';
-import '../controllers/community_providers.dart';
+import '../widgets/community_management_dialogs.dart';
 import '../widgets/catalog_view.dart';
 
 class DiscoverScreen extends ConsumerStatefulWidget {
@@ -42,44 +39,19 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
           AppColors.background,
         ],
       ),
-    ),
-    child: ListView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Discover',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Your next study circle',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ],
-              ),
-            ),
-            ExcludeSemantics(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.softAccent,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: const Icon(
-                  Icons.groups_outlined,
-                  color: AppColors.primary,
-                  size: 32,
-                ),
-              ),
-            ),
-          ],
+      const SizedBox(height: 12),
+      AppButton(
+        label: 'Create a SIG',
+        variant: AppButtonVariant.secondary,
+        onPressed: () => showCreateSigDialog(context),
+      ),
+      if (_query.isNotEmpty)
+        TextButton(
+          onPressed: () {
+            _search.clear();
+            setState(() => _query = '');
+          },
+          child: const Text('Clear search'),
         ),
         const SizedBox(height: 8),
         const Text(

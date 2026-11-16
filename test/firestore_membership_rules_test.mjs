@@ -119,9 +119,55 @@ await mustAllow('SIG owner initializes revision zero', owner.token, [
     update: {
       name: documentName(sigPath),
       fields: fields({
+        name: 'Community rules test',
+        category: 'Testing',
+        description: 'A Firestore rules fixture.',
         ownerId: owner.uid,
         status: 'active',
         membershipRevision: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+    },
+    currentDocument: { exists: false },
+  },
+]);
+
+const fractionalSigFields = fields({
+  name: 'Fractional revision SIG',
+  category: 'Testing',
+  description: 'A revision must be an integer.',
+  ownerId: owner.uid,
+  status: 'active',
+  membershipRevision: 0,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+});
+fractionalSigFields.membershipRevision = { doubleValue: 0 };
+await mustDeny('SIG creation rejects a floating-point revision', owner.token, [
+  {
+    update: {
+      name: documentName(`sigs/sig-fractional-${runId}`),
+      fields: fractionalSigFields,
+    },
+    currentDocument: { exists: false },
+  },
+]);
+
+const forgedSigId = `sig-forged-owner-${runId}`;
+await mustDeny('a SIG creator cannot assign another user as owner', member.token, [
+  {
+    update: {
+      name: documentName(`sigs/${forgedSigId}`),
+      fields: fields({
+        name: 'Forged SIG',
+        category: 'Testing',
+        description: 'Ownership must match auth.',
+        ownerId: owner.uid,
+        status: 'active',
+        membershipRevision: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       }),
     },
     currentDocument: { exists: false },
@@ -133,6 +179,19 @@ await mustDeny('membership cannot change SIG revision without a membership trans
 ]);
 
 await mustDeny('membership creation without revision increment is denied', member.token, [
+  {
+    update: {
+      name: documentName(memberPath),
+      fields: fields(membership),
+    },
+    currentDocument: { exists: false },
+  },
+]);
+
+const fractionalRevisionUpdate = update(sigPath, { membershipRevision: 1 });
+fractionalRevisionUpdate.update.fields.membershipRevision = { doubleValue: 1 };
+await mustDeny('membership transitions reject a floating-point revision', member.token, [
+  fractionalRevisionUpdate,
   {
     update: {
       name: documentName(memberPath),
@@ -234,10 +293,82 @@ await mustAllow('SIG owner creates a subgroup for membership authorization tests
   {
     update: {
       name: documentName(subgroupPath),
-      fields: fields({ sigId, status: 'active' }),
+      fields: fields({
+        sigId,
+        name: 'Rules subgroup',
+        description: 'Subgroup for authorization coverage.',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
     },
     currentDocument: { exists: false },
   },
+]);
+await mustDeny('non-owner cannot create a subgroup', member.token, [
+  {
+    update: {
+      name: documentName(`subgroups/non-owner-${runId}`),
+      fields: fields({
+        sigId,
+        name: 'Unauthorized subgroup',
+        description: 'Only the parent SIG owner may create this.',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+    },
+    currentDocument: { exists: false },
+  },
+]);
+await mustAllow('SIG owner can edit subgroup details', owner.token, [
+  update(subgroupPath, {
+    name: 'Updated rules subgroup',
+    description: 'Updated by the parent owner.',
+    updatedAt: new Date(),
+  }),
+]);
+await mustDeny('non-owner cannot edit subgroup details', member.token, [
+  update(subgroupPath, {
+    name: 'Unauthorized edit',
+    updatedAt: new Date(),
+  }),
+]);
+await mustDeny('SIG owner cannot move a subgroup to a different SIG', owner.token, [
+  update(subgroupPath, { sigId: `other-${runId}` }),
+]);
+await mustDeny('SIG owner cannot rename a subgroup with an empty name', owner.token, [
+  update(subgroupPath, { name: '' }),
+]);
+
+const deleteProbeId = `delete-probe-${runId}`;
+await mustAllow('SIG owner creates a subgroup for delete authorization tests', owner.token, [
+  {
+    update: {
+      name: documentName(`subgroups/${deleteProbeId}`),
+      fields: fields({
+        sigId,
+        name: 'Delete probe',
+        description: 'Checks owner-only closure.',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+    },
+    currentDocument: { exists: false },
+  },
+]);
+await mustDeny('non-owner cannot close a subgroup', member.token, [
+  update(`subgroups/${deleteProbeId}`, {
+    status: 'closed',
+    updatedAt: new Date(),
+  }),
+]);
+await mustAllow('SIG owner can close a subgroup', owner.token, [
+  update(`subgroups/${deleteProbeId}`, {
+    status: 'closed',
+    updatedAt: new Date(),
+  }),
 ]);
 await mustAllow('active SIG member joins the subgroup', successor.token, [
   {

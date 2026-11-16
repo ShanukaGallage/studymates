@@ -7,22 +7,17 @@ import 'package:studymates/features/auth/domain/auth_state.dart';
 import 'package:studymates/features/auth/presentation/controllers/auth_providers.dart';
 
 void main() {
-  test('identity mapping distinguishes signed-out and incomplete profiles', () {
-    final signedOut = AuthState.fromIdentity(userId: null);
-    expect(signedOut.status, AuthStatus.signedOut);
-    expect(signedOut.userId, isNull);
-
-    final incomplete = AuthState.fromIdentity(
+  test('persisted profile mapping distinguishes incomplete profiles', () {
+    final incomplete = AuthState.fromPersistedProfile(
       userId: '  firebase-uid  ',
-      displayName: '  ',
     );
     expect(incomplete.status, AuthStatus.incompleteProfile);
     expect(incomplete.userId, 'firebase-uid');
     expect(incomplete.displayName, isNull);
   });
 
-  test('identity mapping marks a named Firebase identity ready', () {
-    final ready = AuthState.fromIdentity(
+  test('persisted profile mapping marks a saved profile ready', () {
+    final ready = AuthState.fromPersistedProfile(
       userId: 'firebase-uid',
       displayName: '  Poojani  ',
     );
@@ -67,13 +62,14 @@ void main() {
       await controller.createAccount(
         email: 'new@example.com',
         password: 'secret',
+        displayName: 'New learner',
       );
       await controller.signIn(email: 'learner@example.com', password: 'secret');
       await controller.sendPasswordReset(email: 'learner@example.com');
       await controller.signOut();
 
       expect(repository.actions, [
-        'create:new@example.com:secret',
+        'create:new@example.com:secret:New learner',
         'sign-in:learner@example.com:secret',
         'reset:learner@example.com',
         'sign-out',
@@ -101,6 +97,7 @@ void main() {
         controller.createAccount(
           email: 'existing@example.com',
           password: 'secret',
+          displayName: 'Learner',
         ),
         throwsA(isA<AuthRepositoryException>()),
       );
@@ -128,8 +125,9 @@ class _FakeAuthRepository implements AuthRepository {
   Future<void> createAccount({
     required String email,
     required String password,
+    required String displayName,
   }) async {
-    actions.add('create:$email:$password');
+    actions.add('create:$email:$password:$displayName');
     if (createAccountFailure case final failure?) throw failure;
   }
 

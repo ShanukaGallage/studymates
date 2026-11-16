@@ -16,6 +16,7 @@ class FirestoreProfileRepository implements ProfileRepository {
     FirebaseFirestore? firestore,
     ProfileDocumentStore? documentStore,
     String? Function()? currentUserId,
+    Future<void> Function(String displayName)? updateAuthDisplayName,
   }) : _currentUserId =
            currentUserId ??
            (() => (firebaseAuth ?? FirebaseAuth.instance).currentUser?.uid),
@@ -23,12 +24,21 @@ class FirestoreProfileRepository implements ProfileRepository {
            documentStore ??
            _FirestoreProfileDocumentStore(
              firestore ?? FirebaseFirestore.instance,
-           );
+           ),
+       _updateAuthDisplayName =
+           updateAuthDisplayName ??
+           ((displayName) async {
+             final user = (firebaseAuth ?? FirebaseAuth.instance).currentUser;
+             if (user != null && user.displayName?.trim() != displayName) {
+               await user.updateDisplayName(displayName);
+             }
+           });
 
   static const collectionName = 'users';
 
   final String? Function() _currentUserId;
   final ProfileDocumentStore _documents;
+  final Future<void> Function(String displayName) _updateAuthDisplayName;
 
   @override
   Future<UserProfile> createCurrentProfile({
@@ -46,6 +56,7 @@ class FirestoreProfileRepository implements ProfileRepository {
         profile.id,
         UserProfileFirestoreMapper.toFirestore(profile),
       );
+      await _updateAuthDisplayName(profile.displayName);
     } on FirebaseException catch (error) {
       throw _mapFirebaseError(error);
     }
@@ -101,6 +112,7 @@ class FirestoreProfileRepository implements ProfileRepository {
         profile.id,
         UserProfileFirestoreMapper.toFirestore(profile),
       );
+      await _updateAuthDisplayName(profile.displayName);
     } on FirebaseException catch (error) {
       throw _mapFirebaseError(error);
     }
