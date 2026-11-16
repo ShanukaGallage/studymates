@@ -7,11 +7,12 @@ import 'package:material_ui/material_ui.dart';
 import '../../../core/models/completion_record.dart';
 import '../../../core/models/active_room_session.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_details.dart';
 import '../../../core/widgets/state_views.dart';
 import '../../progress/presentation/controllers/progress_history_controller.dart';
 import '../../sessions/data/active_session_providers.dart';
-import '../../sessions/data/session_timing.dart';
 import '../../sessions/presentation/widgets/session_views.dart';
+import '../../sessions/presentation/widgets/cycle_timer_card.dart';
 import '../../sessions/presentation/widgets/keep_awake_control.dart';
 import '../data/firestore_study_repository.dart';
 
@@ -46,9 +47,9 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('End and save participation?'),
+        title: const Text('Finish this session?'),
         content: const Text(
-          'Only eligible focus time is saved. A lost or expired lease receives zero credit. Demo sessions remain separate.',
+          'Save your eligible focus time to Progress. Expired seats receive no credit; demo time stays separate.',
         ),
         actions: [
           TextButton(
@@ -102,135 +103,147 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
         ),
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (_result != null) ...[
-              Text(
-                'Participation saved',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              Text(
-                _result!.isDemo
-                    ? 'DEMO • excluded from normal progress'
-                    : 'Normal study record',
-              ),
-              Text(
-                'Credited focus time: ${sessionDuration(_result!.creditedSeconds)}',
-              ),
-              Text(_result!.goalText),
-              Text('Goal: ${_result!.goalOutcome.name}'),
-              Text('Timer: ${_result!.timerStatus.name}'),
-              AppButton(
-                label: 'View Progress',
-                onPressed: () => context.go('/progress'),
-              ),
-              AppButton(
-                label: 'Return Home',
-                variant: AppButtonVariant.secondary,
-                onPressed: () => context.go('/home'),
-              ),
-            ] else ...[
-              active.when(
-                loading: () =>
-                    const LoadingView(message: 'Loading saved session…'),
-                error: (_, _) => ErrorView(
-                  message: 'Session connection unavailable.',
-                  onRetry: () =>
-                      ref.invalidate(activeSessionRepositoryProvider),
+        child: AppContentWidth(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              if (_result != null) ...[
+                Text(
+                  'Session saved',
+                  style: Theme.of(context).textTheme.headlineSmall,
                 ),
-                data: (session) {
-                  if (session == null) {
-                    return const Text(
-                      'No active session. Check Progress for a saved completion.',
+                Text(
+                  _result!.isDemo
+                      ? 'DEMO • excluded from normal progress'
+                      : 'Saved to Progress',
+                ),
+                Text(
+                  'Credited focus time: ${sessionDuration(_result!.creditedSeconds)}',
+                ),
+                Text(_result!.goalText),
+                Text(
+                  _result!.goalOutcome == GoalOutcome.completed
+                      ? 'Goal completed'
+                      : 'Goal unfinished',
+                ),
+                Text(
+                  _result!.timerStatus == TimerCompletionStatus.completed
+                      ? 'Cycle completed'
+                      : 'Ended early',
+                ),
+                const SizedBox(height: 16),
+                AppButton(
+                  label: 'View Progress',
+                  onPressed: () => context.go('/progress'),
+                ),
+                AppButton(
+                  label: 'Return Home',
+                  variant: AppButtonVariant.secondary,
+                  onPressed: () => context.go('/home'),
+                ),
+              ] else ...[
+                active.when(
+                  loading: () =>
+                      const LoadingView(message: 'Loading saved session…'),
+                  error: (_, _) => ErrorView(
+                    message: 'Session connection unavailable.',
+                    onRetry: () =>
+                        ref.invalidate(activeSessionRepositoryProvider),
+                  ),
+                  data: (session) {
+                    if (session == null) {
+                      return const Text(
+                        'No active session. Check Progress for a saved completion.',
+                      );
+                    }
+                    _sessionId = session.sessionId;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (session.participationStatus ==
+                            ParticipationStatus.requiresRevalidation)
+                          const Text(
+                            'Seat unverified · Check your connection before continuing.',
+                          ),
+                        CycleTimerCard(
+                          startsAt: session.startsAt,
+                          isDemo: session.isDemo,
+                          now: DateTime.now().toUtc(),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          '${session.roomTitle} • Seat ${session.seatId.split('-').last}',
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Your goal',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text(session.goalText),
+                        const SizedBox(height: 12),
+                      ],
                     );
-                  }
-                  _sessionId = session.sessionId;
-                  final timing = calculateSessionTiming(
-                    nowUtc: DateTime.now().toUtc(),
-                    startsAt: session.startsAt,
-                    focusEndsAt: session.focusEndsAt,
-                    breakEndsAt: session.breakEndsAt,
-                  );
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (session.isDemo)
-                        const Text(
-                          '60-SECOND DEMO • excluded from normal totals',
-                        ),
-                      if (session.participationStatus ==
-                          ParticipationStatus.requiresRevalidation)
-                        const Text(
-                          'Connection or seat eligibility is unverified. Use Check seat and connection before continuing.',
-                        ),
-                      if (timing is SessionTiming)
-                        SessionView(
-                          roomTitle: session.roomTitle,
-                          seat:
-                              int.tryParse(session.seatId.split('-').last) ?? 0,
-                          goal: session.goalText,
-                          timing: timing,
-                          elapsedSeconds: DateTime.now()
-                              .toUtc()
-                              .difference(session.startsAt)
-                              .inSeconds
-                              .clamp(0, 100000),
-                        ),
-                      const SizedBox(height: 12),
-                      KeepAwakeControl(key: ValueKey(session.sessionId)),
-                      const Text(
-                        'The shared schedule continues while away. Returning requires a fresh membership and seat check.',
-                      ),
-                    ],
-                  );
-                },
-              ),
-              SwitchListTile(
-                title: const Text('I completed my goal'),
-                value: _goalDone,
-                onChanged: _busy
-                    ? null
-                    : (value) => setState(() => _goalDone = value),
-              ),
-              if (_error != null)
-                Semantics(liveRegion: true, child: Text(_error!)),
-              AppButton(
-                label: _error == null
-                    ? 'End and save participation'
-                    : 'Retry save',
-                isLoading: _busy,
-                onPressed: active.asData?.value == null ? null : _finish,
-              ),
-              const SizedBox(height: 12),
-              AppButton(
-                label: 'Check seat and connection',
-                variant: AppButtonVariant.secondary,
-                onPressed: _busy
-                    ? null
-                    : () async {
-                        try {
-                          await ref
-                              .read(studyRepositoryProvider)
-                              .revalidateSession();
-                          if (mounted) {
-                            setState(
-                              () => _error = 'Membership and seat verified.',
-                            );
-                          }
-                        } catch (error) {
-                          if (mounted) {
-                            setState(
-                              () => _error = error is StudyFailure
-                                  ? error.message
-                                  : 'Connection unavailable. Retry when online.',
-                            );
-                          }
-                        }
-                      },
-              ),
+                  },
+                ),
+                SwitchListTile(
+                  title: const Text('I completed my goal'),
+                  value: _goalDone,
+                  onChanged: _busy
+                      ? null
+                      : (value) => setState(() => _goalDone = value),
+                ),
+                if (_error != null)
+                  Semantics(liveRegion: true, child: Text(_error!)),
+                AppButton(
+                  label: _error == null ? 'Finish session' : 'Retry save',
+                  isLoading: _busy,
+                  onPressed: active.asData?.value == null ? null : _finish,
+                ),
+                const SizedBox(height: 12),
+                AppDetails(
+                  title: 'Session options',
+                  icon: Icons.tune,
+                  children: [
+                    KeepAwakeControl(key: ValueKey(_sessionId)),
+                    AppButton(
+                      label: 'Check seat and connection',
+                      variant: AppButtonVariant.secondary,
+                      onPressed: _busy
+                          ? null
+                          : () async {
+                              try {
+                                await ref
+                                    .read(studyRepositoryProvider)
+                                    .revalidateSession();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Seat and connection verified.',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } catch (error) {
+                                if (mounted) {
+                                  setState(
+                                    () => _error = error is StudyFailure
+                                        ? error.message
+                                        : 'Connection unavailable. Retry when online.',
+                                  );
+                                }
+                              }
+                            },
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'The room timer keeps running while you’re away. Your seat is checked when you return.',
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

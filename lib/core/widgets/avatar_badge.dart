@@ -7,6 +7,11 @@ class AvatarBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final trimmed = name.trim();
+    final words = trimmed.split(RegExp(r'\s+'));
+    final initials = trimmed.isEmpty
+        ? '?'
+        : '${words.first.characters.first}${words.length > 1 ? words.last.characters.first : ''}'
+              .toUpperCase();
     final colors = Theme.of(context).colorScheme;
     return Semantics(
       label: trimmed.isEmpty ? 'Avatar' : 'Avatar for $trimmed',
@@ -20,7 +25,7 @@ class AvatarBadge extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           child: Text(
-            trimmed.isEmpty ? '?' : trimmed.characters.first.toUpperCase(),
+            initials,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleMedium
                 ?.copyWith(color: colors.onPrimaryContainer),

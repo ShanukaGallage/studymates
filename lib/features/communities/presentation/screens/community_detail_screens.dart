@@ -13,6 +13,7 @@ import '../widgets/community_management_dialogs.dart';
 import '../widgets/catalog_view.dart';
 import '../../../../app/app_mode.dart';
 import '../../../study/data/firestore_study_repository.dart';
+import '../../../study/presentation/room_creation_error.dart';
 import '../../../study/data/study_providers.dart';
 import '../../../study/presentation/study_dialogs.dart';
 
@@ -280,14 +281,10 @@ class SubgroupDetailScreen extends ConsumerWidget {
                       if (context.mounted) {
                         context.push('/rooms/${room.roomId}');
                       }
-                    } catch (_) {
+                    } catch (error) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Room creation failed. Check membership and connection, then retry.',
-                            ),
-                          ),
+                          SnackBar(content: Text(roomCreationError(error))),
                         );
                       }
                     }

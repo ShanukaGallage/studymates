@@ -45,11 +45,19 @@ class FirestoreProfileRepository implements ProfileRepository {
     required String displayName,
     String avatarId = UserProfile.defaultAvatarId,
     List<String> interestIds = const [],
+    String? institution,
+    String? programme,
+    String? yearOfStudy,
+    String? bio,
   }) async {
     final profile = _newProfile(
       displayName: displayName,
       avatarId: avatarId,
       interestIds: interestIds,
+      institution: institution,
+      programme: programme,
+      yearOfStudy: yearOfStudy,
+      bio: bio,
     );
     try {
       await _documents.createDocumentIfAbsent(
@@ -101,11 +109,19 @@ class FirestoreProfileRepository implements ProfileRepository {
     required String displayName,
     String avatarId = UserProfile.defaultAvatarId,
     List<String> interestIds = const [],
+    String? institution,
+    String? programme,
+    String? yearOfStudy,
+    String? bio,
   }) async {
     final profile = _newProfile(
       displayName: displayName,
       avatarId: avatarId,
       interestIds: interestIds,
+      institution: institution,
+      programme: programme,
+      yearOfStudy: yearOfStudy,
+      bio: bio,
     );
     try {
       await _documents.updateExistingDocument(
@@ -123,6 +139,10 @@ class FirestoreProfileRepository implements ProfileRepository {
     required String displayName,
     required String avatarId,
     required List<String> interestIds,
+    String? institution,
+    String? programme,
+    String? yearOfStudy,
+    String? bio,
   }) {
     final normalizedName = displayName.trim();
     if (normalizedName.isEmpty) {
@@ -135,7 +155,16 @@ class FirestoreProfileRepository implements ProfileRepository {
       displayName: normalizedName,
       avatarId: avatarId,
       interestIds: interestIds,
+      institution: _optionalText(institution),
+      programme: _optionalText(programme),
+      yearOfStudy: _optionalText(yearOfStudy),
+      bio: _optionalText(bio),
     );
+  }
+
+  String? _optionalText(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 
   String _requireCurrentUserId() {

@@ -34,6 +34,10 @@ void main() {
         'displayName': 'Learner',
         'avatarId': 'default',
         'interestIds': <String>[],
+        'institution': null,
+        'programme': null,
+        'yearOfStudy': null,
+        'bio': null,
       });
     });
 
@@ -125,6 +129,69 @@ void main() {
       expect(store.documents['firebase-uid-1']!['displayName'], 'After');
       expect(syncedDisplayNames, ['Before', 'After']);
     });
+
+    test('saves, reloads and clears every optional detail', () async {
+      await repository.createCurrentProfile(
+        displayName: 'Learner',
+        institution: '  University of Kelaniya  ',
+        interestIds: ['Software engineering', 'Design'],
+      );
+      final created = await repository.getCurrentProfile();
+      expect(created!.institution, 'University of Kelaniya');
+      expect(created.interestIds, ['Software engineering', 'Design']);
+
+      await repository.updateCurrentProfile(
+        displayName: 'Learner',
+        institution: created.institution,
+        programme: '  BSc IT  ',
+        yearOfStudy: 'Year 2',
+        bio: '  Learning together.  ',
+        interestIds: created.interestIds,
+      );
+      final saved = await repository.getCurrentProfile();
+      expect(saved!.programme, 'BSc IT');
+      expect(saved.yearOfStudy, 'Year 2');
+      expect(saved.bio, 'Learning together.');
+
+      // Optional text is explicitly cleared, rather than skipped in update().
+      await repository.updateCurrentProfile(
+        displayName: 'Learner',
+        institution: '  ',
+        programme: '',
+        bio: '',
+      );
+      final cleared = await repository.getCurrentProfile();
+      expect(cleared!.institution, isNull);
+      expect(cleared.programme, isNull);
+      expect(cleared.yearOfStudy, isNull);
+      expect(cleared.bio, isNull);
+      expect(cleared.interestIds, isEmpty);
+    });
+
+    test(
+      'edits a legacy name-only profile without replacing other data',
+      () async {
+        store.documents['firebase-uid-1'] = {
+          'displayName': 'Legacy learner',
+          'unrelatedMetadata': 'retained',
+        };
+        final legacy = await repository.getCurrentProfile();
+        expect(legacy!.institution, isNull);
+        expect(legacy.programme, isNull);
+        expect(legacy.yearOfStudy, isNull);
+        expect(legacy.bio, isNull);
+        await repository.updateCurrentProfile(
+          displayName: legacy.displayName,
+          institution: 'School',
+        );
+        final updated = await repository.getCurrentProfile();
+        expect(updated!.institution, 'School');
+        expect(
+          store.documents['firebase-uid-1']!['unrelatedMetadata'],
+          'retained',
+        );
+      },
+    );
 
     test('profile data remains readable after repository recreation', () async {
       await repository.createCurrentProfile(displayName: 'Persisted learner');
@@ -286,6 +353,6 @@ class _FakeProfileDocumentStore implements ProfileDocumentStore {
         ProfileRepositoryError.profileNotFound,
       );
     }
-    documents[userId] = Map.of(data);
+    documents[userId]!.addAll(data);
   }
 }

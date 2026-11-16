@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'app_mode.dart';
 import 'account_screens.dart';
+import '../core/theme/app_theme.dart';
 
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
@@ -13,7 +14,12 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('StudyMates'),
+        title: Text(
+          'StudyMates',
+          style: Theme.of(context).textTheme.titleLarge
+              ?.copyWith(color: AppColors.primary, fontWeight: FontWeight.w800),
+        ),
+        toolbarHeight: 56,
         actions: [
           if (ref.watch(appModeProvider) == AppMode.connected)
             IconButton(
@@ -21,7 +27,8 @@ class AppShell extends ConsumerWidget {
               icon: const Icon(Icons.qr_code_scanner),
               onPressed: () => context.push('/scan'),
             ),
-          if (ref.watch(appModeProvider) == AppMode.connected)
+          if (ref.watch(appModeProvider) == AppMode.connected &&
+              navigationShell.currentIndex == 3)
             IconButton(
               tooltip: 'Sign out',
               icon: const Icon(Icons.logout),

@@ -11,6 +11,8 @@ import 'package:studymates/features/communities/data/firestore_membership_reposi
 import 'package:studymates/features/communities/data/spark_membership_cleanup.dart';
 import 'package:studymates/features/rooms/data/seat_claim_result.dart';
 import 'package:studymates/features/study/data/firestore_study_repository.dart';
+import 'package:studymates/features/communities/data/pending_leave_recovery.dart';
+import 'package:studymates/features/study/data/room_cycle_repository.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -112,6 +114,26 @@ void main() {
         goal: 'Preserve this cycle',
         demo: true,
       );
+      final roomCycles = await b
+          .watchRoomCycles(subgroup, id)
+          .firstWhere((cycles) => cycles.isNotEmpty);
+      expect(roomCycles.single['sessionId'], session);
+      final cycleStart = time(roomCycles.single['startsAt']);
+      expect(
+        completedRoomCycles(
+          roomCycles,
+          cycleStart.add(const Duration(seconds: 60)),
+          demo: true,
+        ),
+        1,
+      );
+      expect(
+        completedRoomCycles(
+          roomCycles,
+          cycleStart.add(const Duration(seconds: 60)),
+        ),
+        0,
+      );
       final issuer = FirestoreInvitationService(
         study: a,
         catalog: () async => throw UnimplementedError(),
@@ -175,8 +197,10 @@ void main() {
         sigId: sig,
         subgroupId: subgroup,
       );
+      expect(await PendingLeaveRecovery(a).watchActionableCount().first, 1);
       await SparkMembershipCleanup(a).complete(departure.requestId);
       await memberships[0].finalizeMembershipRemoval(departure.requestId);
+      expect(await PendingLeaveRecovery(a).watchActionableCount().first, 0);
       expect((await ref.get()).data()!['hostUid'], b.uid);
       expect((await ref.get()).data()!['status'], 'active');
     },

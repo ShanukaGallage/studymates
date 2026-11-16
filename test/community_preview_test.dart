@@ -198,9 +198,12 @@ void main() {
   }
 
   Future<void> tap(WidgetTester tester, String label) async {
-    await tester.ensureVisible(find.text(label));
+    final target = label == 'Clear search'
+        ? find.byTooltip(label)
+        : find.text(label);
+    await tester.ensureVisible(target);
     await tester.pumpAndSettle();
-    await tester.tap(find.text(label));
+    await tester.tap(target);
     await tester.pumpAndSettle();
   }
 
@@ -211,7 +214,7 @@ void main() {
     expect(find.text('Create subgroup'), findsNothing);
     container.read(appRouterProvider).go('/discover');
     await tester.pumpAndSettle();
-    await tap(tester, 'Create a SIG');
+    await tap(tester, 'Create');
     final sigFields = find.descendant(
       of: find.byType(AlertDialog),
       matching: find.byType(TextFormField),
@@ -221,11 +224,11 @@ void main() {
     await tester.enterText(sigFields.at(2), 'Study and build together.');
     await tap(tester, 'Create SIG');
     await tester.scrollUntilVisible(
-      find.text('Explore Study Systems'),
+      find.text('Study Systems'),
       250,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Explore Study Systems'), findsOneWidget);
+    expect(find.text('Study Systems'), findsOneWidget);
 
     container.read(appRouterProvider).go('/sigs/preview-sig-1');
     await tester.pumpAndSettle();
@@ -273,8 +276,8 @@ void main() {
       await tap(tester, 'Clear search');
       await tester.enterText(find.byType(AppTextField), 'IOT');
       await tester.pumpAndSettle();
-      expect(find.text('Explore Programming'), findsNothing);
-      await tap(tester, 'Explore IoT');
+      expect(find.text('Programming'), findsNothing);
+      await tap(tester, 'IoT');
       await tap(tester, 'Open ESP32');
       expect(
         find.text('Join IoT first to join this subgroup.'),
@@ -362,7 +365,7 @@ void main() {
       findsOneWidget,
     );
     await tap(tester, 'Retry');
-    expect(find.text('Explore IoT'), findsOneWidget);
+    expect(find.text('IoT'), findsOneWidget);
     container.read(appRouterProvider).go('/subgroups/esp32');
     await tester.pumpAndSettle();
     expect(find.text('Rooms are unavailable. Try again.'), findsOneWidget);
@@ -379,7 +382,7 @@ void main() {
         .read(previewScenarioProvider.notifier)
         .select(PreviewScenario.sample);
     await tester.pumpAndSettle();
-    expect(find.text('Explore IoT'), findsOneWidget);
+    expect(find.text('IoT'), findsOneWidget);
   });
 
   testWidgets(

@@ -1,5 +1,20 @@
 # StudyMates contracts — preview and backend agreements
 
+## Optional profile details (17 November 2026)
+
+`UserProfile` still requires only UID and display name. The existing `interestIds`
+list holds editable study-interest tags; `institution`, `programme`, `yearOfStudy`
+and `bio` are nullable strings. Missing fields in older documents load as unset.
+Setup accepts a name alone, institution and interests; Edit Profile also exposes
+programme, Year 1–5/Postgraduate/Other and a short bio. Repository updates replace
+editable values; empty optional text becomes an explicit Firestore null so it
+clears a previously saved value. Other document fields are preserved.
+
+`users/{uid}` remains owner-only under the existing rules. Public seat projections
+still contain only name/avatar; no education, bio or email is exposed there.
+`avatarId` remains a preset identifier, not a photo URL. Initials are the fallback;
+photo uploads are not implemented (no upload service or Storage rules exist).
+
 ## Current connected implementation (16 November 2026)
 
 Reconciliation checkpoint: the connected implementation is now merged with PRs

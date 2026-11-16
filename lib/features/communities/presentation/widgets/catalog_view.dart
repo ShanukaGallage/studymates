@@ -110,12 +110,12 @@ class _MembershipActionState extends State<MembershipAction> {
               ? error.message
               : error is MembershipRepositoryException &&
                     error.code == MembershipRepositoryError.cleanupNotComplete
-              ? 'Leave cleanup is pending. Finish pending leave requests from Discover.'
+              ? 'Leave cleanup is pending. Open Pending leave requests in Discover.'
               : error is RepositoryException &&
                     error.code == RepositoryError.membershipRequired
               ? 'Join the parent SIG first.'
               : widget.joined
-              ? 'Leaving could not be confirmed. Use Finish pending leave requests in Discover to retry safely.'
+              ? 'Leaving could not be confirmed. Use Pending leave requests in Discover to retry safely.'
               : 'Membership could not be updated. Please try again.',
         );
       }

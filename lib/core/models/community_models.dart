@@ -4,17 +4,34 @@ enum SubgroupStatus { active, closed }
 
 class UserProfile {
   static const defaultAvatarId = 'default';
+  static const studyYears = [
+    'Year 1',
+    'Year 2',
+    'Year 3',
+    'Year 4',
+    'Year 5',
+    'Postgraduate',
+    'Other',
+  ];
 
   UserProfile({
     required this.id,
     required this.displayName,
     this.avatarId = defaultAvatarId,
     List<String> interestIds = const [],
+    this.institution,
+    this.programme,
+    this.yearOfStudy,
+    this.bio,
   }) : interestIds = List.unmodifiable(interestIds);
   final String id;
   final String displayName;
   final String avatarId;
   final List<String> interestIds;
+  final String? institution;
+  final String? programme;
+  final String? yearOfStudy;
+  final String? bio;
 }
 
 class SigSummary {

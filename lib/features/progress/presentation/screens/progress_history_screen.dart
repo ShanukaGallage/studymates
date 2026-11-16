@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../../../core/models/completion_record.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_details.dart';
 import '../controllers/progress_history_controller.dart';
 import '../widgets/progress_status_view.dart';
 import '../widgets/progress_dashboard.dart';
@@ -38,24 +39,37 @@ class _ProgressHistoryScreenState extends ConsumerState<ProgressHistoryScreen> {
         ),
       ),
       child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          children: [
-            Text(
-              'Progress overview',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            history.when(
-              skipLoadingOnRefresh: false,
-              skipLoadingOnReload: false,
-              loading: () => const ProgressStatusView.loading(),
-              error: (_, _) => ProgressStatusView.error(
-                onRetry: () => ref.invalidate(progressHistoryProvider),
+        child: AppContentWidth(
+          child: ListView(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Progress overview',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Refresh history',
+                    onPressed: () => ref.invalidate(progressHistoryProvider),
+                    icon: const Icon(Icons.refresh),
+                  ),
+                ],
               ),
-              data: (data) => _history(context, data),
-            ),
-          ],
+              const SizedBox(height: AppSpacing.lg),
+              history.when(
+                skipLoadingOnRefresh: false,
+                skipLoadingOnReload: false,
+                loading: () => const ProgressStatusView.loading(),
+                error: (_, _) => ProgressStatusView.error(
+                  onRetry: () => ref.invalidate(progressHistoryProvider),
+                ),
+                data: (data) => _history(context, data),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -69,7 +83,7 @@ class _ProgressHistoryScreenState extends ConsumerState<ProgressHistoryScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Normal progress · all history',
+          'All-time · Normal sessions',
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 12),
@@ -78,26 +92,32 @@ class _ProgressHistoryScreenState extends ConsumerState<ProgressHistoryScreen> {
           runSpacing: 12,
           children: [
             ProgressMetric(
-              label: 'Study time · all history',
+              key: const ValueKey('progress-total-time'),
+              label: 'Study time',
               value: _duration(data.summary.creditedSeconds),
               icon: Icons.schedule,
               tint: AppColors.softAccent,
             ),
             ProgressMetric(
-              label: 'Completed sessions · all history',
+              key: const ValueKey('progress-total-count'),
+              label: 'Sessions completed',
               value: '${data.summary.completedSessionCount}',
               icon: Icons.auto_stories_outlined,
               tint: AppColors.blueAccent,
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        Text(
-          'Eligible recorded time: ${_duration(data.summary.creditedSeconds)}',
-        ),
-        Text('Completed sessions: ${data.summary.completedSessionCount}'),
-        const Text(
-          'Demo records are excluded. Goal outcome does not change credited time.',
+        AppDetails(
+          title: 'About your progress',
+          children: const [
+            Text(
+              'Totals cover all your normal sessions. Demo time is excluded. Goal completion is separate from recorded focus time.',
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Charts use the history loaded so far. Dates follow your local time; weeks start Monday.',
+            ),
+          ],
         ),
         const SizedBox(height: AppSpacing.lg),
         Wrap(
@@ -117,11 +137,6 @@ class _ProgressHistoryScreenState extends ConsumerState<ProgressHistoryScreen> {
                   ? AppButtonVariant.primary
                   : AppButtonVariant.secondary,
               onPressed: () => setState(() => _showDemo = true),
-            ),
-            AppButton(
-              label: 'Refresh history',
-              variant: AppButtonVariant.secondary,
-              onPressed: () => ref.invalidate(progressHistoryProvider),
             ),
           ],
         ),
@@ -147,9 +162,7 @@ class _ProgressHistoryScreenState extends ConsumerState<ProgressHistoryScreen> {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: AppSpacing.sm),
-        Text(
-          _showDemo ? 'Demo records never contribute to normal progress.' : 'Recent records, newest first. The summary covers all eligible history.',
-        ),
+        Text(_showDemo ? 'Excluded from normal totals' : 'Newest first'),
         const SizedBox(height: AppSpacing.lg),
         if (records.isEmpty)
           Text(
@@ -215,22 +228,27 @@ class _RecordCard extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Personal goal',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            Text(
               record.goalText.trim().isEmpty
                   ? 'No goal text recorded.'
                   : record.goalText,
               key: ValueKey('progress-goal-${record.recordId}'),
             ),
             const SizedBox(height: AppSpacing.md),
-            Text('Session: ${record.sessionId}'),
-            Text('Ended: $date (local time)'),
+            Text(date, style: Theme.of(context).textTheme.bodySmall),
             Text('Recorded time: ${_duration(record.creditedSeconds)}'),
-            Text('Timer: $timer'),
-            Text(
-              'Goal: ${record.goalOutcome == GoalOutcome.completed ? 'Completed' : 'Unfinished'}',
+            Wrap(
+              spacing: 16,
+              runSpacing: 8,
+              children: [
+                Text('Timer: $timer'),
+                Text(
+                  'Goal: ${record.goalOutcome == GoalOutcome.completed ? 'Completed' : 'Unfinished'}',
+                ),
+              ],
+            ),
+            AppDetails(
+              title: 'Session details',
+              children: [SelectableText('Session: ${record.sessionId}')],
             ),
           ],
         ),

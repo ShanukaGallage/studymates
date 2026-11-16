@@ -68,7 +68,7 @@ void main() {
           name == 'Discover'
               ? 'Search communities'
               : name == 'Progress'
-              ? 'Eligible recorded time: 1h 5m'
+              ? 'All-time · Normal sessions'
               : name == 'Home'
               ? 'Small steps.\nShared focus.'
               : '$name placeholder',

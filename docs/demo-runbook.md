@@ -1,5 +1,17 @@
 # Tomorrow's five-minute Android demo
 
+If taking a desk reports already seated, use the room's reserved-seat recovery
+panel. Open the prior room or explicitly release the reserved desk. If an unfinished
+session is shown, Return to unfinished session → End and save participation first,
+then release its desk. Finishing a timer or navigating to another room does not
+automatically release a reservation. The one-seat-per-account rule stays enforced.
+
+Normal room cycles default to 25-minute focus + 5-minute break. For the short live
+rehearsal, the host must deliberately enable **60-second demo cycle** before starting
+a new cycle. The room shows the shared current countdown, normal cycles done and
+separate demo cycles done. Existing cycles keep their original duration. After a
+cycle ends, save participation before joining the next host-started cycle.
+
 Use account mode (`lib/main.dart`) for connected features. `main_preview.dart`
 remains a separate, labelled in-memory UI preview. Local backend mode is also
 explicitly labelled and uses Firebase emulators, never production accounts/data.
@@ -55,7 +67,7 @@ their seats; a closed room cannot start/admit another session. SIG ownership sti
 transfers or the SIG closes according to M2's existing protocol. Room host handover runs through the ordered seating queue on Spark.
 
 For a request that timed out in the old version, deploy the updated rules and
-open Discover → Finish pending leave requests. Interrupted cleanup is retryable.
+open Discover → Pending leave requests. Interrupted cleanup is retryable.
 If a seat/session in another community is still active, finish/release it first.
 
 ## Five-minute sequence

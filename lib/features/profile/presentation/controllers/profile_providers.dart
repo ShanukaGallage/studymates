@@ -23,12 +23,20 @@ class ProfileMutationController extends Notifier<AsyncValue<UserProfile?>> {
   @override
   AsyncValue<UserProfile?> build() => const AsyncData(null);
 
-  Future<UserProfile> createProfile({required String displayName}) async {
+  Future<UserProfile> createProfile({
+    required String displayName,
+    List<String> interestIds = const [],
+    String? institution,
+  }) async {
     state = const AsyncLoading();
     try {
       final profile = await ref
           .read(profileRepositoryProvider)
-          .createCurrentProfile(displayName: displayName);
+          .createCurrentProfile(
+            displayName: displayName,
+            interestIds: interestIds,
+            institution: institution,
+          );
       state = AsyncData(profile);
       return profile;
     } catch (error, stackTrace) {
@@ -40,6 +48,11 @@ class ProfileMutationController extends Notifier<AsyncValue<UserProfile?>> {
   Future<UserProfile> updateProfile({
     required UserProfile existingProfile,
     required String displayName,
+    required List<String> interestIds,
+    String? institution,
+    String? programme,
+    String? yearOfStudy,
+    String? bio,
   }) async {
     state = const AsyncLoading();
     try {
@@ -48,7 +61,11 @@ class ProfileMutationController extends Notifier<AsyncValue<UserProfile?>> {
           .updateCurrentProfile(
             displayName: displayName,
             avatarId: existingProfile.avatarId,
-            interestIds: existingProfile.interestIds,
+            interestIds: interestIds,
+            institution: institution,
+            programme: programme,
+            yearOfStudy: yearOfStudy,
+            bio: bio,
           );
       state = AsyncData(profile);
       return profile;

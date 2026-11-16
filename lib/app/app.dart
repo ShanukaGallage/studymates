@@ -19,46 +19,54 @@ class StudyMatesApp extends ConsumerWidget {
       theme: AppTheme.light,
       themeMode: ThemeMode.light,
       routerConfig: ref.watch(appRouterProvider),
-      builder: (context, child) => Column(
-        children: [
-          Material(
-            color: AppColors.softAccent,
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Text(
-                    switch (mode) {
-                      AppMode.preview => 'UI Preview • Local sample data',
-                      AppMode.connected =>
-                        const String.fromEnvironment('STUDYMATES_EMULATOR_HOST')
-                                .isNotEmpty
-                            ? 'Local backend • Test accounts and data'
-                            : 'Connected • StudyMates',
-                      AppMode.foundation => 'Foundation only • Not connected',
-                    },
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(color: AppColors.primary),
+      builder: (context, child) {
+        if (mode == AppMode.connected &&
+            const String.fromEnvironment('STUDYMATES_EMULATOR_HOST').isEmpty) {
+          // Normal Android app bars keep their own status-bar safe area.
+          return child ?? const SizedBox.shrink();
+        }
+        return Column(
+          children: [
+            Material(
+              color: AppColors.softAccent,
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Text(
+                      switch (mode) {
+                        AppMode.preview => 'UI Preview • Local sample data',
+                        AppMode.connected =>
+                          const String.fromEnvironment(
+                                'STUDYMATES_EMULATOR_HOST',
+                              ).isNotEmpty
+                              ? 'Local backend • Test accounts and data'
+                              : 'Connected • StudyMates',
+                        AppMode.foundation => 'Foundation only • Not connected',
+                      },
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: AppColors.primary),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          Expanded(
-            child: MediaQuery.removePadding(
-              context: context,
-              removeTop: true,
-              child: child ?? const SizedBox.shrink(),
+            Expanded(
+              child: MediaQuery.removePadding(
+                context: context,
+                removeTop: true,
+                child: child ?? const SizedBox.shrink(),
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 }

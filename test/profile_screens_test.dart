@@ -16,10 +16,38 @@ import 'package:studymates/features/profile/presentation/screens/profile_view_sc
 
 void main() {
   group('ProfileSetupScreen', () {
+    testWidgets('optional institution and removable interest tags are saved', (
+      tester,
+    ) async {
+      final repository = _FakeProfileRepository();
+      await _pump(tester, const ProfileSetupScreen(), repository);
+      await _fill(tester, 'profile-display-name', 'Shanuka Gallage');
+      expect(find.text('SG'), findsOneWidget);
+      await _fill(tester, 'profile-institution', 'University of Kelaniya');
+      await _fill(tester, 'profile-new-interest', 'Design');
+      await tester.tap(find.byTooltip('Add interest'));
+      await tester.pumpAndSettle();
+      await _fill(tester, 'profile-new-interest', 'design');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Remove Design'), findsOneWidget);
+      await tester.tap(find.byTooltip('Remove Design'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Remove Design'), findsNothing);
+      // Save also includes a pending tag, without requiring another Add tap.
+      await _fill(tester, 'profile-new-interest', 'Flutter');
+      await _reveal(tester, find.text('Save profile'));
+      await tester.tap(find.text('Save profile'));
+      await tester.pumpAndSettle();
+      expect(repository.profile?.institution, 'University of Kelaniya');
+      expect(repository.profile?.interestIds, ['Flutter']);
+    });
+
     testWidgets('requires a non-empty display name', (tester) async {
       final repository = _FakeProfileRepository();
       await _pump(tester, const ProfileSetupScreen(), repository);
 
+      await _reveal(tester, find.text('Save profile'));
       await tester.tap(find.text('Save profile'));
       await tester.pump();
 
@@ -33,8 +61,9 @@ void main() {
       final repository = _FakeProfileRepository()
         ..createGate = Completer<void>();
       await _pump(tester, const ProfileSetupScreen(), repository);
-      await tester.enterText(find.byType(TextFormField), 'Poojani');
+      await tester.enterText(find.byType(TextFormField).first, 'Poojani');
 
+      await _reveal(tester, find.text('Save profile'));
       await tester.tap(find.text('Save profile'));
       await tester.pump();
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -43,7 +72,7 @@ void main() {
         isNull,
       );
 
-      await tester.tap(find.byType(FilledButton));
+      await tester.tap(find.byType(FilledButton), warnIfMissed: false);
       await tester.pump();
       expect(repository.createCount, 1);
 
@@ -62,8 +91,9 @@ void main() {
         ProfileSetupScreen(onComplete: (profile) => completedProfile = profile),
         repository,
       );
-      await tester.enterText(find.byType(TextFormField), '  Poojani  ');
+      await tester.enterText(find.byType(TextFormField).first, '  Poojani  ');
 
+      await _reveal(tester, find.text('Save profile'));
       await tester.tap(find.text('Save profile'));
       await tester.pumpAndSettle();
 
@@ -72,6 +102,9 @@ void main() {
       expect(completedProfile?.displayName, 'Poojani');
       expect(completedProfile?.avatarId, 'default');
       expect(completedProfile?.interestIds, isEmpty);
+      expect(completedProfile?.programme, isNull);
+      expect(completedProfile?.yearOfStudy, isNull);
+      expect(completedProfile?.bio, isNull);
     });
 
     testWidgets('shows a friendly error when profile creation fails', (
@@ -82,8 +115,9 @@ void main() {
           ProfileRepositoryError.unavailable,
         );
       await _pump(tester, const ProfileSetupScreen(), repository);
-      await tester.enterText(find.byType(TextFormField), 'Poojani');
+      await tester.enterText(find.byType(TextFormField).first, 'Poojani');
 
+      await _reveal(tester, find.text('Save profile'));
       await tester.tap(find.text('Save profile'));
       await tester.pumpAndSettle();
 
@@ -97,6 +131,45 @@ void main() {
   });
 
   group('ProfileViewScreen', () {
+    testWidgets('shows filled details and hides unset fields', (tester) async {
+      final repository = _FakeProfileRepository()
+        ..profile = UserProfile(
+          id: 'current-user-uid',
+          displayName: 'Learner',
+          institution: 'University of Kelaniya',
+          programme: 'BSc IT',
+          yearOfStudy: 'Year 2',
+          bio: 'Learning together.',
+        );
+      await _pump(tester, const ProfileViewScreen(), repository);
+      await tester.pumpAndSettle();
+      for (final detail in [
+        'University of Kelaniya',
+        'BSc IT',
+        'Year 2',
+        'Learning together.',
+      ]) {
+        expect(find.text(detail), findsOneWidget);
+      }
+      expect(find.text('Interests'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      repository.profile = UserProfile(
+        id: 'current-user-uid',
+        displayName: 'Legacy learner',
+      );
+      await _pump(tester, const ProfileViewScreen(), repository);
+      await tester.pumpAndSettle();
+      for (final label in [
+        'University or school',
+        'Degree or programme',
+        'Year of study',
+        'About',
+        'Interests',
+      ]) {
+        expect(find.text(label), findsNothing);
+      }
+    });
+
     testWidgets('shows loading then displays the observed profile', (
       tester,
     ) async {
@@ -234,6 +307,92 @@ void main() {
   });
 
   group('ProfileEditScreen', () {
+    testWidgets('saves and clears optional fields including study year', (
+      tester,
+    ) async {
+      final repository = _FakeProfileRepository()..profile = _sampleProfile();
+      await _pump(
+        tester,
+        ProfileEditScreen(profile: _sampleProfile()),
+        repository,
+      );
+      await _fill(tester, 'profile-institution', 'University of Kelaniya');
+      await _fill(tester, 'profile-programme', 'BSc IT');
+      final year = find.byKey(const ValueKey('profile-study-year'));
+      await _reveal(tester, year);
+      await tester.tap(year);
+      await tester.pumpAndSettle();
+      for (final option in UserProfile.studyYears) {
+        expect(find.text(option), findsOneWidget);
+      }
+      await tester.tap(find.text('Year 2').last);
+      await tester.pumpAndSettle();
+      await _fill(tester, 'profile-bio', 'Learning together.');
+      await _reveal(tester, find.text('Save changes'));
+      await tester.tap(find.text('Save changes'));
+      await tester.pumpAndSettle();
+      expect(repository.profile?.institution, 'University of Kelaniya');
+      expect(repository.profile?.programme, 'BSc IT');
+      expect(repository.profile?.yearOfStudy, 'Year 2');
+      expect(repository.profile?.bio, 'Learning together.');
+
+      await _fill(tester, 'profile-institution', '');
+      await _fill(tester, 'profile-programme', '');
+      await _fill(tester, 'profile-bio', '');
+      await _reveal(tester, year);
+      await tester.tap(year);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Not set').last);
+      await tester.pumpAndSettle();
+      for (final interest in ['iot', 'design']) {
+        await _reveal(tester, find.byTooltip('Remove $interest'));
+        await tester.tap(find.byTooltip('Remove $interest'));
+        await tester.pumpAndSettle();
+      }
+      await _reveal(tester, find.text('Save changes'));
+      await tester.tap(find.text('Save changes'));
+      await tester.pumpAndSettle();
+      expect(repository.profile?.institution, isEmpty);
+      expect(repository.profile?.programme, isEmpty);
+      expect(repository.profile?.yearOfStudy, isNull);
+      expect(repository.profile?.bio, isEmpty);
+      expect(repository.profile?.interestIds, isEmpty);
+    });
+
+    testWidgets('legacy profile edits on 320dp with large text and keyboard', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 740);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final repository = _FakeProfileRepository();
+      final legacy = UserProfile(
+        id: 'current-user-uid',
+        displayName: 'Legacy learner',
+        interestIds: ['A long study interest that wraps on a narrow screen'],
+      );
+      await _pump(
+        tester,
+        MediaQuery(
+          data: const MediaQueryData(
+            textScaler: TextScaler.linear(2),
+            viewInsets: EdgeInsets.only(bottom: 280),
+          ),
+          child: ProfileEditScreen(profile: legacy),
+        ),
+        repository,
+      );
+      await _fill(tester, 'profile-display-name', 'Updated learner');
+      await _reveal(tester, find.byKey(const ValueKey('profile-study-year')));
+      expect(tester.takeException(), isNull);
+      await _reveal(tester, find.text('Save changes'));
+      await tester.tap(find.text('Save changes'));
+      await tester.pumpAndSettle();
+      expect(repository.updatedDisplayName, 'Updated learner');
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('prefills the name and preserves avatar and interests', (
       tester,
     ) async {
@@ -249,7 +408,8 @@ void main() {
       );
 
       expect(find.text('Poojani'), findsOneWidget);
-      await tester.enterText(find.byType(TextFormField), 'Poojani Silva');
+      await tester.enterText(find.byType(TextFormField).first, 'Poojani Silva');
+      await _reveal(tester, find.text('Save changes'));
       await tester.tap(find.text('Save changes'));
       await tester.pumpAndSettle();
 
@@ -268,8 +428,9 @@ void main() {
         ProfileEditScreen(profile: _sampleProfile()),
         repository,
       );
-      await tester.enterText(find.byType(TextFormField), '   ');
+      await tester.enterText(find.byType(TextFormField).first, '   ');
 
+      await _reveal(tester, find.text('Save changes'));
       await tester.tap(find.text('Save changes'));
       await tester.pump();
 
@@ -288,8 +449,9 @@ void main() {
         ProfileEditScreen(profile: _sampleProfile()),
         repository,
       );
-      await tester.enterText(find.byType(TextFormField), 'Updated name');
+      await tester.enterText(find.byType(TextFormField).first, 'Updated name');
 
+      await _reveal(tester, find.text('Save changes'));
       await tester.tap(find.text('Save changes'));
       await tester.pump();
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -310,8 +472,9 @@ void main() {
         ProfileEditScreen(profile: _sampleProfile()),
         repository,
       );
-      await tester.enterText(find.byType(TextFormField), 'Updated name');
+      await tester.enterText(find.byType(TextFormField).first, 'Updated name');
 
+      await _reveal(tester, find.text('Save changes'));
       await tester.tap(find.text('Save changes'));
       await tester.pump();
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -320,7 +483,7 @@ void main() {
         isNull,
       );
 
-      await tester.tap(find.byType(FilledButton));
+      await tester.tap(find.byType(FilledButton), warnIfMissed: false);
       await tester.pump();
       expect(repository.updateCount, 1);
 
@@ -388,17 +551,26 @@ class _FakeProfileRepository implements ProfileRepository {
     required String displayName,
     String avatarId = UserProfile.defaultAvatarId,
     List<String> interestIds = const [],
+    String? institution,
+    String? programme,
+    String? yearOfStudy,
+    String? bio,
   }) async {
     createCount++;
     createdDisplayName = displayName;
     await createGate?.future;
     if (createFailure case final failure?) throw failure;
-    return UserProfile(
+    profile = UserProfile(
       id: 'current-user-uid',
       displayName: displayName,
       avatarId: avatarId,
       interestIds: interestIds,
+      institution: institution,
+      programme: programme,
+      yearOfStudy: yearOfStudy,
+      bio: bio,
     );
+    return profile!;
   }
 
   @override
@@ -420,6 +592,10 @@ class _FakeProfileRepository implements ProfileRepository {
     required String displayName,
     String avatarId = UserProfile.defaultAvatarId,
     List<String> interestIds = const [],
+    String? institution,
+    String? programme,
+    String? yearOfStudy,
+    String? bio,
   }) async {
     updateCount++;
     updatedDisplayName = displayName;
@@ -427,12 +603,17 @@ class _FakeProfileRepository implements ProfileRepository {
     updatedInterestIds = List.of(interestIds);
     await updateGate?.future;
     if (updateFailure case final failure?) throw failure;
-    return UserProfile(
+    profile = UserProfile(
       id: profile?.id ?? 'current-user-uid',
       displayName: displayName,
       avatarId: avatarId,
       interestIds: interestIds,
+      institution: institution,
+      programme: programme,
+      yearOfStudy: yearOfStudy,
+      bio: bio,
     );
+    return profile!;
   }
 }
 
@@ -445,4 +626,22 @@ class _TestAuthStateController extends AuthStateController {
   AuthState build() => _initialState;
 
   void emit(AuthState identity) => state = identity;
+}
+
+Finder _field(String key) => find.descendant(
+  of: find.byKey(ValueKey(key)),
+  matching: find.byType(TextFormField),
+);
+
+Future<void> _reveal(WidgetTester tester, Finder target) async {
+  await tester.pumpAndSettle();
+  await tester.ensureVisible(target);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _fill(WidgetTester tester, String key, String text) async {
+  final target = _field(key);
+  await _reveal(tester, target);
+  await tester.enterText(target, text);
+  await tester.pumpAndSettle();
 }

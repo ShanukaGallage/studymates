@@ -1,5 +1,21 @@
 # StudyMates
 
+UI copy cleanup: room/session options and explanations are expandable; Progress
+shows totals once and keeps identifiers under Session details. Blocked-seat
+recovery, errors, demo labels and partial-history notices remain visible where
+relevant. The official Flutter responsive-layout agent skill is installed under
+`.agents/skills/`. The pub.dev `skills` tool was reviewed; it is not a runtime
+dependency and does not itself redesign the app.
+
+Room cycles default to **25 minutes focus + 5 minutes break**. The room and personal
+session show the shared phase countdown and whole-cycle progress. Room **Cycles
+done** counts non-demo room schedules whose full 30-minute end has passed;
+**Demo cycles done** is separate. These are elapsed room cycles, not attendance or
+personal study credit. Existing demo cycles finish as issued; the host's explicit
+demo switch defaults off for new cycles. No per-second writes or new rules are needed.
+The cycle reader loads the room's schedules, suitable for the university dataset;
+larger deployments should use an aggregate read model.
+
 Android study-community app: find your people, learn together. The assignment
 requires a **five-minute live Android demonstration**, with no report,
 presentation or formal rubric. These repository notes support development only.
@@ -333,7 +349,7 @@ is recorded as unfinished; credit follows existing server-validated focus rules.
 It never edits another user's participation. SIG ownership
 transfer/closure and subgroup cascade still use M2's membership protocol.
 
-Deploy current rules, then use Discover → **Finish pending leave requests** to
+Deploy current rules, then use Discover → **Pending leave requests** to
 recover an earlier timed-out departure. This may also finish owner departures
 after their SIG has already closed. Foreground errors preserve the retry path.
 Deploy only `firestore:rules,firestore:indexes` on Spark; Functions are optional.
