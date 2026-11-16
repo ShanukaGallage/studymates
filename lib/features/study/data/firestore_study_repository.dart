@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'room_host_coordinator.dart';
@@ -909,14 +910,56 @@ class FirestoreStudyRepository
     final user = uid;
     Query<Map<String, dynamic>> query = db
         .collection('users/$user/completions')
-        .orderBy(FieldPath.documentId)
+        .orderBy('endedAt', descending: true)
+        // Match the descending single-field index's default __name__ order.
+        .orderBy(FieldPath.documentId, descending: true)
         .limit(30);
-    if (pageToken != null) query = query.startAfter([pageToken]);
+    if (pageToken != null) {
+      try {
+        final cursor = jsonDecode(utf8.decode(base64Url.decode(pageToken)));
+        if (cursor is! List ||
+            cursor.length != 5 ||
+            cursor[0] != 1 ||
+            cursor[1] != user ||
+            cursor[2] is! int ||
+            cursor[3] is! int ||
+            cursor[4] is! String ||
+            (cursor[4] as String).isEmpty ||
+            (cursor[4] as String).contains('/')) {
+          throw const FormatException('Invalid history cursor.');
+        }
+        query = query.startAfter([
+          Timestamp(cursor[2] as int, cursor[3] as int),
+          cursor[4] as String,
+        ]);
+      } on Object {
+        throw const StudyFailure(
+          'History page expired or invalid. Refresh history.',
+        );
+      }
+    }
     final data = await query.get(const GetOptions(source: Source.server));
     _sameUser(user);
     return CompletionHistoryPage(
       records: data.docs.map((d) => decodeCompletion(d.data())),
-      nextPageToken: data.docs.length == 30 ? data.docs.last.id : null,
+      nextPageToken: data.docs.length == 30
+          ? (() {
+              final last = data.docs.last;
+              final endedAt = last.data()['endedAt'] as Timestamp;
+              // Preserve Firestore nanoseconds; DateTime would truncate precision.
+              return base64Url.encode(
+                utf8.encode(
+                  jsonEncode([
+                    1,
+                    user,
+                    endedAt.seconds,
+                    endedAt.nanoseconds,
+                    last.id,
+                  ]),
+                ),
+              );
+            })()
+          : null,
     );
   }
 
