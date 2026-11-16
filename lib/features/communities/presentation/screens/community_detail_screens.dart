@@ -11,6 +11,10 @@ import '../../../rooms/data/room_providers.dart';
 import '../controllers/community_providers.dart';
 import '../widgets/community_management_dialogs.dart';
 import '../widgets/catalog_view.dart';
+import '../../../../app/app_mode.dart';
+import '../../../study/data/firestore_study_repository.dart';
+import '../../../study/data/study_providers.dart';
+import '../../../study/presentation/study_dialogs.dart';
 
 class SigDetailScreen extends ConsumerWidget {
   const SigDetailScreen({super.key, required this.id});
@@ -41,7 +45,9 @@ class SigDetailScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               Text(
                 sig.membership == MembershipState.joined
-                    ? 'You joined this SIG in preview.'
+                    ? ref.watch(appModeProvider) == AppMode.preview
+                          ? 'You joined this SIG in preview.'
+                          : 'You joined this community.'
                     : 'Join this SIG to join its subgroups.',
               ),
               const SizedBox(height: 12),
@@ -49,13 +55,43 @@ class SigDetailScreen extends ConsumerWidget {
                 key: ValueKey(id),
                 subject: 'SIG',
                 joined: sig.membership == MembershipState.joined,
-                leaveMessage: 'Leaving this SIG also clears its subgroup memberships in this preview.',
+                leaveMessage: ref.watch(appModeProvider) == AppMode.preview
+                    ? 'Leaving this SIG also clears its subgroup memberships in this preview.'
+                    : 'Leaving ends your related participation and releases your seat. Hosting may transfer or the room may close.',
                 onChange: (value) => ref
                     .read(communityCatalogProvider.notifier)
                     .setSigMembership(id, value),
               ),
               const SizedBox(height: 24),
               Text('Subgroups', style: Theme.of(context).textTheme.titleLarge),
+              if (ref.watch(appModeProvider) == AppMode.connected &&
+                  sig.ownerId == catalog.profile.id)
+                AppButton(
+                  label: 'Create subgroup',
+                  onPressed: () async {
+                    final name = await studyTitleDialog(
+                      context,
+                      'Create subgroup',
+                    );
+                    if (name == null || !context.mounted) return;
+                    try {
+                      await ref
+                          .read(studyRepositoryProvider)
+                          .createCommunity(name, parentSig: sig.id);
+                      ref.invalidate(communityCatalogProvider);
+                    } catch (_) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Subgroup creation failed. Retry when online.',
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
               const SizedBox(height: 16),
               if (isOwner)
                 AppButton(
@@ -224,13 +260,18 @@ class SubgroupDetailScreen extends ConsumerWidget {
               if (parentJoined)
                 Text(
                   group.membership == MembershipState.joined
-                      ? 'You joined this subgroup in preview.'
+                      ? ref.watch(appModeProvider) == AppMode.preview
+                            ? 'You joined this subgroup in preview.'
+                            : 'You joined this subgroup.'
                       : 'Join this topic to study together.',
                 ),
               const SizedBox(height: 12),
               MembershipAction(
                 key: ValueKey(id),
                 subject: 'subgroup',
+                leaveMessage: ref.watch(appModeProvider) == AppMode.preview
+                    ? null
+                    : 'Leaving ends your participation and releases your seat. Hosting may transfer or the room may close.',
                 enabled: parentJoined,
                 joined: group.membership == MembershipState.joined,
                 onChange: (value) => ref
@@ -243,12 +284,49 @@ class SubgroupDetailScreen extends ConsumerWidget {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Sample occupancy only. Opening a preview does not reserve a seat.',
+              Text(
+                ref.watch(appModeProvider) == AppMode.preview
+                    ? 'Sample occupancy only. Opening a preview does not reserve a seat.'
+                    : 'Opening a room does not reserve a seat. Claim a seat inside.',
               ),
+              if (ref.watch(appModeProvider) == AppMode.connected &&
+                  group.membership == MembershipState.joined)
+                AppButton(
+                  label: 'Create study room',
+                  onPressed: () async {
+                    final name = await studyTitleDialog(
+                      context,
+                      'Create study room',
+                    );
+                    if (name == null || !context.mounted) return;
+                    try {
+                      final room = await ref
+                          .read(studyRepositoryProvider)
+                          .createRoom(subgroupId: id, title: name);
+                      ref.invalidate(subgroupRoomsProvider(id));
+                      if (context.mounted) {
+                        context.push('/rooms/${room.roomId}');
+                      }
+                    } catch (_) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Room creation failed. Check membership and connection, then retry.',
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
               const SizedBox(height: 16),
               ref
-                  .watch(subgroupRoomsProvider(id))
+                  .watch(
+                    ref.watch(appModeProvider) == AppMode.preview
+                        ? subgroupRoomsProvider(id)
+                        : connectedRoomSummariesProvider(id),
+                  )
                   .when(
                     skipLoadingOnRefresh: false,
                     loading: () => const LoadingView(message: 'Loading rooms…'),
@@ -257,10 +335,12 @@ class SubgroupDetailScreen extends ConsumerWidget {
                       onRetry: () => ref.invalidate(subgroupRoomsProvider(id)),
                     ),
                     data: (rooms) => rooms.isEmpty
-                        ? const EmptyView(
+                        ? EmptyView(
                             title: 'No rooms yet',
                             message:
-                                'Room creation will come in a later milestone.',
+                                ref.watch(appModeProvider) == AppMode.preview
+                                ? 'Room creation will come in a later milestone.'
+                                : 'Join this subgroup and create a room to study together.',
                           )
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -281,13 +361,20 @@ class SubgroupDetailScreen extends ConsumerWidget {
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
-                                          room.isFull
+                                          ref.watch(appModeProvider) ==
+                                                  AppMode.connected
+                                              ? 'Open to see live seats'
+                                              : room.isFull
                                               ? 'Full • ${room.capacity} of ${room.capacity} seats'
                                               : '${room.occupiedSeats} of ${room.capacity} seats occupied',
                                         ),
                                         const SizedBox(height: 12),
                                         AppButton(
-                                          label: 'Preview ${room.title}',
+                                          label:
+                                              ref.watch(appModeProvider) ==
+                                                  AppMode.preview
+                                              ? 'Preview ${room.title}'
+                                              : 'Open ${room.title}',
                                           variant: AppButtonVariant.secondary,
                                           onPressed: () => context.pushNamed(
                                             'room-preview',

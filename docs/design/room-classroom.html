@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StudyMates · Classroom design review</title>
+<style>
+:root{color-scheme:light;--green:#225b3b;--ink:#1e2b24;--muted:#5f6d64;--cream:#faf7f0;--soft:#e4f0df;--line:#d9dfd4;--error:#96382e}
+*{box-sizing:border-box}body{margin:0;background:#eeeee6;color:var(--ink);font:16px/1.5 system-ui,sans-serif}button,input,select{font:inherit}button,select{cursor:pointer}button:disabled{cursor:default}button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #225b3b;outline-offset:4px}a{color:var(--green)}
+.workspace{max-width:1120px;margin:auto;padding:48px 32px;display:grid;grid-template-columns:minmax(240px,1fr) minmax(320px,410px);gap:64px;align-items:start}.review{position:sticky;top:40px}.eyebrow{text-transform:uppercase;letter-spacing:.13em;font-size:.75rem;font-weight:750;color:var(--green)}h1{font-size:clamp(2rem,4vw,3.25rem);line-height:1.08;letter-spacing:-.045em;margin:20px 0}h2,h3,p{margin:0}p{margin-block:12px}.intro{color:var(--muted);max-width:37ch}.controls{margin-top:28px;padding:24px;background:#fff;border:1px solid var(--line);border-radius:20px}.controls label{display:block;font-size:.875rem;font-weight:650;margin-bottom:8px}select{background:var(--cream);color:var(--ink);padding:12px;width:100%;border:1px solid #88968b;border-radius:10px;min-height:48px}.control-row{margin-top:20px}.hint{font-size:.875rem;color:var(--muted)}.swatches{display:flex;gap:8px;margin:24px 0}.swatches span{height:28px;width:28px;border:1px solid #9ba599;border-radius:50%}.notes{padding-left:20px;color:var(--muted);font-size:.875rem}.notes li{margin:10px 0}.review-footer{margin-top:28px;font-size:.875rem}
+.phone{width:100%;max-width:410px;background:var(--cream);border:1px solid #c8cfc3;border-radius:30px;box-shadow:0 20px 70px #243c2915;overflow:hidden}.preview-label{text-align:center;padding:10px 12px;background:var(--soft);color:var(--green);font-size:.75rem;font-weight:700;letter-spacing:.04em}.phone-content{padding:20px}.crumb{font-size:.8rem;color:var(--muted);margin-bottom:18px}.room-head{display:flex;align-items:start;justify-content:space-between;gap:12px}.room-head h2{font-size:1.6rem;line-height:1.2;letter-spacing:-.03em}.plant{font-size:1.5rem;flex-shrink:0}.room-meta{display:flex;flex-wrap:wrap;gap:8px;font-size:.75rem;margin-top:12px}.pill{background:#fff;border:1px solid var(--line);padding:5px 10px;border-radius:50px}.board{margin:20px 0 16px;background:var(--green);color:white;border-radius:14px;border-bottom:5px solid #bd976c;padding:16px 18px}.board p{font-size:.8rem;color:#e4f0df;margin:4px 0 0}.board strong{font-size:1rem}.board .clock{display:block;font-size:2.5rem;line-height:1.2;letter-spacing:.02em;font-variant-numeric:tabular-nums;margin-top:8px}.notice{margin:12px 0;padding:12px;border-radius:12px;background:#f8eae4;border:1px solid #d6a79b;color:#742e26;font-size:.875rem}.notice.neutral{background:#f3ebd8;border-color:#cdbb91;color:#604c23}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.seat{min-width:0;background:white;border:1px solid var(--line);border-radius:14px;overflow:hidden}.seat.mine{border:2px solid var(--green)}.seat.selected{border:2px dashed var(--green)}.seat.pending{border:2px dashed #806129}.seat.failed{border:2px solid var(--error)}.seat-top{display:flex;gap:6px;justify-content:space-between;align-items:center;padding:9px 10px 0;font-size:.7rem;color:var(--muted);flex-wrap:wrap}.seat-tag{font-weight:700;color:var(--green)}.failed .seat-tag{color:var(--error)}.art{width:100%;height:112px;display:block;background:linear-gradient(#fffdf8,#f6efdf)}.seat-info{padding:10px;min-height:72px}.seat-name{display:block;font-size:.875rem;font-weight:700;overflow-wrap:anywhere}.seat-detail{display:block;font-size:.75rem;color:var(--muted);margin-top:2px}.take-seat{display:block;min-height:48px;width:100%;border:1px solid #91a991;border-radius:9px;background:#f2f7ee;color:var(--green);font-size:.8rem;font-weight:700;padding:8px}.take-seat:disabled{background:#f2f2ed;border-color:var(--line);color:var(--muted)}.goal{margin-top:20px;background:white;border:1px solid var(--line);border-radius:14px;padding:16px}.goal-label{font-size:.75rem;font-weight:700;color:var(--muted);letter-spacing:.03em}.goal p{font-size:.9rem;margin:6px 0 0}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.action{min-height:48px;border-radius:12px;border:1px solid #91a991;background:transparent;color:var(--green);padding:10px;font-size:.875rem;font-weight:650}.primary{grid-column:1/-1;background:var(--green);color:white;border:0}.primary:disabled{background:#e2e7de;color:#526151}.action-note{margin:10px 0 0;text-align:center;font-size:.75rem;color:var(--muted)}.bottom{margin-top:20px;border-top:1px solid var(--line);padding-top:14px;text-align:center;font-size:.75rem;color:var(--muted)}[hidden]{display:none!important}
+h1,h2,button,.pill,.seat-tag{overflow-wrap:anywhere}.actions>*{min-width:0}
+@media(max-width:760px){.workspace{display:flex;flex-direction:column;padding:24px 16px;gap:24px;align-items:center}.review{position:static;width:100%;max-width:410px}h1{font-size:2rem}.intro{max-width:none}.controls{padding:16px;margin-top:16px}.notes,.swatches{display:none}.review-footer{margin-top:12px}.phone{border-radius:22px}.phone-content{padding:16px}}@media(prefers-reduced-motion:no-preference){button{transition:background .15s}}@media print{.workspace{display:block}.review{position:static}.phone{box-shadow:none;margin:24px auto}.controls{display:none}}
+</style>
+</head>
+<body>
+<main class="workspace">
+<aside class="review">
+<div class="eyebrow">StudyMates / room direction 01</div>
+<h1>A little classroom.<br>A shared focus.</h1>
+<p class="intro">Six desks, familiar faces and one calm place to study. Review the layout and states before we build the Flutter version.</p>
+<div class="controls">
+<label for="scenario">Preview a room state</label>
+<select id="scenario">
+<option value="lobby">Lobby · choose a desk</option>
+<option value="selected">Selected · local choice only</option>
+<option value="pending">Pending · checking a seat</option>
+<option value="seated">Seated · sample confirmed seat</option>
+<option value="conflict">Conflict · another person got the seat</option>
+<option value="failure">Failure · retry available</option>
+<option value="reconnecting">Reconnecting · last-known seats</option>
+<option value="full">Full · all six desks occupied</option>
+<option value="focus">Focus · frozen timer example</option>
+</select>
+<div class="control-row"><label for="role">Your role in the sample</label><select id="role"><option value="member">Member</option><option value="host">Host</option></select></div>
+<p class="hint">Desk taps show a local selection only. All people, reservations and connection states are samples. Action buttons show explanatory notes.</p>
+</div>
+<div class="swatches" aria-label="Green, cream, white and soft green palette"><span style="background:#225b3b"></span><span style="background:#faf7f0"></span><span style="background:white"></span><span style="background:#e4f0df"></span></div>
+<ul class="notes"><li>Names and status stay outside the artwork.</li><li>Host controls and member waiting states are separate.</li><li>Personal goals stay in your own panel, not on everyone’s desk.</li><li>Original vector sketches; no artwork copied from the reference.</li></ul>
+<p class="review-footer"><a href="studymates-wireframe.html">Open the overall flow wireframe →</a></p>
+</aside>
+<section class="phone" aria-label="Room phone design">
+<div class="preview-label">DESIGN PREVIEW · SAMPLE DATA</div>
+<div class="phone-content">
+<div class="crumb">Discover / IoT / ESP32</div>
+<header class="room-head"><h2>First Sensor<br>Project</h2><span class="plant" aria-hidden="true">🌱</span></header>
+<div class="room-meta"><span class="pill" id="occupancy"></span><span class="pill" id="connection"></span><span class="pill" id="host"></span></div>
+<div class="board"><strong id="board-title"></strong><span class="clock" id="clock" hidden>24:18</span><p id="board-caption"></p></div>
+<div id="notice" class="notice" role="status" hidden></div>
+<div class="grid" id="seats" aria-label="Six classroom seats"></div>
+<section class="goal"><div class="goal-label">YOUR PERSONAL GOAL</div><p id="goal"></p></section>
+<div class="actions"><button class="action" id="goal-action" type="button">Set goal</button><button class="action" id="invite-action" type="button">Invite a friend</button><button class="action primary" id="start-action" type="button" disabled>Waiting for your seat</button></div>
+<p class="action-note" id="action-note" aria-live="polite"></p>
+<footer class="bottom">Room design study · no live session or reservation</footer>
+</div>
+</section>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const people=[{name:'Poojani',color:'#c67650',hair:1},{name:'Aradhana',color:'#658a73',hair:0},{name:'Sandali',color:'#7797b4',hair:2},{name:'You',color:'#416d50',hair:0},{name:'Maya',color:'#b18a56',hair:1},{name:'Noah',color:'#8b809f',hair:0}];
+let selectedSeat=4;
+function drawing(person){
+ const hair=person?.hair??0;
+ const backHair=hair===1?'<path d="M62 53 Q56 4 89 8 Q124 6 122 56 L128 99 L58 99Z" fill="#493a31"/>':hair===2?'<circle cx="64" cy="25" r="14" fill="#493a31"/><circle cx="114" cy="25" r="14" fill="#493a31"/>':'';
+ const figure=person?`${backHair}<path d="M52 108 Q54 64 77 65 L102 65 Q128 68 129 108" fill="${person.color}"/><path d="M80 60 L80 73 Q90 81 99 73 L99 60" fill="#d8a67e"/><ellipse cx="89" cy="40" rx="27" ry="30" fill="#edc39d"/><path d="M62 40 Q54 4 88 8 Q121 4 118 42 L108 32 L105 22 Q88 38 65 29Z" fill="#493a31"/><path d="M77 46 L81 47 M97 47 L101 46" stroke="#493a31" stroke-width="2.5" stroke-linecap="round"/><path d="M85 56 Q89 59 94 56" fill="none" stroke="#a1684f" stroke-width="2"/><path d="M63 84 Q70 94 86 100 M115 84 Q108 95 94 100" fill="none" stroke="#edc39d" stroke-width="12" stroke-linecap="round"/><path d="M103 84 L91 104" stroke="#375d43" stroke-width="3"/>`:'<rect x="65" y="44" width="48" height="57" rx="13" fill="#e0d7c4" stroke="#c2b49a" stroke-width="2"/><path d="M73 98 L69 126 M105 98 L109 126" stroke="#b29b74" stroke-width="5"/>';
+ return `<svg class="art" viewBox="0 0 180 138" aria-hidden="true" focusable="false"><path d="M13 18 H40 M140 18 H168" stroke="#e6ddcc" stroke-width="3"/><rect x="11" y="27" width="26" height="19" rx="2" fill="#e9eddf"/><path d="M23 29 V44 M13 36 H35" stroke="#fdfcf8" stroke-width="2"/>${figure}<rect x="13" y="109" width="154" height="12" rx="3" fill="#b08b5e"/><path d="M22 121 V138 M158 121 V138" stroke="#9b7851" stroke-width="6"/><rect x="10" y="104" width="160" height="9" rx="3" fill="#cfad7c"/><path d="M65 99 L87 96 L110 99 L108 109 L87 106 L66 109Z" fill="#fffdf4" stroke="#baaf95"/><path d="M87 97 V106" stroke="#baaf95"/><path d="M139 97 H163 M138 92 H161 M140 87 H162" stroke="#667d5d" stroke-width="4"/></svg>`;
+}
+function render(){
+ const mode=$('scenario').value, isHost=$('role').value==='host';
+ const seated=['seated','reconnecting','focus'].includes(mode), full=mode==='full', conflict=mode==='conflict', waiting=mode==='pending', offline=mode==='reconnecting';
+ const locked=offline||waiting||mode==='focus';
+ const occupants=people.map((p,i)=>i<3?p:full?p:((seated&&i===3)||(conflict&&i===3))?(conflict?people[4]:p):null);
+ $('occupancy').textContent=`${occupants.filter(Boolean).length} / 6 seated`;
+ $('connection').textContent=offline?'Reconnecting · sample':'Connected · sample';
+ $('host').textContent=isHost?'You · host':'Poojani · host';
+ $('board-title').textContent=mode==='focus'?'A little progress, together.':seated?'Your desk is ready.':'Find your place. Settle in.';
+ $('board-caption').textContent=mode==='focus'?'Focus · frozen sample · 25 min focus / 5 min break':seated?'Set a small goal. Take one thing at a time.':'25 min focus · 5 min break · six study mates';
+ $('clock').hidden=mode!=='focus';
+ const messages={selected:`Seat ${selectedSeat} selected locally. This is not a reservation.`,pending:'Checking seat 4… Sample request in progress.',conflict:'Seat 4 was taken by Maya. Choose another available desk.',failure:'We could not confirm your seat. Retry seat 4 or choose another.',reconnecting:'Connection interrupted. These are last-known seats; your reservation is unconfirmed until we reconnect.',full:'All desks are occupied. Return to the subgroup to find another room.'};
+ $('notice').hidden=!messages[mode];$('notice').textContent=messages[mode]||'';$('notice').className='notice'+(['reconnecting','pending','selected','full'].includes(mode)?' neutral':'');
+ $('seats').innerHTML=occupants.map((p,i)=>{
+   const n=i+1, yours=seated&&n===4, selected=mode==='selected'&&n===selectedSeat, pending=waiting&&n===4, failed=mode==='failure'&&n===4;
+   const state=yours?'mine':selected?'selected':pending?'pending':failed?'failed':'';
+   const tag=yours?'You':selected?'Selected':pending?'Checking':failed?'Try again':p?'Occupied':'Available';
+   const detail=yours?(offline?'Last-known seat':'Your sample seat'):(isHost?false:n===1)?'Host':'Study mate';
+   return `<article class="seat ${state}"><div class="seat-top"><span>DESK ${String(n).padStart(2,'0')}</span><span class="seat-tag">${tag}</span></div>${drawing(p)}<div class="seat-info">${p?`<span class="seat-name">${p.name}</span><span class="seat-detail">${detail}</span>`:`<button type="button" class="take-seat" data-seat="${n}" aria-label="${selected?'Clear selection for':failed?'Retry sample selection for':'Select'} seat ${n}" ${locked?'disabled':''}>${pending?'Checking…':selected?'Clear selection':failed?'Retry selection':'Take this seat'}</button>`}</div></article>`;
+ }).join('');
+ $('goal').textContent=seated?'Read the sensor value and explain how it works.':'What would you like to finish today?';
+ $('goal-action').textContent=seated?'Edit goal':'Set goal';$('goal-action').disabled=!seated||offline||mode==='focus';
+ $('start-action').textContent=mode==='focus'?'Focus in progress':offline?'Reconnecting…':!seated?'Choose a desk to get ready':isHost?'Start focus session':'Waiting for the host';
+ $('start-action').disabled=!seated||offline||!isHost||mode==='focus';
+ $('invite-action').disabled=offline;
+ $('action-note').textContent=mode==='focus'?'Timer is frozen for design review.':seated?'Sample goal and reservation only.':'Select an empty desk to inspect the local selection state.';
+}
+$('scenario').addEventListener('change',()=>{selectedSeat=4;render()});$('role').addEventListener('change',render);
+$('seats').addEventListener('click',event=>{const target=event.target.closest('[data-seat]');if(!target||target.disabled)return;const n=Number(target.dataset.seat);const clear=$('scenario').value==='selected'&&selectedSeat===n;selectedSeat=n;$('scenario').value=clear?'lobby':'selected';render()});
+$('goal-action').addEventListener('click',()=>{$('action-note').textContent='The Flutter goal sheet will open here. This design uses a sample goal.'});
+$('invite-action').addEventListener('click',()=>{$('action-note').textContent='Sandali’s invitation sheet will open here. No invitation is created in this mockup.'});
+$('start-action').addEventListener('click',()=>{$('scenario').value='focus';render()});
+render();
+</script>
+</body>
+</html>

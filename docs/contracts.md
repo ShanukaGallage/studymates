@@ -1,5 +1,47 @@
 # StudyMates contracts — preview and backend agreements
 
+## Current connected implementation (16 November 2026)
+
+Reconciliation checkpoint: the connected implementation is now merged with PRs
+#25/#26/#31. M2's retry-safe membership changes and M3's TypeScript room helpers,
+Firestore adapter and tests are retained. The active application binds
+`FirestoreStudyRepository`; the separate `FirestoreLiveRoomRepository` remains an
+unbound alternative whose claim method is intentionally unavailable. Do not bind
+that alternative to production until its proposed callable path is implemented.
+The TypeScript deployment entry point exports `cleanupMembership` and the Firebase
+predeploy hook compiles it. Backend packages are installed from the lockfile and
+`functions/node_modules` is no longer tracked.
+
+
+This checkpoint supersedes earlier “not implemented” statements below. Shanuka
+is covering M3 while Aradhana travels. `features/study/data/firestore_study_repository.dart`
+binds LiveRoomRepository, SeatLeaseRepository, ActiveSessionRepository and
+CompletionHistoryRepository. The original feature interfaces and fixtures remain.
+`firestore_invitation_service.dart` uses the same transactional seat admission.
+Production deployment/physical two-phone review remain separate verification gates.
+
+Persistence: existing `sigs`/`subgroups`; `subgroups/{id}/rooms/{room}/seats/{seat}`;
+`roomDirectory/{room}` locates subgroup; `activeSeatClaims/{uid}` holds a paired
+claim ID and expiry. Public seat projections contain display name/avatar only.
+Shared immutable `roomSessions/{session}` store server start and demo flag; exact
+45/15-second or 25/5-minute phase ends derive from that start. Private
+`users/{uid}/activeSession/current` stores participation/goal and claim identity.
+`users/{uid}/completions/{session}` stores one immutable result. Opaque
+`roomInvites/{token}` are bounded-lifetime, revocable room locators, not authorization.
+
+`SeatLeaseRepository` gives typed release/renewal results with expected claim ID.
+Return revalidates current membership, room/session association and the same
+unexpired seat. No automatic re-claim or schedule reset. A finalized user cannot
+rejoin the same cycle. History pages and complete summary remain independent.
+See [demo runbook](demo-runbook.md) for the conservative credit policy and limits.
+
+The trusted cleanup worker acknowledges M2 removalPending requests, releases the
+related seat, ends participation at zero credit and transfers host or closes rooms.
+It requires deployment and collection-group hostUid indexing. Client rules cannot
+acknowledge cleanup. Local emulator tests cover its retries and host transfer.
+
+## Earlier agreements and implementation history
+
 The local preview models and repository boundaries below are implemented.
 Identity/membership proposals still need M2/M3 review; the room/seat section
 records their agreed decisions and remaining questions. Its proposed Firestore
@@ -114,8 +156,8 @@ state is gallery-only. The goal is trimmed and limited to 160 characters.
 
 Drafts last only while the page remains mounted and membership is retained.
 Switching tabs preserves the page. Popping it, losing membership, resetting the
-scenario or restarting clears the draft and cancels pending timers. Invite and
-Start open explanatory placeholders; they create no code, session or completion.
+scenario or restarting clears the draft and cancels pending timers. Invite remains explanatory. Start opens the local session UI harness described
+below; neither action creates a server session or completion.
 M3 should supply the same scene inputs/callbacks from real room state later.
 
 ## Room and seat management agreement
@@ -198,6 +240,21 @@ Expected operations are: create a titled room for a subgroup; observe rooms in a
 subgroup; observe a room and its seat changes; claim a seat; release the current
 user's seat; and renew the current user's lease. These are responsibilities,
 not implemented method signatures.
+
+### Provisional Firestore repository foundation
+
+`FirestoreLiveRoomRepository` in
+`lib/features/rooms/data/firestore_live_room_repository.dart` implements the
+existing room create/list/lookup/observation contract using the proposed paths
+above and field names from `RoomSnapshot` and `SeatState`. It creates six
+available seat documents with the room in a client transaction, after M2's
+`verifyRoomEligibilityInTransaction()` returns `member`; this is not a security
+guarantee until M2 approves matching rules. The current `firestore.rules` has no
+room/seat matches. The adapter's schema, `roomId` query field, timestamp encoding
+and null fields on available seats are provisional. It does not persist
+`occupiedSeats`; discovery summaries derive occupancy from the six seat docs.
+`claimSeat()` remains unavailable until the trusted callable contract is
+implemented. No active-seat path or fields are defined by this adapter.
 
 ### Errors and remaining decisions
 
@@ -298,11 +355,64 @@ completion.
 breakTime or completed, with explicit invalid-timestamp results. It does not
 start a live session, synchronize devices or write completion records.
 
+## Active session contract and preview fixture
+
+`ActiveRoomSession` in `lib/core/models/active_room_session.dart` carries the
+current user's session schedule and derives participation as `valid` only from a
+verified, matching occupied seat whose lease expiry is later than the supplied
+UTC time. Missing, unverified, mismatched or expired seat evidence requires
+revalidation. The constructor normalizes schedule timestamps to UTC and uses
+`calculateSessionTiming` to reject invalid boundary order.
+
+M1 can watch the current-account state through
+`currentUserActiveSessionProvider` from
+`lib/features/sessions/data/active_session_providers.dart`:
+
+```dart
+final activeSession = ref.watch(currentUserActiveSessionProvider);
+return activeSession.when(
+  loading: () => const LoadingView(),
+  error: (error, stackTrace) => const SessionUnavailableView(),
+  data: (session) {
+    if (session == null) return const NoActiveSessionView();
+    if (session.participationStatus == ParticipationStatus.requiresRevalidation) {
+      return const RevalidatingSessionView();
+    }
+    return ActiveSessionView(session: session);
+  },
+);
+```
+
+`null` is confirmed absence; loading is a Riverpod state and errors mean the
+lookup failed. The UID-keyed provider cancels/rebinds on account changes and
+filters events whose session user does not match the current UID. The explicit
+`activeSessionRepositoryProvider` has no default implementation. The
+`FixtureActiveSessionRepository` in `lib/preview/active_session_fixtures.dart`
+is test/preview-only. This milestone does not implement persistence, live
+synchronization or app-restart restoration.
+
+## App integration
+
+The normal entry point initializes Firebase before auth/profile consumers mount.
+`lib/app/account_access.dart` combines M2's authenticated UID and
+`currentProfileProvider`: resolving → loading; no UID → signed out; missing profile
+→ setup; matching valid profile → ready; lookup failure → unavailable. The latter
+is an access error, not an additional identity state. Auth display name is not the
+profile-completion signal. Existing auth/profile repository APIs are unchanged.
+
+PreviewScope explicitly binds M4's history fixture repository for the Progress tab.
+The scanner preview forwards raw capture to an unverified result view through a
+root Navigator route observer; it does not parse or admit invitations. Persistent
+history, invitation format and admission remain owned by their feature contracts.
+
+RoomSnapshot and SeatState are implemented models in `core/models/room_models.dart`;
+this does not imply live observation or transactional seat operations exist.
+
 ## Later contracts — not implemented
 
-Auth/profile services, community creation/owner edits, RoomSnapshot/SeatState,
-SessionSnapshot, Participation, completion finalization/history adapter and
-InvitationPreview remain future work. Aradhana (M3) owns live seat claims, timing,
+Community creation/owner edits, live room/seat operations,
+session persistence and cross-device observation, completion finalization/history adapter and
+production invitation lookup/admission remain future work. Aradhana (M3) owns live seat claims, timing,
 completion writes and invitation services; Sandali (M4) consumes completion
 history and invitation lookup/admission.
 See the [current four-member plan](team/00-common-plan.md) for ownership and gates.
@@ -313,3 +423,41 @@ credit. Goal outcome is separate from timer completion. Demo records stay outsid
 normal totals. The agreed seat lease is two minutes; renewal cadence, cleanup,
 credit policy and final storage details remain subject to the decisions above
 and the M2/M3 two-device spike. This preview does not implement those guarantees.
+
+## Session presentation handoff (local preview)
+
+`SessionView` and `SessionSummaryView` in
+`features/sessions/presentation/widgets/session_views.dart` render supplied timing,
+goal, seat, elapsed display duration and the existing timer/goal outcome enums.
+`preview/session_preview_screen.dart` owns disposable display ticks, fixed UTC
+fixture boundaries, confirmation and failure simulations. RoomLobbyPreview forwards
+`onStart(int seat, String goal)` only after a local selection and non-empty goal.
+This callback is not admission. The preview uses a root Navigator page so tab
+switching cannot silently bypass end confirmation.
+
+No CompletionRecord is fabricated, persisted or injected into Progress. Summary
+time is elapsed fixture time, not eligible credit. M3 must supply authoritative
+session timestamps, admission/connection state and finalization results before
+live integration. Production retry must use M3's idempotent finalization; the
+preview's delayed summary callback only demonstrates pending/failure/retry UI.
+
+## Room repository integration checkpoint
+
+GitHub main's PR #19 adds `LiveRoomRepository` in
+`features/rooms/data/room_repository.dart`: create/list/get room snapshots and
+watch room lists, a room and its seats. `liveRoomRepositoryProvider` deliberately
+has no default implementation. `FixtureLiveRoomRepository` is in-memory only;
+merging it does not enable live rooms in account mode.
+
+Next handoffs before connected room UI:
+- Poojani: production current-user/membership verification and deployed access rules.
+- Aradhana: backend binding for room streams, atomic claim/release, one-seat enforcement
+  and lease handling. Confirm every stream subscriber receives an initial snapshot.
+- Shanuka: map authoritative room/seat states into the existing scene after those
+  operations are available; preserve the labelled local preview.
+- Session integration follows authoritative timing and idempotent completion writes;
+  Sandali then connects saved history.
+
+`InvitationPreview`, result statuses and `InvitationService` already exist in
+`features/invites/data/invitation_service.dart`. They are contracts with fixtures,
+not a deployed lookup/admission backend. Scanner capture alone grants no admission.

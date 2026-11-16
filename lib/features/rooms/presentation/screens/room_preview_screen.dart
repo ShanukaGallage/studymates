@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../../core/models/community_models.dart';
+import '../../../../preview/session_preview_screen.dart';
 import '../controllers/room_scene_provider.dart';
 import '../widgets/room_lobby_preview.dart';
 import '../../../../core/widgets/state_views.dart';
@@ -60,6 +61,24 @@ class RoomPreviewScreen extends ConsumerWidget {
                             ),
                             room: room,
                             seats: ref.watch(roomSceneSeatsProvider(id)),
+                            onStart: (seat, goal) async {
+                              final showProgress =
+                                  await Navigator.of(
+                                    context,
+                                    rootNavigator: true,
+                                  ).push<bool>(
+                                    MaterialPageRoute(
+                                      builder: (_) => SessionPreviewScreen(
+                                        roomTitle: room.title,
+                                        seat: seat,
+                                        goal: goal,
+                                      ),
+                                    ),
+                                  );
+                              if (context.mounted && showProgress == true) {
+                                context.go('/progress');
+                              }
+                            },
                             isMember:
                                 subgroup.membership == MembershipState.joined,
                             onLeave: () => context.canPop()

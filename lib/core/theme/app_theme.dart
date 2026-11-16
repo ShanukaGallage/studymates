@@ -1,12 +1,15 @@
 import 'package:material_ui/material_ui.dart';
 
 abstract final class AppColors {
-  static const primary = Color(0xFF225B3B);
-  static const background = Color(0xFFFAF7F0);
+  static const primary = Color(0xFF6548C7);
+  static const background = Color(0xFFF8F7FF);
   static const surface = Color(0xFFFFFFFF);
-  static const softAccent = Color(0xFFE4F0DF);
-  static const text = Color(0xFF1E2B24);
-  static const secondaryText = Color(0xFF5F6D64);
+  static const softAccent = Color(0xFFECE6FF);
+  static const text = Color(0xFF211B3D);
+  static const secondaryText = Color(0xFF655F78);
+  static const blueAccent = Color(0xFFE4EEFF);
+  static const mintAccent = Color(0xFFDEF4EB);
+  static const heroEnd = Color(0xFF7560C8);
   static const error = Color(0xFFB3261E);
 }
 
@@ -49,7 +52,7 @@ abstract final class AppTheme {
         ),
       ),
       shape: WidgetStatePropertyAll(
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       ),
     );
     return base.copyWith(
@@ -72,7 +75,11 @@ abstract final class AppTheme {
             bodyMedium: const TextStyle(fontSize: 16),
             bodySmall: const TextStyle(fontSize: 14),
           )
-          .apply(bodyColor: AppColors.text, displayColor: AppColors.text),
+          .apply(
+            fontFamily: 'Roboto',
+            bodyColor: AppColors.text,
+            displayColor: AppColors.text,
+          ),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.text,
@@ -83,7 +90,7 @@ abstract final class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surface,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
         contentPadding: const EdgeInsets.all(AppSpacing.lg),
         errorMaxLines: 3,
       ),

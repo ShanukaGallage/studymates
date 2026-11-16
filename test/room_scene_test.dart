@@ -16,6 +16,7 @@ void main() {
     bool member = true,
     bool narrow = false,
     VoidCallback? onLeave,
+    void Function(int, String)? onStart,
   }) async {
     if (narrow) {
       tester.view.physicalSize = const Size(320, 740);
@@ -41,6 +42,7 @@ void main() {
                   seats: roomSceneFixtures('first-sensor'),
                   isMember: member,
                   onLeave: onLeave ?? () {},
+                  onStart: onStart,
                 ),
               ],
             ),
@@ -129,6 +131,8 @@ void main() {
       await tester.pumpAndSettle();
       for (final seat in galleryRoomSeats) {
         final finder = find.byKey(ValueKey('seat-${seat.number}'));
+        await tester.ensureVisible(finder);
+        await tester.pumpAndSettle();
         expect(
           tester.getSemantics(finder).label,
           'Seat ${seat.number}, ${seat.description}',
@@ -147,6 +151,65 @@ void main() {
       semantics.dispose();
     },
   );
+
+  testWidgets('classroom uses two columns and stacks for large text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 740);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    for (final scale in [1.0, 2.0]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: RoomScene(
+                    seats: [
+                      const RoomSeat(
+                        number: 1,
+                        status: RoomSeatStatus.occupied,
+                        occupant: SeatOccupant(
+                          name: 'A study mate with a very long display name',
+                          avatarId: 'mint',
+                        ),
+                      ),
+                      ...roomSceneFixtures('quiet-lab').skip(1),
+                    ],
+                    onSeatTap: (_) {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final first = tester.getRect(find.byKey(const ValueKey('seat-1')));
+      final second = tester.getRect(find.byKey(const ValueKey('seat-2')));
+      if (scale == 1) {
+        expect(first.top, second.top);
+        expect(second.left, greaterThan(first.right));
+      } else {
+        expect(first.left, second.left);
+        expect(second.top, greaterThan(first.bottom));
+      }
+      for (var n = 1; n <= 6; n++) {
+        final seat = find.byKey(ValueKey('seat-$n'));
+        await tester.ensureVisible(seat);
+        await tester.pumpAndSettle();
+        final rect = tester.getRect(seat);
+        expect(rect.left, greaterThanOrEqualTo(16));
+        expect(rect.right, lessThanOrEqualTo(304));
+      }
+      expect(tester.takeException(), isNull);
+    }
+  });
 
   testWidgets('non-members cannot select seats or set goals', (tester) async {
     await mount(tester, member: false);
@@ -188,6 +251,30 @@ void main() {
       expect(status(tester, 5), RoomSeatStatus.available);
     },
   );
+
+  testWidgets('start forwards only a selected seat and saved goal', (
+    tester,
+  ) async {
+    int? selected;
+    String? goal;
+    await mount(
+      tester,
+      onStart: (seat, value) {
+        selected = seat;
+        goal = value;
+      },
+    );
+    await tapText(tester, 'Start · preview');
+    expect(selected, isNull);
+    await tapSeat(tester, 4);
+    await tester.pump(const Duration(milliseconds: 500));
+    await tapText(tester, 'Set preview goal');
+    await tester.enterText(find.byType(AppTextField), '  Build a sensor  ');
+    await tapText(tester, 'Save preview goal');
+    await tapText(tester, 'Start · preview');
+    expect(selected, 4);
+    expect(goal, 'Build a sensor');
+  });
 
   testWidgets(
     'goal validates, saves and cancels edits; leave clears draft after confirmation',

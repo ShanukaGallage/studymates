@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../core/theme/app_theme.dart';
 import 'app_mode.dart';
+import '../features/study/data/study_providers.dart';
 import 'router.dart';
 
 class StudyMatesApp extends ConsumerWidget {
@@ -10,7 +11,8 @@ class StudyMatesApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final preview = ref.watch(appModeProvider) == AppMode.preview;
+    final mode = ref.watch(appModeProvider);
+    if (mode == AppMode.connected) ref.watch(studyLeaseKeeperProvider);
     return MaterialApp.router(
       title: 'StudyMates',
       debugShowCheckedModeBanner: false,
@@ -31,9 +33,15 @@ class StudyMatesApp extends ConsumerWidget {
                 child: SizedBox(
                   width: double.infinity,
                   child: Text(
-                    preview
-                        ? 'UI Preview • Local sample data'
-                        : 'Foundation only • Not connected',
+                    switch (mode) {
+                      AppMode.preview => 'UI Preview • Local sample data',
+                      AppMode.connected =>
+                        const String.fromEnvironment('STUDYMATES_EMULATOR_HOST')
+                                .isNotEmpty
+                            ? 'Local backend • Test accounts and data'
+                            : 'Connected • StudyMates',
+                      AppMode.foundation => 'Foundation only • Not connected',
+                    },
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: AppColors.primary),

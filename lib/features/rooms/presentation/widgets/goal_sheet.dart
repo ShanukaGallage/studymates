@@ -5,17 +5,19 @@ import '../../../../core/widgets/app_text_field.dart';
 
 Future<String?> showPreviewGoalSheet(
   BuildContext context,
-  String initialGoal,
-) => showModalBottomSheet<String>(
+  String initialGoal, {
+  bool preview = true,
+}) => showModalBottomSheet<String>(
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
-  builder: (context) => _GoalSheet(initialGoal: initialGoal),
+  builder: (context) => _GoalSheet(initialGoal: initialGoal, preview: preview),
 );
 
 class _GoalSheet extends StatefulWidget {
-  const _GoalSheet({required this.initialGoal});
+  const _GoalSheet({required this.initialGoal, required this.preview});
   final String initialGoal;
+  final bool preview;
   @override
   State<_GoalSheet> createState() => _GoalSheetState();
 }
@@ -47,8 +49,10 @@ class _GoalSheetState extends State<_GoalSheet> {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
-              const Text(
-                'A small task for this visit. Saved locally in the preview only.',
+              Text(
+                widget.preview
+                    ? 'A small task for this visit. Saved locally in the preview only.'
+                    : 'Your personal goal is saved when you join the study cycle.',
               ),
               const SizedBox(height: 24),
               AppTextField(
@@ -66,7 +70,7 @@ class _GoalSheetState extends State<_GoalSheet> {
               ),
               const SizedBox(height: 16),
               AppButton(
-                label: 'Save preview goal',
+                label: widget.preview ? 'Save preview goal' : 'Save goal',
                 onPressed: () {
                   if (_form.currentState!.validate()) {
                     Navigator.pop(context, _controller.text.trim());

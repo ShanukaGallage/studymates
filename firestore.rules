@@ -368,5 +368,198 @@ service cloud.firestore {
       // completion, status, or request ownership.
       allow update, delete: if false;
     }
+    function roomPath(sg, room) {
+      return /databases/$(database)/documents/subgroups/$(sg)/rooms/$(room);
+    }
+    function seatPath(sg, room, seat) {
+      return /databases/$(database)/documents/subgroups/$(sg)/rooms/$(room)/seats/$(seat);
+    }
+    function claimPath(uid) {
+      return /databases/$(database)/documents/activeSeatClaims/$(uid);
+    }
+    function activePath(uid) {
+      return /databases/$(database)/documents/users/$(uid)/activeSession/current;
+    }
+    function sessionPath(id) {
+      return /databases/$(database)/documents/roomSessions/$(id);
+    }
+    function eligible(sg) {
+      let group = get(subgroupDoc(sg)).data;
+      return signedIn() && group.get('status', 'active') == 'active'
+        && activeSigMemberOrOwner(group.sigId, request.auth.uid)
+        && get(subgroupMember(sg, request.auth.uid)).data.status == 'active';
+    }
+    function validSeatId(id) {
+      return id in ['seat-1', 'seat-2', 'seat-3', 'seat-4', 'seat-5', 'seat-6'];
+    }
+    function boundedLease(data) {
+      return data.leaseExpiresAt is timestamp
+        && data.leaseExpiresAt > request.time + duration.value(60, 's')
+        && data.leaseExpiresAt <= request.time + duration.value(125, 's');
+    }
+    function pairedClaim(data, sg, room, seat) {
+      let claim = getAfter(claimPath(data.userId)).data;
+      return claim.userId == data.userId && claim.subgroupId == sg
+        && claim.roomId == room && claim.seatId == seat
+        && claim.claimId == data.claimId && claim.leaseExpiresAt == data.leaseExpiresAt;
+    }
+    function matchingSeat(data, uid) {
+      let seat = getAfter(seatPath(data.subgroupId, data.roomId, data.seatId)).data;
+      return seat.status == 'occupied' && seat.userId == uid
+        && seat.claimId == data.claimId && seat.leaseExpiresAt == data.leaseExpiresAt;
+    }
+
+    match /roomDirectory/{roomId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['subgroupId', 'sigId'])
+        && getAfter(roomPath(request.resource.data.subgroupId, roomId)).data.createdBy == request.auth.uid
+        && request.resource.data.sigId == get(subgroupDoc(request.resource.data.subgroupId)).data.sigId;
+      allow update, delete: if false;
+    }
+    match /activeSeatClaims/{uid} {
+      // Minimal seat locator only; no goals or profile data are stored here.
+      allow read: if signedIn();
+      allow create: if self(uid) && request.resource.data.keys().hasOnly([
+          'userId', 'subgroupId', 'roomId', 'seatId', 'claimId', 'leaseExpiresAt'])
+        && request.resource.data.userId == uid && matchingSeat(request.resource.data, uid);
+      allow update: if self(uid) && request.resource.data.keys().hasOnly([
+          'userId', 'subgroupId', 'roomId', 'seatId', 'claimId', 'leaseExpiresAt'])
+        && request.resource.data.userId == uid && matchingSeat(request.resource.data, uid)
+        && (resource.data.leaseExpiresAt <= request.time
+          || (request.resource.data.claimId == resource.data.claimId
+            && request.resource.data.roomId == resource.data.roomId
+            && request.resource.data.subgroupId == resource.data.subgroupId
+            && request.resource.data.seatId == resource.data.seatId));
+      allow delete: if signedIn() && (
+        (self(uid) && getAfter(seatPath(resource.data.subgroupId, resource.data.roomId, resource.data.seatId)).data.status == 'available')
+        || (resource.data.leaseExpiresAt <= request.time
+          && getAfter(seatPath(resource.data.subgroupId, resource.data.roomId, resource.data.seatId)).data.userId == request.auth.uid)
+      );
+    }
+    match /subgroups/{sg}/rooms/{room} {
+      allow read: if signedIn();
+      allow create: if eligible(sg)
+        && request.resource.data.keys().hasOnly(['roomId', 'subgroupId', 'sigId', 'title', 'createdBy', 'hostUid', 'status', 'createdAt', 'updatedAt'])
+        && request.resource.data.roomId == room && request.resource.data.subgroupId == sg
+        && request.resource.data.sigId == get(subgroupDoc(sg)).data.sigId
+        && request.resource.data.createdBy == request.auth.uid && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 80
+        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time
+        && getAfter(/databases/$(database)/documents/roomDirectory/$(room)).data.subgroupId == sg;
+      allow update: if eligible(sg) && resource.data.hostUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sessionId', 'status', 'updatedAt'])
+        && request.resource.data.status == 'active' && request.resource.data.updatedAt == request.time
+        && getAfter(sessionPath(request.resource.data.sessionId)).data.roomId == room
+        && getAfter(sessionPath(request.resource.data.sessionId)).data.startsAt == request.time
+        && (!('sessionId' in resource.data) || sessionBreakEnd(get(sessionPath(resource.data.sessionId)).data) <= request.time);
+      allow delete: if false;
+
+      match /seats/{seat} {
+        allow read: if signedIn();
+        allow create: if signedIn() && validSeatId(seat)
+          && !exists(roomPath(sg, room)) && getAfter(roomPath(sg, room)).data.createdBy == request.auth.uid
+          && request.resource.data.keys().hasOnly(['seatId', 'status'])
+          && request.resource.data.seatId == seat && request.resource.data.status == 'available';
+        allow update: if signedIn() && validSeatId(seat) && request.resource.data.seatId == seat && (
+          // Claiming and renewal both require membership and the paired locator.
+          (eligible(sg) && get(roomPath(sg, room)).data.status in ['waiting', 'active']
+            && request.resource.data.keys().hasOnly(['seatId', 'status', 'userId', 'claimId', 'claimedAt', 'lastRenewedAt', 'leaseExpiresAt', 'displayName', 'avatarId'])
+            && request.resource.data.status == 'occupied' && request.resource.data.userId == request.auth.uid
+            && request.resource.data.claimId is string && request.resource.data.claimId.size() > 0
+            && request.resource.data.displayName == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName
+            && request.resource.data.avatarId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('avatarId', 'default')
+            && request.resource.data.lastRenewedAt == request.time && boundedLease(request.resource.data)
+            && pairedClaim(request.resource.data, sg, room, seat)
+            && (
+              ((resource.data.status == 'available' || resource.data.leaseExpiresAt <= request.time)
+                && request.resource.data.claimedAt == request.time
+                && !exists(activePath(request.auth.uid))
+                && (resource.data.status == 'available' || resource.data.userId == request.auth.uid
+                  || !existsAfter(claimPath(resource.data.userId))))
+              || (resource.data.status == 'occupied' && resource.data.userId == request.auth.uid
+                && resource.data.leaseExpiresAt > request.time
+                && request.resource.data.claimId == resource.data.claimId
+                && request.resource.data.claimedAt == resource.data.claimedAt)
+            ))
+          || (resource.data.status == 'occupied' && resource.data.userId == request.auth.uid
+            && !exists(activePath(request.auth.uid))
+            && request.resource.data.keys().hasOnly(['seatId', 'status']) && request.resource.data.status == 'available'
+            && (!existsAfter(claimPath(request.auth.uid))
+              || getAfter(claimPath(request.auth.uid)).data.claimId != resource.data.claimId))
+        );
+        allow delete: if false;
+      }
+    }
+    function sessionFocusEnd(data) {
+      return data.startsAt + duration.value(data.isDemo ? 45 : 1500, 's');
+    }
+    function sessionBreakEnd(data) {
+      return data.startsAt + duration.value(data.isDemo ? 60 : 1800, 's');
+    }
+    match /roomSessions/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && eligible(request.resource.data.subgroupId)
+        && request.resource.data.keys().hasOnly(['sessionId', 'roomId', 'subgroupId', 'hostUid', 'roomTitle', 'startsAt', 'isDemo'])
+        && request.resource.data.sessionId == id && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.roomTitle == get(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.title
+        && get(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.hostUid == request.auth.uid
+        && getAfter(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.sessionId == id
+        && request.resource.data.startsAt == request.time && request.resource.data.isDemo is bool;
+      allow update, delete: if false;
+    }
+    match /users/{uid}/activeSession/{id} {
+      allow read: if self(uid);
+      allow create: if self(uid) && id == 'current' && eligible(request.resource.data.subgroupId)
+        && request.resource.data.keys().hasOnly(['sessionId', 'roomId', 'subgroupId', 'seatId', 'claimId', 'userId', 'goalText', 'joinedAt'])
+        && request.resource.data.userId == uid && request.resource.data.joinedAt == request.time
+        && !exists(/databases/$(database)/documents/users/$(uid)/completions/$(request.resource.data.sessionId))
+        && request.resource.data.goalText is string && request.resource.data.goalText.size() > 0 && request.resource.data.goalText.size() <= 160
+        && getAfter(sessionPath(request.resource.data.sessionId)).data.roomId == request.resource.data.roomId
+        && getAfter(sessionPath(request.resource.data.sessionId)).data.subgroupId == request.resource.data.subgroupId
+        && sessionBreakEnd(getAfter(sessionPath(request.resource.data.sessionId)).data) > request.time
+        && getAfter(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.sessionId == request.resource.data.sessionId
+        && get(seatPath(request.resource.data.subgroupId, request.resource.data.roomId, request.resource.data.seatId)).data.userId == uid
+        && get(seatPath(request.resource.data.subgroupId, request.resource.data.roomId, request.resource.data.seatId)).data.claimId == request.resource.data.claimId
+        && get(seatPath(request.resource.data.subgroupId, request.resource.data.roomId, request.resource.data.seatId)).data.leaseExpiresAt > request.time;
+      allow update: if false;
+      allow delete: if self(uid) && existsAfter(/databases/$(database)/documents/users/$(uid)/completions/$(resource.data.sessionId));
+    }
+    function validCompletion(uid, id, data) {
+      let active = get(activePath(uid)).data;
+      let session = get(sessionPath(id)).data;
+      let seat = get(seatPath(active.subgroupId, active.roomId, active.seatId)).data;
+      let creditedEnd = request.time < sessionFocusEnd(session) ? request.time : sessionFocusEnd(session);
+      let maximum = creditedEnd > active.joinedAt ? (creditedEnd - active.joinedAt).seconds() : 0;
+      return active.sessionId == id && data.recordId == id && data.sessionId == id && data.userId == uid
+        && data.goalText == active.goalText && data.isDemo == session.isDemo && data.endedAt == request.time
+        && data.goalOutcome in ['completed', 'unfinished'] && data.creditedSeconds is int
+        && data.creditedSeconds >= 0 && data.creditedSeconds <= maximum
+        && (data.creditedSeconds == 0 || (seat.userId == uid && seat.claimId == active.claimId && seat.leaseExpiresAt > request.time))
+        && data.timerStatus == (request.time >= sessionBreakEnd(session) ? 'completed' : 'endedEarly')
+        && !existsAfter(activePath(uid));
+    }
+    match /users/{uid}/completions/{id} {
+      allow read: if self(uid);
+      allow create: if self(uid)
+        && request.resource.data.keys().hasOnly(['recordId', 'userId', 'sessionId', 'goalText', 'endedAt', 'creditedSeconds', 'timerStatus', 'goalOutcome', 'isDemo'])
+        && validCompletion(uid, id, request.resource.data);
+      allow update, delete: if false;
+    }
+    match /roomInvites/{token} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn() && eligible(request.resource.data.subgroupId)
+        && token.matches('^[A-HJ-KM-NP-Z2-9]{16}$')
+        && request.resource.data.keys().hasOnly(['subgroupId', 'roomId', 'issuedBy', 'expiresAt', 'revoked'])
+        && request.resource.data.issuedBy == request.auth.uid && request.resource.data.revoked == false
+        && request.resource.data.expiresAt > request.time && request.resource.data.expiresAt <= request.time + duration.value(1, 'd')
+        && get(roomPath(request.resource.data.subgroupId, request.resource.data.roomId)).data.status in ['waiting', 'active'];
+      allow update: if signedIn() && resource.data.issuedBy == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['revoked'])
+        && request.resource.data.revoked == true;
+      allow delete: if false;
+    }
   }
 }

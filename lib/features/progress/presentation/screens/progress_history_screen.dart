@@ -6,6 +6,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../controllers/progress_history_controller.dart';
 import '../widgets/progress_status_view.dart';
+import '../widgets/progress_dashboard.dart';
+import '../widgets/study_year_heatmap.dart';
 
 /// Scrollable route body. Supply the read-only repository through ProviderScope.
 class ProgressHistoryScreen extends ConsumerStatefulWidget {
@@ -18,59 +20,84 @@ class ProgressHistoryScreen extends ConsumerStatefulWidget {
 
 class _ProgressHistoryScreenState extends ConsumerState<ProgressHistoryScreen> {
   bool _showDemo = false;
+  ProgressPeriod _period = ProgressPeriod.allTime;
 
   @override
   Widget build(BuildContext context) {
     final history = ref.watch(progressHistoryProvider);
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        children: [
-          Text('Progress', style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: AppSpacing.lg),
-          history.when(
-            skipLoadingOnRefresh: false,
-            skipLoadingOnReload: false,
-            loading: () => const ProgressStatusView.loading(),
-            error: (_, _) => ProgressStatusView.error(
-              onRetry: () => ref.invalidate(progressHistoryProvider),
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.background,
+            AppColors.softAccent,
+            AppColors.background,
+          ],
+        ),
+      ),
+      child: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          children: [
+            Text(
+              'Progress overview',
+              style: Theme.of(context).textTheme.headlineSmall,
             ),
-            data: (data) => _history(context, data),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.lg),
+            history.when(
+              skipLoadingOnRefresh: false,
+              skipLoadingOnReload: false,
+              loading: () => const ProgressStatusView.loading(),
+              error: (_, _) => ProgressStatusView.error(
+                onRetry: () => ref.invalidate(progressHistoryProvider),
+              ),
+              data: (data) => _history(context, data),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _history(BuildContext context, ProgressHistoryData data) {
-    final records = _showDemo ? data.demoRecords : data.normalRecords;
+    final source = _showDemo ? data.demoRecords : data.normalRecords;
+    final now = DateTime.now();
+    final records = filterProgressRecords(source, _period, now);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Normal progress · all history',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  'Eligible recorded time: ${_duration(data.summary.creditedSeconds)}',
-                ),
-                Text(
-                  'Completed sessions: ${data.summary.completedSessionCount}',
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                const Text(
-                  'Demo records are excluded. Goal outcome does not change credited time.',
-                ),
-              ],
+        Text(
+          'Normal progress · all history',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            ProgressMetric(
+              label: 'Study time · all history',
+              value: _duration(data.summary.creditedSeconds),
+              icon: Icons.schedule,
+              tint: AppColors.softAccent,
             ),
-          ),
+            ProgressMetric(
+              label: 'Completed sessions · all history',
+              value: '${data.summary.completedSessionCount}',
+              icon: Icons.auto_stories_outlined,
+              tint: AppColors.blueAccent,
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Eligible recorded time: ${_duration(data.summary.creditedSeconds)}',
+        ),
+        Text('Completed sessions: ${data.summary.completedSessionCount}'),
+        const Text(
+          'Demo records are excluded. Goal outcome does not change credited time.',
         ),
         const SizedBox(height: AppSpacing.lg),
         Wrap(
@@ -99,6 +126,22 @@ class _ProgressHistoryScreenState extends ConsumerState<ProgressHistoryScreen> {
           ],
         ),
         const SizedBox(height: AppSpacing.xl),
+        StudyYearHeatmap(
+          key: ValueKey(_showDemo),
+          records: source,
+          hasMore: data.nextPageToken != null,
+          now: now,
+          isDemo: _showDemo,
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        ProgressActivity(
+          records: source,
+          period: _period,
+          now: now,
+          hasMore: data.nextPageToken != null,
+          onPeriodChanged: (value) => setState(() => _period = value),
+        ),
+        const SizedBox(height: AppSpacing.xl),
         Text(
           _showDemo ? 'Demo history · rehearsal only' : 'Personal history',
           style: Theme.of(context).textTheme.titleLarge,
@@ -114,7 +157,9 @@ class _ProgressHistoryScreenState extends ConsumerState<ProgressHistoryScreen> {
                 ? 'No ${_showDemo ? 'demo' : 'normal'} records in loaded pages. Load more to check older history.'
                 : _showDemo
                 ? 'No demo records.'
-                : 'No recorded sessions yet.',
+                : _period == ProgressPeriod.allTime
+                ? 'No recorded sessions yet.'
+                : 'No loaded records in this period.',
           ),
         for (final record in records) _RecordCard(record: record),
         if (data.pageError != null) ...[
