@@ -73,16 +73,20 @@ async function mustDeny(label, token, writes) {
   console.log(`PASS ${label}`);
 }
 
+async function runMembershipRulesTests() {
+const runId = crypto.randomUUID();
+const sigId = `sig-revision-test-${runId}`;
+const subgroupId = `group-revision-test-${runId}`;
 const owner = await createUser('owner');
 const member = await createUser('member');
 const successor = await createUser('successor');
-const sigPath = 'sigs/sig-revision-test';
+const sigPath = `sigs/${sigId}`;
 const memberPath = `${sigPath}/members/${member.uid}`;
 const requestId = `membership-leave-${crypto.randomUUID()}`;
 const requestPath = `membershipCleanupRequests/${requestId}`;
 const membership = {
   userId: member.uid,
-  sigId: 'sig-revision-test',
+  sigId,
   status: 'active',
   joinedAt: new Date(),
   updatedAt: new Date(),
@@ -135,7 +139,7 @@ const pendingMembership = {
 const cleanupRequest = {
   requestId,
   userId: member.uid,
-  sigId: 'sig-revision-test',
+  sigId,
   scope: 'sig',
   status: 'pending',
   createdAt: new Date(),
@@ -202,13 +206,13 @@ await mustAllow('concurrent eligible join advances the owner-selection revision'
   },
 ]);
 
-const subgroupPath = 'subgroups/group-revision-test';
+const subgroupPath = `subgroups/${subgroupId}`;
 const successorSubgroupMembershipPath = `${subgroupPath}/members/${successor.uid}`;
 await mustAllow('SIG owner creates a subgroup for membership authorization tests', owner.token, [
   {
     update: {
       name: documentName(subgroupPath),
-      fields: fields({ sigId: 'sig-revision-test', status: 'active' }),
+      fields: fields({ sigId, status: 'active' }),
     },
     currentDocument: { exists: false },
   },
@@ -219,7 +223,7 @@ await mustAllow('active SIG member joins the subgroup', successor.token, [
       name: documentName(successorSubgroupMembershipPath),
       fields: fields({
         userId: successor.uid,
-        sigId: 'sig-revision-test',
+        sigId,
         status: 'active',
         joinedAt: new Date(),
         updatedAt: new Date(),
@@ -245,7 +249,7 @@ const ownerTransferRequestId = `owner-transfer-${crypto.randomUUID()}`;
 const ownerTransferRequestPath = `membershipCleanupRequests/${ownerTransferRequestId}`;
 const ownerPending = {
   userId: owner.uid,
-  sigId: 'sig-revision-test',
+  sigId,
   status: 'removalPending',
   joinedAt: new Date(),
   updatedAt: new Date(),
@@ -254,7 +258,7 @@ const ownerPending = {
 const ownerTransferRequest = {
   requestId: ownerTransferRequestId,
   userId: owner.uid,
-  sigId: 'sig-revision-test',
+  sigId,
   scope: 'sig',
   status: 'pending',
   createdAt: new Date(),
@@ -299,7 +303,7 @@ await mustAllow('owner closure with no successor remains atomic', successor.toke
       fields: fields({
         requestId: closeRequestId,
         userId: successor.uid,
-        sigId: 'sig-revision-test',
+        sigId,
         scope: 'sig',
         status: 'pending',
         createdAt: new Date(),
@@ -309,3 +313,11 @@ await mustAllow('owner closure with no successor remains atomic', successor.toke
     currentDocument: { exists: false },
   },
 ]);
+
+}
+
+runMembershipRulesTests().catch((error) => {
+  console.error(error);
+  // Let pending I/O handles close normally instead of forcing process exit.
+  process.exitCode = 1;
+});
