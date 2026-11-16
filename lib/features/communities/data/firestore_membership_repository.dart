@@ -367,10 +367,9 @@ class FirestoreMembershipRepository implements MembershipRepository {
             throw const _RetryOwnerSelection();
           }
           final isCurrentOwner = _requiredString(sig, 'ownerId') == uid;
-          if (!isCurrentOwner &&
-              !_isActiveMembership(member, uid, sigId: sigId)) {
-            _throwNotMember();
-          }
+          // A retry must resume the durable request even though the member is
+          // no longer active. In particular, owner departure may already have
+          // transferred ownership or closed the SIG.
           if (member?['status'] == 'removalPending') {
             return _pendingRequest(
               transaction,
@@ -379,6 +378,10 @@ class FirestoreMembershipRepository implements MembershipRepository {
               sigId: sigId,
               scope: MembershipRemovalScope.sig,
             );
+          }
+          if (!isCurrentOwner &&
+              !_isActiveMembership(member, uid, sigId: sigId)) {
+            _throwNotMember();
           }
           if (isCurrentOwner &&
               successor != null &&
@@ -523,7 +526,8 @@ class FirestoreMembershipRepository implements MembershipRepository {
         final storedRequest = await transaction.get(_requestPath(requestId));
         final member = await transaction.get(path);
         _ensureCompletedRequest(storedRequest, requestId, uid);
-        if (member?['removalRequestId'] == requestId) {
+        if (member?['removalRequestId'] == requestId &&
+            member?['status'] == 'removalPending') {
           transaction.update(path, {
             'status': 'left',
             'updatedAt': Timestamp.now(),
@@ -552,6 +556,11 @@ class FirestoreMembershipRepository implements MembershipRepository {
       final sig = await transaction.get(sigPath);
       _ensureCompletedRequest(storedRequest, requestId, uid);
       if (member?['removalRequestId'] == requestId) {
+        // The same completed request may be finalized again after a client
+        // retry. A left membership is already finalized; do not bump the SIG
+        // revision again.
+        if (member?['status'] == 'left') return;
+        if (member?['status'] != 'removalPending') return;
         if (sig == null) _throwNotMember();
         transaction
           ..update(sigPath, {'membershipRevision': _revision(sig) + 1})

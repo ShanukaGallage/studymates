@@ -113,12 +113,8 @@ class FirestoreCommunityRepository implements CommunityRepository {
       }
       return loadCatalog();
     }
-    try {
-      final request = await _membership.beginSigLeave(sigId: id);
-      await _awaitCleanupAndFinalize(request.requestId);
-    } on MembershipRepositoryException catch (error) {
-      if (error.code != MembershipRepositoryError.notMember) rethrow;
-    }
+    final request = await _membership.beginSigLeave(sigId: id);
+    await _awaitCleanupAndFinalize(request.requestId);
     return loadCatalog();
   }
 

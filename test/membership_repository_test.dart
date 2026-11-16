@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:studymates/core/models/community_models.dart';
+import 'package:studymates/features/communities/data/firestore_community_repository.dart';
 import 'package:studymates/features/communities/data/firestore_membership_repository.dart';
 import 'package:studymates/features/communities/data/membership_repository.dart';
 
@@ -255,6 +259,44 @@ void main() {
       );
     });
 
+    test(
+      'retrying SIG leave while pending returns the original request',
+      () async {
+        final store = _FakeMembershipStore()
+          ..documents['sigs/sig-a'] = {
+            'ownerId': 'owner',
+            'status': 'active',
+            'membershipRevision': 4,
+          }
+          ..documents['sigs/sig-a/members/user-a'] = _member('user-a');
+        final repository = FirestoreMembershipRepository(
+          currentUserId: () => 'user-a',
+          documentStore: store,
+        );
+
+        final firstRequest = await repository.beginSigLeave(sigId: 'sig-a');
+        final revisionAfterFirstRequest =
+            store.documents['sigs/sig-a']!['membershipRevision'];
+        final requestCountAfterFirstRequest = store.documents.keys
+            .where((path) => path.startsWith('membershipCleanupRequests/'))
+            .length;
+
+        final retriedRequest = await repository.beginSigLeave(sigId: 'sig-a');
+
+        expect(retriedRequest.requestId, firstRequest.requestId);
+        expect(
+          store.documents['sigs/sig-a']!['membershipRevision'],
+          revisionAfterFirstRequest,
+        );
+        expect(
+          store.documents.keys
+              .where((path) => path.startsWith('membershipCleanupRequests/'))
+              .length,
+          requestCountAfterFirstRequest,
+        );
+      },
+    );
+
     test('SIG closes when no successor exists and retains its data', () async {
       final store = _FakeMembershipStore()
         ..documents['sigs/sig-a'] = {
@@ -321,6 +363,126 @@ void main() {
       );
     });
 
+    test('finalizing a subgroup request twice does not update membership again', () async {
+      final store = _FakeMembershipStore()
+        ..documents['sigs/sig-a'] = {
+          'ownerId': 'owner',
+          'status': 'active',
+          'membershipRevision': 1,
+        }
+        ..documents['sigs/sig-a/members/user-a'] = _member('user-a')
+        ..documents['subgroups/group-a'] = {'sigId': 'sig-a'}
+        ..documents['subgroups/group-a/members/user-a'] = _member(
+          'user-a',
+          sigId: 'sig-a',
+        );
+      final repository = FirestoreMembershipRepository(
+        currentUserId: () => 'user-a',
+        documentStore: store,
+      );
+      final request = await repository.beginSubgroupLeave(
+        sigId: 'sig-a',
+        subgroupId: 'group-a',
+      );
+      store.documents['membershipCleanupRequests/${request.requestId}']!['status'] =
+          'completed';
+
+      await repository.finalizeMembershipRemoval(request.requestId);
+      final membershipAfterFirstFinalize = Map<String, dynamic>.of(
+        store.documents['subgroups/group-a/members/user-a']!,
+      );
+      final updatesAfterFirstFinalize = store.updateCount;
+
+      await repository.finalizeMembershipRemoval(request.requestId);
+
+      expect(
+        store.documents['subgroups/group-a/members/user-a'],
+        membershipAfterFirstFinalize,
+      );
+      expect(store.updateCount, updatesAfterFirstFinalize);
+    });
+
+    test('finalizing a SIG request twice does not increment its revision twice', () async {
+      final store = _FakeMembershipStore()
+        ..documents['sigs/sig-a'] = {
+          'ownerId': 'owner',
+          'status': 'active',
+          'membershipRevision': 1,
+        }
+        ..documents['sigs/sig-a/members/user-a'] = _member('user-a');
+      final repository = FirestoreMembershipRepository(
+        currentUserId: () => 'user-a',
+        documentStore: store,
+      );
+      final request = await repository.beginSigLeave(sigId: 'sig-a');
+      store.documents['membershipCleanupRequests/${request.requestId}']!['status'] =
+          'completed';
+
+      await repository.finalizeMembershipRemoval(request.requestId);
+      final revisionAfterFirstFinalize =
+          store.documents['sigs/sig-a']!['membershipRevision'];
+      final updatesAfterFirstFinalize = store.updateCount;
+
+      await repository.finalizeMembershipRemoval(request.requestId);
+
+      expect(
+        store.documents['sigs/sig-a']!['membershipRevision'],
+        revisionAfterFirstFinalize,
+      );
+      expect(store.updateCount, updatesAfterFirstFinalize);
+    });
+
+    test('SIG finalization before cleanup completion leaves membership pending', () async {
+      final store = _FakeMembershipStore()
+        ..documents['sigs/sig-a'] = {
+          'ownerId': 'owner',
+          'status': 'active',
+          'membershipRevision': 1,
+        }
+        ..documents['sigs/sig-a/members/user-a'] = _member('user-a')
+        ..documents['subgroups/group-a'] = {'sigId': 'sig-a'}
+        ..documents['subgroups/group-a/members/user-a'] = _member(
+          'user-a',
+          sigId: 'sig-a',
+        );
+      final repository = FirestoreMembershipRepository(
+        currentUserId: () => 'user-a',
+        documentStore: store,
+      );
+      final request = await repository.beginSigLeave(sigId: 'sig-a');
+      final revisionAfterLeaveBegan =
+          store.documents['sigs/sig-a']!['membershipRevision'];
+
+      await expectLater(
+        repository.finalizeMembershipRemoval(request.requestId),
+        throwsA(
+          isA<MembershipRepositoryException>().having(
+            (error) => error.code,
+            'code',
+            MembershipRepositoryError.cleanupNotComplete,
+          ),
+        ),
+      );
+
+      expect(
+        store.documents['sigs/sig-a/members/user-a']!['status'],
+        'removalPending',
+      );
+      expect(
+        store.documents['subgroups/group-a/members/user-a']!['status'],
+        'active',
+      );
+      expect(
+        store.documents['sigs/sig-a']!['membershipRevision'],
+        revisionAfterLeaveBegan,
+      );
+      expect(
+        store
+            .documents['membershipCleanupRequests/${request.requestId}']!['status'],
+        'pending',
+      );
+    });
+
     test('SIG leave finalizes child memberships after one M3 acknowledgement', () async {
       final store = _FakeMembershipStore()
         ..documents['sigs/sig-a'] = {
@@ -357,6 +519,82 @@ void main() {
       expect(store.documents['sigs/sig-a']!['membershipRevision'], 3);
     });
   });
+
+  test(
+    'community SIG leave resumes the same request after a cleanup timeout',
+    () async {
+      final store = _FakeMembershipStore()
+        ..documents['sigs/sig-a'] = {
+          'ownerId': 'owner',
+          'status': 'active',
+          'membershipRevision': 1,
+        }
+        ..documents['sigs/sig-a/members/user-a'] = _member('user-a')
+        ..documents['subgroups/group-a'] = {'sigId': 'sig-a'}
+        ..documents['subgroups/group-a/members/user-a'] = _member(
+          'user-a',
+          sigId: 'sig-a',
+        );
+      addTearDown(store.closeWatches);
+      final membershipRepository = FirestoreMembershipRepository(
+        currentUserId: () => 'user-a',
+        documentStore: store,
+      );
+      final communityRepository = FirestoreCommunityRepository(
+        membershipRepository: membershipRepository,
+        loadCurrentProfile: () async =>
+            UserProfile(id: 'user-a', displayName: 'Test user'),
+        currentUserId: () => 'user-a',
+        catalogStore: _CleanupCatalogStore(),
+        cleanupTimeout: const Duration(milliseconds: 20),
+      );
+
+      await expectLater(
+        communityRepository.setSigMembership(
+          'sig-a',
+          MembershipState.notJoined,
+        ),
+        throwsA(isA<TimeoutException>()),
+      );
+      final requestPath = store.documents.keys.singleWhere(
+        (path) => path.startsWith('membershipCleanupRequests/'),
+      );
+      expect(store.watchPaths, [requestPath]);
+      expect(
+        store.documents['sigs/sig-a/members/user-a']!['status'],
+        'removalPending',
+      );
+
+      store.documents[requestPath]!['status'] = 'completed';
+      store.emitDocument(requestPath);
+      await communityRepository.setSigMembership(
+        'sig-a',
+        MembershipState.notJoined,
+      );
+
+      expect(store.watchPaths, [requestPath, requestPath]);
+      expect(store.documents['sigs/sig-a/members/user-a']!['status'], 'left');
+    },
+  );
+}
+
+class _CleanupCatalogStore implements CommunityCatalogDocumentStore {
+  @override
+  Future<List<CommunityCatalogDocument>> loadSigs() async => [
+    const CommunityCatalogDocument(
+      id: 'sig-a',
+      data: {
+        'name': 'IoT',
+        'category': 'Technology',
+        'description': 'Test SIG',
+        'ownerId': 'owner',
+        'status': 'active',
+      },
+    ),
+  ];
+
+  @override
+  Future<List<CommunityCatalogDocument>> loadSubgroups() async => const [];
 }
 
 void _seedCommunity(_FakeMembershipStore store) {
@@ -388,10 +626,13 @@ class _FakeMembershipStore implements MembershipDocumentStore {
   final documents = <String, Map<String, dynamic>>{};
   final readPaths = <String>[];
   final transactionReadPaths = <String>[];
+  final watchPaths = <String>[];
+  final _watchers = <String, List<StreamController<Map<String, dynamic>?>>>{};
   Object? failure;
   Transaction? lastSuppliedTransaction;
   void Function()? onEarliestActiveSigMember;
   var _requestId = 0;
+  var updateCount = 0;
 
   void _checkFailure() {
     if (failure case final error?) throw error;
@@ -409,8 +650,31 @@ class _FakeMembershipStore implements MembershipDocumentStore {
   }
 
   @override
-  Stream<Map<String, dynamic>?> watch(String path) =>
-      Stream.value(documents[path] == null ? null : Map.of(documents[path]!));
+  Stream<Map<String, dynamic>?> watch(String path) {
+    watchPaths.add(path);
+    late final StreamController<Map<String, dynamic>?> controller;
+    controller = StreamController<Map<String, dynamic>?>(
+      onListen: () {
+        _watchers.putIfAbsent(path, () => []).add(controller);
+        final value = documents[path];
+        controller.add(value == null ? null : Map.of(value));
+      },
+      onCancel: () => _watchers[path]?.remove(controller),
+    );
+    return controller.stream;
+  }
+
+  void emitDocument(String path) {
+    final value = documents[path];
+    for (final watcher in List.of(_watchers[path] ?? const [])) {
+      watcher.add(value == null ? null : Map.of(value));
+    }
+  }
+
+  Future<void> closeWatches() async {
+    final watchers = _watchers.values.expand((value) => value).toList();
+    await Future.wait(watchers.map((watcher) => watcher.close()));
+  }
 
   @override
   Future<T> runTransaction<T>(
@@ -507,6 +771,7 @@ class _FakeMembershipTransaction implements MembershipTransaction {
   @override
   void update(String path, Map<String, dynamic> data) {
     _hasWritten = true;
+    store.updateCount++;
     final value = Map<String, dynamic>.of(store.documents[path]!);
     for (final entry in data.entries) {
       if (entry.value == FieldValue.delete()) {
