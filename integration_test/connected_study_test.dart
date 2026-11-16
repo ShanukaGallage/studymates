@@ -12,6 +12,8 @@ import 'package:studymates/features/study/data/firestore_invitation_service.dart
 import 'package:studymates/features/invites/data/invitation_service.dart';
 import 'package:studymates/features/invites/data/invitation_token.dart';
 import 'package:studymates/features/communities/data/firestore_membership_repository.dart';
+import 'package:studymates/features/communities/data/spark_membership_cleanup.dart';
+import 'package:studymates/features/communities/data/membership_repository.dart';
 import 'package:studymates/features/rooms/data/seat_claim_result.dart';
 import 'package:studymates/features/study/data/firestore_study_repository.dart';
 
@@ -242,6 +244,90 @@ void main() {
         );
         expect((await repos[i].claimRef(repos[i].uid).get()).exists, isFalse);
       }
+
+      final large = await a.createRoom(
+        subgroupId: subgroup,
+        title: 'Forty desks',
+        capacity: 40,
+      );
+      expect((await b.watchSeats(large.roomId).first).length, 40);
+      expect(
+        await b.claimSeat(
+          subgroupId: subgroup,
+          roomId: large.roomId,
+          seatId: 'seat-40',
+        ),
+        isA<SeatClaimSucceeded>(),
+      );
+      final largeClaim = (await b.claimRef(b.uid).get()).data()!;
+      await b.releaseRoomSeat(
+        subgroup: subgroup,
+        room: large.roomId,
+        seat: 'seat-40',
+        claimId: largeClaim['claimId'],
+      );
+      final locked = await a.createRoom(
+        subgroupId: subgroup,
+        title: 'Private pair',
+        capacity: 2,
+        isPrivate: true,
+      );
+      expect(locked.isPrivate, isTrue);
+      final denied = await b.claimSeat(
+        subgroupId: subgroup,
+        roomId: locked.roomId,
+        seatId: 'seat-1',
+      );
+      expect(
+        (denied as SeatClaimFailed).failure,
+        SeatClaimFailure.invitationRequired,
+      );
+      final privateCode = await invitation.issue(subgroup, locked.roomId);
+      final guestInvites = FirestoreInvitationService(
+        study: b,
+        catalog: invitation.catalog,
+      );
+      expect(
+        (await guestInvites.resolveInvitation(privateCode))
+            .preview!
+            .room
+            .isPrivate,
+        isTrue,
+      );
+      expect(
+        (await guestInvites.admitInvitation(
+          opaqueToken: privateCode,
+          membershipConsentGranted: false,
+        )).status,
+        InvitationAdmissionStatus.admitted,
+      );
+      expect(await b.canAccessRoom(locked), isTrue);
+      expect((await b.watchSeats(locked.roomId).first).length, 2);
+
+      final leave = await memberships[1].beginSubgroupLeave(
+        sigId: sig,
+        subgroupId: subgroup,
+      );
+      await SparkMembershipCleanup(b).complete(leave.requestId);
+      await memberships[1].finalizeMembershipRemoval(leave.requestId);
+      expect((await b.claimRef(b.uid).get()).exists, isFalse);
+      expect(
+        await memberships[1].checkSubgroupMembership(
+          sigId: sig,
+          subgroupId: subgroup,
+        ),
+        MembershipCheckResult.nonMember,
+      );
+      final ownerLeave = await memberships[0].beginSigLeave(sigId: sig);
+      await SparkMembershipCleanup(a).complete(ownerLeave.requestId);
+      await memberships[0].finalizeMembershipRemoval(ownerLeave.requestId);
+      expect((await a.getRoomSnapshot(locked.roomId))!.status.name, 'closed');
+      await SparkMembershipCleanup(a)
+          .complete(ownerLeave.requestId); // response-loss retry
+      expect(
+        await memberships[0].checkSigMembership(sigId: sig),
+        MembershipCheckResult.nonMember,
+      );
     },
   );
 }

@@ -19,6 +19,7 @@ class FirestoreCommunityRepository implements CommunityRepository {
     CommunityCatalogDocumentStore? catalogStore,
     FirebaseFirestore? firestore,
     this.cleanupTimeout = const Duration(seconds: 30),
+    this.completeOwnCleanup,
   }) : _membership = membershipRepository,
        _catalog =
            catalogStore ??
@@ -31,6 +32,7 @@ class FirestoreCommunityRepository implements CommunityRepository {
   final String? Function() currentUserId;
   final CommunityCatalogDocumentStore _catalog;
   final Duration cleanupTimeout;
+  final Future<void> Function(String requestId)? completeOwnCleanup;
 
   @override
   Future<CommunityCatalog> createSig({
@@ -233,6 +235,15 @@ class FirestoreCommunityRepository implements CommunityRepository {
     String id,
     MembershipState value,
   ) async {
+    if (value == MembershipState.notJoined) {
+      try {
+        final request = await _membership.beginSigLeave(sigId: id);
+        await _awaitCleanupAndFinalize(request.requestId);
+      } on MembershipRepositoryException catch (error) {
+        if (error.code != MembershipRepositoryError.notMember) rethrow;
+      }
+      return loadCatalog();
+    }
     final catalog = await loadCatalog();
     if (catalog.sig(id) == null) {
       throw const RepositoryException(RepositoryError.notFound);
@@ -248,8 +259,6 @@ class FirestoreCommunityRepository implements CommunityRepository {
       }
       return loadCatalog();
     }
-    final request = await _membership.beginSigLeave(sigId: id);
-    await _awaitCleanupAndFinalize(request.requestId);
     return loadCatalog();
   }
 
@@ -290,6 +299,7 @@ class FirestoreCommunityRepository implements CommunityRepository {
   }
 
   Future<void> _awaitCleanupAndFinalize(String requestId) async {
+    await completeOwnCleanup?.call(requestId);
     await _membership
         .watchCleanupRequest(requestId)
         .firstWhere(

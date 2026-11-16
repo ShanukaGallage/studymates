@@ -3,6 +3,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../data/invitation_token.dart';
+import '../widgets/share_invitation_button.dart';
 
 /// Displays an already-issued token; never issues or authorizes an invitation.
 class InvitationDisplayScreen extends StatelessWidget {
@@ -11,10 +12,12 @@ class InvitationDisplayScreen extends StatelessWidget {
     required this.opaqueToken,
     required this.roomTitle,
     this.isFixture = false,
+    this.management,
   });
   final String opaqueToken;
   final String roomTitle;
   final bool isFixture;
+  final Widget? management;
 
   String? get qrPayload => InvitationTokenParser.isOpaqueToken(opaqueToken)
       ? 'studymates://invite/v1/$opaqueToken'
@@ -71,6 +74,11 @@ class InvitationDisplayScreen extends StatelessWidget {
                 code,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
+              if (!isFixture) ...[
+                const SizedBox(height: AppSpacing.lg),
+                ShareInvitationButton(roomTitle: roomTitle, code: code),
+                ?management,
+              ],
             ],
           ],
         ),

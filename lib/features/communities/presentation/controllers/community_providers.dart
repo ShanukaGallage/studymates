@@ -8,10 +8,14 @@ import '../../../profile/presentation/controllers/profile_providers.dart';
 import '../../data/community_repository.dart';
 import '../../data/firestore_community_repository.dart';
 import '../../data/firestore_membership_repository.dart';
+import '../../data/spark_membership_cleanup.dart';
+import '../../../study/data/firestore_study_repository.dart';
 
 final communityRepositoryProvider = Provider<CommunityRepository>(
   (ref) => FirestoreCommunityRepository(
     membershipRepository: ref.watch(membershipRepositoryProvider),
+    completeOwnCleanup: (id) =>
+        SparkMembershipCleanup(ref.read(studyRepositoryProvider)).complete(id),
     catalogStore: ref.watch(communityCatalogDocumentStoreProvider),
     currentUserId: () => _currentAuthenticatedUid(ref.read(authStateProvider)),
     loadCurrentProfile: () => ref.read(currentProfileProvider.future),

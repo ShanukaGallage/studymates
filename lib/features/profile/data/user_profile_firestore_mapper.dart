@@ -13,6 +13,12 @@ abstract final class UserProfileFirestoreMapper {
       'displayName': profile.displayName.trim(),
       'avatarId': profile.avatarId,
       'interestIds': profile.interestIds,
+      // Explicit nulls clear these fields in transaction.update as well as set.
+      'institution': _optionalText(profile.institution),
+      'programme': _optionalText(profile.programme),
+      'yearOfStudy': _optionalText(profile.yearOfStudy),
+      'bio': _optionalText(profile.bio),
+      'photoBase64': profile.photo?.encoded,
     };
   }
 
@@ -53,6 +59,25 @@ abstract final class UserProfileFirestoreMapper {
       interestIds: interestIds == null
           ? const []
           : List<String>.from(interestIds as List),
+      institution: _readOptionalText(data['institution']),
+      programme: _readOptionalText(data['programme']),
+      yearOfStudy: _readOptionalText(data['yearOfStudy']),
+      bio: _readOptionalText(data['bio']),
+      photo: ProfilePhoto.tryDecode(data['photoBase64']),
     );
+  }
+
+  static String? _readOptionalText(Object? value) {
+    if (value != null && value is! String) {
+      throw const ProfileRepositoryException(
+        ProfileRepositoryError.malformedProfile,
+      );
+    }
+    return _optionalText(value as String?);
+  }
+
+  static String? _optionalText(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 }

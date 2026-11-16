@@ -174,6 +174,11 @@ class _FakeProfileRepository implements ProfileRepository {
     required String displayName,
     String avatarId = UserProfile.defaultAvatarId,
     List<String> interestIds = const [],
+    String? institution,
+    String? programme,
+    String? yearOfStudy,
+    String? bio,
+    ProfilePhoto? photo,
   }) async {
     createdUserId = 'firebase-uid';
     createdName = displayName;
@@ -193,5 +198,10 @@ class _FakeProfileRepository implements ProfileRepository {
     required String displayName,
     String avatarId = UserProfile.defaultAvatarId,
     List<String> interestIds = const [],
+    String? institution,
+    String? programme,
+    String? yearOfStudy,
+    String? bio,
+    ProfilePhoto? photo,
   }) async => UserProfile(id: 'firebase-uid', displayName: displayName);
 }

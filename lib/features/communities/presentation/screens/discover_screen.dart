@@ -2,18 +2,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../../../app/app_mode.dart';
 import '../../../../core/models/community_models.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/app_details.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/state_views.dart';
-import '../../../../app/app_mode.dart';
-import '../widgets/community_management_dialogs.dart';
-import '../widgets/catalog_view.dart';
 import '../../../study/data/firestore_study_repository.dart';
-import '../../../study/presentation/study_dialogs.dart';
 import '../controllers/community_providers.dart';
+import '../controllers/discovery_connection_provider.dart';
+import '../controllers/pending_leave_providers.dart';
+import '../widgets/community_discovery_card.dart';
+import '../widgets/community_management_dialogs.dart';
 
 class DiscoverScreen extends ConsumerStatefulWidget {
   const DiscoverScreen({super.key});
@@ -25,274 +25,351 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
   final _search = TextEditingController();
   String _query = '';
   bool _joinedOnly = false;
+  bool _finishingLeave = false;
+
   @override
   void dispose() {
     _search.dispose();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          AppColors.background,
-          AppColors.softAccent,
-          AppColors.background,
-        ],
-      ),
-    ),
-    child: ListView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Discover', style: Theme.of(context).textTheme.headlineSmall),
-                  const SizedBox(height: 4),
-                  Text('Your next study circle', style: Theme.of(context).textTheme.titleMedium),
-                ],
-              ),
-            ),
-            ExcludeSemantics(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.softAccent,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: const Icon(Icons.groups_outlined, color: AppColors.primary, size: 32),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        const Text('Find a shared interest. Take the next small step together.'),
-        if (ref.watch(appModeProvider) == AppMode.connected) ...[
-          const SizedBox(height: 12),
-          AppButton(
-            label: 'Create community',
-            variant: AppButtonVariant.secondary,
-            onPressed: () async {
-              final name = await studyTitleDialog(context, 'Create community');
-              if (name == null || !context.mounted) return;
-              try {
-                await ref.read(studyRepositoryProvider).createCommunity(name);
-                ref.invalidate(communityCatalogProvider);
-              } catch (_) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Community creation failed. Check your connection and retry.')),
-                  );
-                }
-              }
-            },
-          ),
-        ] else if (ref.watch(appModeProvider) == AppMode.preview) ...[
-          const SizedBox(height: 12),
-          AppButton(
-            label: 'Create a SIG',
-            variant: AppButtonVariant.secondary,
-            onPressed: () => showCreateSigDialog(context),
-          ),
-        ],
-        const SizedBox(height: 24),
-        AppTextField(
-          label: 'Search communities',
-          controller: _search,
-          onChanged: (value) => setState(() => _query = value.trim().toLowerCase()),
-        ),
-        if (_query.isNotEmpty)
-          TextButton(
-            onPressed: () {
-              _search.clear();
-              setState(() => _query = '');
-            },
-            child: const Text('Clear search'),
-          ),
-        const SizedBox(height: 24),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            ChoiceChip(
-              label: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('All communities'),
-              ),
-              selected: !_joinedOnly,
-              onSelected: (_) => setState(() => _joinedOnly = false),
-            ),
-            ChoiceChip(
-              label: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('My communities'),
-              ),
-              selected: _joinedOnly,
-              onSelected: (_) => setState(() => _joinedOnly = true),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        CatalogView(
-          builder: (catalog) {
-            final matches = catalog.sigs
-                .where(
-                  (sig) =>
-                      (!_joinedOnly || sig.membership == MembershipState.joined) &&
-                      '${sig.name} ${sig.category} ${sig.description}'.toLowerCase().contains(_query),
-                )
-                .toList();
-            if (catalog.sigs.isEmpty) {
-              return EmptyView(
-                title: 'No communities yet',
-                message: ref.watch(appModeProvider) == AppMode.preview
-                    ? 'Choose Sample data in Preview data to restore the examples.'
-                    : 'Create a community, or ask a study mate for an invitation.',
-              );
-            }
-            if (matches.isEmpty) {
-              return EmptyView(
-                title: _joinedOnly && _query.isEmpty ? 'Your study circle starts here' : 'No matches',
-                message: _joinedOnly && _query.isEmpty
-                    ? 'Choose All communities to find a group and join from its details.'
-                    : 'Try another interest or clear your search.',
-              );
-            }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('Browsing as ${catalog.profile.displayName}'),
-                const SizedBox(height: 16),
-                Text(
-                  '${matches.length} ${matches.length == 1 ? 'community' : 'communities'}${_joinedOnly ? ' joined' : ' to explore'}',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 16),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final twoColumns =
-                        constraints.maxWidth >= 340 &&
-                        MediaQuery.textScalerOf(context).scale(16) <= 24;
-                    final width = twoColumns
-                        ? (constraints.maxWidth - 12) / 2
-                        : constraints.maxWidth;
-                    return Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        for (final sig in matches)
-                          SizedBox(
-                            width: width,
-                            child: _CommunityTile(
-                              sig: sig,
-                              preview:
-                                  ref.watch(appModeProvider) == AppMode.preview,
-                              subgroupCount: catalog.subgroups
-                                  .where((group) => group.sigId == sig.id)
-                                  .length,
-                            ),
-                          ),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            );
-          },
-        ),
-      ],
-    ),
-  );
-}
+  void _clearSearch() {
+    _search.clear();
+    setState(() => _query = '');
+  }
 
-class _CommunityTile extends StatelessWidget {
-  const _CommunityTile({
-    required this.sig,
-    required this.subgroupCount,
-    required this.preview,
-  });
-  final SigSummary sig;
-  final int subgroupCount;
-  final bool preview;
+  Future<void> _recoverLeave() async {
+    if (_finishingLeave) return;
+    setState(() => _finishingLeave = true);
+    try {
+      final count = await ref.read(pendingLeaveRecoveryProvider).recover();
+      ref.invalidate(communityCatalogProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              count == 0
+                  ? 'No pending leave requests.'
+                  : 'Leave requests completed.',
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error is StudyFailure ? error.message : 'Could not finish leaving. Check your connection and retry.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        ref.invalidate(pendingLeaveCountProvider);
+        setState(() => _finishingLeave = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final joined = sig.membership == MembershipState.joined;
-    final tint = joined ? AppColors.mintAccent : AppColors.softAccent;
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final catalog = ref.watch(communityCatalogProvider);
+    final connected = ref.watch(appModeProvider) == AppMode.connected;
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppColors.background, Color(0xFFFCFAFF)],
+        ),
+      ),
+      child: AppContentWidth(
+        child: CustomScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final heading = Text(
+                          'Discover',
+                          style: Theme.of(context).textTheme.headlineLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.text,
+                              ),
+                        );
+                        final create = FilledButton.tonalIcon(
+                          key: const ValueKey('create-community'),
+                          onPressed: () => showCreateSigDialog(context),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Create'),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(48, 48),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                        );
+                        if (constraints.maxWidth < 340 &&
+                            MediaQuery.textScalerOf(context).scale(16) > 20) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              heading,
+                              const SizedBox(height: 8),
+                              create,
+                            ],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            Expanded(child: heading),
+                            const SizedBox(width: 12),
+                            create,
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Find your next study circle',
+                      style: Theme.of(context).textTheme.bodyLarge
+                          ?.copyWith(color: AppColors.secondaryText),
+                    ),
+                    const SizedBox(height: 24),
+                    AppTextField(
+                      label: 'Search communities',
+                      controller: _search,
+                      textInputAction: TextInputAction.search,
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Clear search',
+                              onPressed: _clearSearch,
+                              icon: const Icon(Icons.close),
+                            ),
+                      onChanged: (value) =>
+                          setState(() => _query = value.trim().toLowerCase()),
+                    ),
+                    const SizedBox(height: 20),
+                    _CommunityTabs(
+                      joinedOnly: _joinedOnly,
+                      onChanged: (value) => setState(() => _joinedOnly = value),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            ),
+            if (connected) _body(_connectionNotice()),
+            ...catalog.when<List<Widget>>(
+              skipLoadingOnReload: false,
+              skipLoadingOnRefresh: false,
+              loading: () => [
+                _body(const LoadingView(message: 'Loading communities…')),
+              ],
+              error: (_, _) => [
+                _body(
+                  ErrorView(
+                    message: 'Communities are unavailable. Try again.',
+                    onRetry: () => ref.invalidate(communityCatalogProvider),
+                  ),
+                ),
+              ],
+              data: (data) {
+                final matches = data.sigs
+                    .where(
+                      (sig) =>
+                          (!_joinedOnly ||
+                              sig.membership == MembershipState.joined) &&
+                          '${sig.name} ${sig.category} ${sig.description}'
+                              .toLowerCase()
+                              .contains(_query),
+                    )
+                    .toList();
+                return [
+                  _body(
+                    Text(
+                      '${matches.length} ${matches.length == 1 ? 'community' : 'communities'}',
+                      key: const ValueKey('community-result-count'),
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  if (matches.isEmpty)
+                    _body(
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: EmptyView(
+                          title: data.sigs.isEmpty
+                              ? 'No communities yet'
+                              : _joinedOnly && _query.isEmpty
+                              ? 'Your study circle starts here'
+                              : 'No matches',
+                          message: data.sigs.isEmpty
+                              ? 'Create a community to start studying together.'
+                              : _query.isNotEmpty
+                              ? 'Try another name or clear your search.'
+                              : 'Explore All communities to find your first group.',
+                        ),
+                      ),
+                    ),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    sliver: SliverList.builder(
+                      itemCount: matches.length,
+                      itemBuilder: (context, index) {
+                        final sig = matches[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: CommunityDiscoveryCard(
+                            key: ValueKey('community-card-${sig.id}'),
+                            community: sig,
+                            subgroupCount: data.activeSubgroups
+                                .where((group) => group.sigId == sig.id)
+                                .length,
+                            onOpen: () => context.pushNamed(
+                              'sig-detail',
+                              pathParameters: {'sigId': sig.id},
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ];
+              },
+            ),
+            if (connected) _body(_pendingLeaveLink()),
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _body(Widget child) => SliverPadding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    sliver: SliverToBoxAdapter(child: child),
+  );
+
+  Widget _connectionNotice() {
+    final connection = ref.watch(discoveryConnectionProvider);
+    if (!connection.hasError && connection.asData?.value != false) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: tint,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              joined ? Icons.groups_outlined : Icons.auto_stories_outlined,
-              color: AppColors.primary,
-            ),
+          const Icon(Icons.cloud_off_outlined, color: AppColors.secondaryText),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text('Connection unverified. Results may be out of date.'),
           ),
-          const SizedBox(height: 16),
-          Text(sig.name, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              _Tag(label: sig.category, color: AppColors.blueAccent),
-              _Tag(
-                label: joined
-                    ? (preview ? 'Joined • Preview' : 'Joined')
-                    : 'Not joined',
-                color: tint,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(sig.description, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 12),
-          Text(
-            '$subgroupCount ${subgroupCount == 1 ? 'subgroup' : 'subgroups'}',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: AppButton(
-              label: 'Explore ${sig.name}',
-              variant: AppButtonVariant.secondary,
-              onPressed: () => context.pushNamed(
-                'sig-detail',
-                pathParameters: {'sigId': sig.id},
-              ),
-            ),
+          IconButton(
+            tooltip: 'Retry connection',
+            onPressed: () {
+              ref.invalidate(discoveryConnectionProvider);
+              ref.invalidate(communityCatalogProvider);
+            },
+            icon: const Icon(Icons.refresh),
           ),
         ],
       ),
     );
   }
+
+  Widget _pendingLeaveLink() => ref
+      .watch(pendingLeaveCountProvider)
+      .when(
+        loading: () => const SizedBox.shrink(),
+        error: (_, _) => TextButton.icon(
+          onPressed: () => ref.invalidate(pendingLeaveCountProvider),
+          icon: const Icon(Icons.sync_problem_outlined),
+          label: const Text('Could not check leave requests · Retry'),
+        ),
+        data: (count) => count == 0
+            ? const SizedBox.shrink()
+            : Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  key: const ValueKey('pending-leave-link'),
+                  onPressed: _finishingLeave ? null : _recoverLeave,
+                  icon: _finishingLeave
+                      ? const SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.info_outline),
+                  label: Text(
+                    _finishingLeave
+                        ? 'Finishing leave requests…'
+                        : 'Pending leave requests',
+                  ),
+                ),
+              ),
+      );
 }
 
-class _Tag extends StatelessWidget {
-  const _Tag({required this.label, required this.color});
-  final String label;
-  final Color color;
+class _CommunityTabs extends StatelessWidget {
+  const _CommunityTabs({required this.joinedOnly, required this.onChanged});
+  final bool joinedOnly;
+  final ValueChanged<bool> onChanged;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+  Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(
-      color: color,
-      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: AppColors.primary.withValues(alpha: .3)),
+      borderRadius: BorderRadius.circular(18),
     ),
-    child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+    child: Padding(
+      padding: const EdgeInsets.all(3),
+      child: Row(
+        children: [
+          for (final mine in [false, true])
+            Expanded(
+              child: Semantics(
+                selected: joinedOnly == mine,
+                child: TextButton(
+                  onPressed: () => onChanged(mine),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(48, 48),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 12,
+                    ),
+                    backgroundColor: joinedOnly == mine
+                        ? AppColors.softAccent
+                        : Colors.transparent,
+                    foregroundColor: joinedOnly == mine
+                        ? AppColors.primary
+                        : AppColors.secondaryText,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    mine ? 'My communities' : 'All communities',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: joinedOnly == mine
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    ),
   );
 }

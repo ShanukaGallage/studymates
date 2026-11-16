@@ -21,6 +21,51 @@ class FirestoreInvitationService implements InvitationService {
   FirestoreInvitationService({required this.study, required this.catalog});
   final FirestoreStudyRepository study;
   final Future<CommunityCatalog> Function() catalog;
+
+  Stream<List<RoomInvitation>> watchRoomInvitations(
+    String subgroup,
+    String room,
+  ) => study.db
+      .collection('roomInvites')
+      .where('subgroupId', isEqualTo: subgroup)
+      .where('roomId', isEqualTo: room)
+      .limit(50)
+      .snapshots()
+      .map(
+        (snapshot) =>
+            snapshot.docs
+                .map((doc) => RoomInvitation.fromData(doc.id, doc.data()))
+                .toList()
+              ..sort((a, b) => b.expiresAt.compareTo(a.expiresAt)),
+      );
+
+  Stream<RoomInvitation?> watchInvitation(String token) => study.db
+      .doc('roomInvites/$token')
+      .snapshots()
+      .map(
+        (doc) =>
+            doc.exists ? RoomInvitation.fromData(doc.id, doc.data()!) : null,
+      );
+
+  Future<void> revokeInvitation(String token) async {
+    if (!InvitationTokenParser.isOpaqueToken(token)) {
+      throw const StudyFailure('Invitation code is invalid.');
+    }
+    final user = study.uid;
+    final reference = study.db.doc('roomInvites/$token');
+    await study.db.runTransaction((tx) async {
+      final data = (await tx.get(reference)).data();
+      if (study.currentUid() != user) {
+        throw const StudyFailure('Account changed.');
+      }
+      if (data == null) {
+        throw const StudyFailure('Invitation no longer exists.');
+      }
+      if (data['revoked'] == true) return;
+      tx.update(reference, {'revoked': true});
+    });
+  }
+
   Future<String> issue(String subgroup, String room) async {
     const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
     final random = Random.secure();
@@ -118,7 +163,7 @@ class FirestoreInvitationService implements InvitationService {
       });
     }
     final room = preview.preview!.room;
-    for (var i = 1; i <= 6; i++) {
+    for (var i = 1; i <= room.capacity; i++) {
       final result = await study.claimSeatWithInvitation(
         subgroupId: room.subgroupId,
         roomId: room.id,
@@ -172,4 +217,24 @@ class FirestoreInvitationService implements InvitationService {
     }
     return const InvitationAdmissionResult(InvitationAdmissionStatus.fullRoom);
   }
+}
+
+class RoomInvitation {
+  const RoomInvitation({
+    required this.token,
+    required this.expiresAt,
+    required this.revoked,
+  });
+  factory RoomInvitation.fromData(String token, Map<String, dynamic> data) =>
+      RoomInvitation(
+        token: token,
+        expiresAt: time(data['expiresAt']),
+        revoked: data['revoked'] == true,
+      );
+  final String token;
+  final DateTime expiresAt;
+  final bool revoked;
+  bool get expired => !expiresAt.isAfter(DateTime.now().toUtc());
+  String get manualCode =>
+      List.generate(4, (i) => token.substring(i * 4, i * 4 + 4)).join('-');
 }

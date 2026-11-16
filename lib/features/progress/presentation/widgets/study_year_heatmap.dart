@@ -133,8 +133,8 @@ class _StudyYearHeatmapState extends State<StudyYearHeatmap> {
         .length;
     final selectedSeconds = totals[_selected] ?? 0;
     final incomplete = widget.hasMore
-        ? 'Loaded history only; older pages may add time to any day. Unfilled days are unverified.'
-        : 'All loaded history covered. Dates use local time; sessions are grouped by their end date.';
+        ? 'Partial year · Load more history for older activity.'
+        : 'All history loaded · Local dates';
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -196,9 +196,7 @@ class _StudyYearHeatmapState extends State<StudyYearHeatmap> {
             children: [Text('Jan'), Text('Dec')],
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Scroll sideways to explore the year. Rows run Monday to Sunday.',
-          ),
+          const Text('Swipe months to explore · Mon–Sun'),
           const SizedBox(height: 12),
           Scrollbar(
             controller: _scroll,

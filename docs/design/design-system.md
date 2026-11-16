@@ -1,5 +1,33 @@
 # StudyMates — UI design direction
 
+## Concise screen copy
+
+Keep the current status and next action visible. Use one short instruction where
+needed; do not repeat card values in paragraphs. Room/session controls and
+explanations live in **Room options**, **How rooms work** and **Session options**.
+Progress keeps totals once, with raw identifiers under **Session details**. Partial
+history, demo labels, errors and blocked-seat recovery remain explicit. Normal
+own-seat state does not show a blocking warning. Keep long goals readable.
+
+Use `AppDetails` for secondary content and `AppContentWidth` to cap reading width
+at 720 logical pixels. Preserve 48px targets, scrolling and system text scaling.
+The official responsive-layout skill is installed at
+`.agents/skills/flutter-build-responsive-layout/SKILL.md` for the team's Codex
+agents; it is development guidance, not an application dependency.
+
+Launch update: lavender Android launch resources (including night and API 31+)
+replace the stock launch window. The original book/two-learner emblem continues in
+`lib/app/startup_splash.dart` during real Firebase startup, with a brief fade-in
+that respects reduced motion. Do not add a timer to keep the splash on screen;
+startup errors retain the existing recovery action. No new package or raster
+asset is required.
+
+Launcher icon: `assets/branding/launcher-icon.svg` is the editable legacy artwork.
+Android uses separate purple background/vector foreground layers on API 26+,
+with a monochrome layer on API 33+ and density-specific legacy PNGs below API 26.
+The launcher label is **StudyMates**. Keep the book/two-learner emblem consistent
+with the native and Flutter splash; no launcher-icon dependency is needed.
+
 This plan extends the existing Flutter design system. Use it with
 [screens and states](screens.md), the [wireframe](studymates-wireframe.html) and the
 [current four-member ownership plan](../team/00-common-plan.md).
@@ -150,12 +178,43 @@ remain, all values are explicitly partial and unfilled dates are unverified.
 A production year-aggregate query is still needed for complete coverage without
 paging through history; no new database interface or aggregation policy is imposed.
 
-## Discover community grid
+## Discover list redesign
 
-Discover uses the user's study-group reference for rounded cards, a clear section
-heading and category/membership badges, within the lavender theme. Search combines
-with All communities / My communities filters. Actual catalog subgroup counts are
-shown. Two columns fit at 340px of content width with up to 150% text scaling;
-smaller or larger-text layouts use natural-height single-column cards. Existing
-Explore routes and membership operations are retained. No member avatars, create
-action, online badges or video labels are invented without backing data/actions.
+Discover follows the supplied single-column mockup: compact purple StudyMates
+wordmark/QR header, heading with Create, search with inline clear, equal-width
+All/My tabs, result count and bordered white full-width community cards. Card
+body and Open/Explore actions share the existing SIG details route. Names wrap
+without truncation; actions stack at narrow widths or large text sizes. Count only
+active subgroups. The green Joined label never relies on color alone.
+
+Pending leave requests appears below results only for a matching removalPending
+membership, including cleanup-completed requests awaiting finalization. Recovery
+uses the existing Spark cleanup. Sign-out is in the Profile header. The normal
+Connected strip is removed; cache/unverified or failed reads show contextual
+attention/retry states. Preview/emulator mode labels remain explicit. No package,
+permission, route, membership-write or backend-rule changes accompany this layout.
+
+17 November verification: 324 Flutter tests and analysis passed. Layout checked at
+320/390 logical pixels and 200% text scaling. On 23129RAA4G / Android 15, the final
+build was installed and visually checked with hosted data; All/My counts, no-match
+search and clear-to-restore passed. The pending-leave reader/finalization check
+passed separately against Firebase emulators on Android. No memberships were
+changed during the hosted UI check.
+
+## Inline community rooms
+
+Community details use one vertical scroll: Discover/back and community actions,
+icon/name/description, then bordered expandable subgroup cards. Only one subgroup
+is expanded. Its room list, retry/empty state and permitted creation action stay
+inside the card. Room rows show total desks, never inferred free seats; private
+labels and admission checks remain. Membership/owner actions stay in their scope.
+The community route retains expansion/scroll when a room is pushed and popped.
+Existing subgroup deep links share the same room section. Headers stack and text
+wraps at large text sizes, without a second vertical scroll surface.
+
+17 November verification: 347 Flutter tests and analysis passed; Android APK built
+and installed. Reviewed live subgroup switching and room open/back on 23129RAA4G;
+the expanded subgroup and room positions were restored. Also rendered at 320dp
+with 200% text. Creation targeting, permission gating and section error/retry were
+tested without Firebase. No hosted memberships, room creation or seat claims were
+performed during this UI check.

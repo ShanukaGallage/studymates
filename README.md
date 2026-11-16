@@ -1,5 +1,21 @@
 # StudyMates
 
+UI copy cleanup: room/session options and explanations are expandable; Progress
+shows totals once and keeps identifiers under Session details. Blocked-seat
+recovery, errors, demo labels and partial-history notices remain visible where
+relevant. The official Flutter responsive-layout agent skill is installed under
+`.agents/skills/`. The pub.dev `skills` tool was reviewed; it is not a runtime
+dependency and does not itself redesign the app.
+
+Room cycles default to **25 minutes focus + 5 minutes break**. The room and personal
+session show the shared phase countdown and whole-cycle progress. Room **Cycles
+done** counts non-demo room schedules whose full 30-minute end has passed;
+**Demo cycles done** is separate. These are elapsed room cycles, not attendance or
+personal study credit. Existing demo cycles finish as issued; the host's explicit
+demo switch defaults off for new cycles. No per-second writes or new rules are needed.
+The cycle reader loads the room's schedules, suitable for the university dataset;
+larger deployments should use an aggregate read model.
+
 Android study-community app: find your people, learn together. The assignment
 requires a **five-minute live Android demonstration**, with no report,
 presentation or formal rubric. These repository notes support development only.
@@ -29,7 +45,7 @@ an Android emulator. No Firebase configuration is needed for this milestone.
   Discover, classrooms, demo sessions, history and scanner remain independent.
 - `lib/main.dart`: Firebase-backed accounts, profiles, communities, rooms, atomic
   seating, immutable shared schedules, current-user session return, invitations
-  and private completion history. Deploy the checked-in rules/index/cleanup worker
+  and private completion history. Deploy the checked-in Firestore rules/indexes
   before production use; local implementation does not prove deployed configuration.
 - `--dart-define=STUDYMATES_EMULATOR_HOST=127.0.0.1`: explicitly labelled local
   backend with real Firebase SDK operations against shared emulator data. Debug
@@ -51,6 +67,13 @@ Profile to edit the display name or use the toolbar to sign out. Profile save is
 observed from Firestore before access is granted. Errors remain errors, never fake
 signed-out identities or sample profiles. Return navigation accepts only known
 local account destinations. No invitation-link contract is implemented yet.
+
+Profile setup and editing support optional gallery photos. Save commits a cropped
+256px JPEG thumbnail (at most 32 KiB) to the owner's private Firestore profile;
+removing it restores initials. Full-size files, EXIF/GPS and local file paths are
+not stored. This university-scale approach uses the existing Spark database,
+without Firebase Storage. Deploy the photo field rules/index exemption with the
+normal Firestore rules/indexes command in the demo runbook.
 
 Before live account verification, Poojani must confirm email/password sign-in is
 enabled and access to `users/{uid}` is restricted to its authenticated owner in
@@ -298,3 +321,111 @@ dependencies are no longer tracked. Analysis, **278 Flutter tests**, **35 backen
 tests**, membership/room/session rules and trusted cleanup emulator checks passed.
 The hosted-Firebase ARM64 debug APK built. Production deployment still requires
 Firebase CLI authentication and a project plan supporting Cloud Functions.
+
+## Room capacity and visibility
+
+Connected room creation asks for 2–40 desks and Public or Private. Public rooms
+are open to eligible subgroup members; private rooms remain discoverable with a
+lock label and ask for an invitation code before admission. Hosts/creators enter
+their own rooms directly. Previously admitted members may return. Existing rooms
+remain public with six desks. Private room codes are entered after opening the
+room, or through the existing scanner/invitation flow. Invite expiry/revocation
+blocks new admissions; membership checks continue for all seat operations.
+
+Redeploy rules before installing this update:
+
+```bash
+npm exec --yes --package firebase-tools -- firebase deploy \
+  --project studymates-dev --only firestore:rules
+```
+
+Capacity/privacy verification: analysis and **281 Flutter tests** passed. The
+expanded Android integration test passed against Firebase emulators, including
+40-desk creation, desk-40 claim, private direct-entry denial and verified-code
+admission. Rules tests cover capacity bounds, unknown/out-of-range desks, private
+seat reads, forged grants, expired/revoked/other-room invitations and token privacy.
+Membership rules and trusted cleanup regressions also passed. Hosted rules have
+not been redeployed by this task; repeat the two-phone rehearsal after deployment.
+
+## Spark-compatible membership leave
+
+Leave SIG/subgroup no longer waits for a Cloud Function. `SparkMembershipCleanup`
+ends only the current user's related participation, releases their seat and closes
+hands hosting to the longest-seated eligible learner (or closes an empty hosted room) before membership finalization. Their goal
+is recorded as unfinished; credit follows existing server-validated focus rules.
+It never edits another user's participation. SIG ownership
+transfer/closure and subgroup cascade still use M2's membership protocol.
+
+Deploy current rules, then use Discover → **Pending leave requests** to
+recover an earlier timed-out departure. This may also finish owner departures
+after their SIG has already closed. Foreground errors preserve the retry path.
+Deploy only `firestore:rules,firestore:indexes` on Spark; Functions are optional.
+
+Leave verification: analysis is clean and **283 Flutter tests** passed. Firestore
+membership/security regressions passed. On the Xiaomi 23129RAA4G (Android 15),
+the connected integration test passed against Firebase emulators, including
+subgroup departure, SIG departure, seat release, hosted-room closure and cleanup
+retry. Hosted rules still require deployment and a two-account rehearsal.
+
+## Invitation sharing and screen sleep
+
+Live room invitations offer **Share invitation** through the Android share sheet,
+including the manual code and entry instructions. Preview fixtures cannot be
+shared. The selectable code remains available if sharing fails. Sharing does not
+reserve a seat, bypass membership, or configure Android deep links.
+
+The connected session screen offers **Keep screen awake**, off by default. It
+applies only while that screen is visible and the app is foregrounded, and releases
+on departure or completion. It does not run background work or extend seat leases.
+Packages: `share_plus` and `wakelock_plus`; existing dependencies remain pinned.
+
+Verification: formatting, analysis and 286 Flutter tests passed; the normal Android
+debug APK built successfully. The native integration test passed on the Xiaomi
+23129RAA4G (Android 15): screen-awake is off initially, enables on selection and
+releases after leaving. Manually check the invitation share sheet and screen-awake
+background/resume behavior. First builds may install SDK Platform 35 and CMake
+through Gradle.
+
+## Branded launch
+
+Android launch themes use lavender in both system light/dark modes, with an
+original book-and-two-learners vector emblem and Android 12+ splash resources.
+`lib/app/startup_splash.dart` continues the branding while Firebase initializes:
+gentle entrance, tagline and loading indicator, with no artificial delay. Startup
+errors still show Retry. Preview remains Firebase-free and shares the native
+launch artwork. Narrow/landscape layouts and 200% text scaling are tested.
+
+## Automatic host handover and invitation management
+
+Rooms maintain an atomic FIFO `hostQueue`: each fresh desk claim appends its desk;
+renewals preserve order, and rejoining starts at the back. A healthy host keeps
+hosting. Seat release triggers handover to the oldest eligible seated learner.
+Logout/offline handover follows lease expiry (about two minutes), then a remaining
+foreground app checks within 30 seconds. The shared cycle/timestamps never reset.
+No server scheduler or paid Function is needed; if nobody has the app open,
+reconciliation waits for a seated learner to return. Empty rooms close on community
+departure. A newly created, unseated host has a 125-second setup grace.
+
+Existing rooms upgrade their queue when their current host opens the room or
+renews a seat. This trusted one-time upgrade sorts existing desks by server
+`claimedAt` (desk ID breaks ties). Reopen older demo rooms with their host after
+updating the app; an absent legacy host cannot be safely replaced until upgrade.
+All teammates must use this version: upgraded-room claims require atomic queue updates.
+
+Room hosts/creators have **Manage invitations**. Code issuers can revoke their own
+code from its display. A new host can revoke codes issued by the previous host.
+Revocation is irreversible, hides the live QR/share controls and prevents new
+admissions through that code. Already admitted users retain room access and seats.
+The management list is bounded to 50 codes; codes expire after 12 hours.
+
+Deploy `firestore:rules` before using this update on hosted Firebase. No indexes,
+billing changes, or Functions deployment are required. Emulator rule tests:
+`node test/room_host_invitation_rules_test.mjs`. Android integration:
+`flutter test integration_test/host_handover_test.dart -d <device-id> --dart-define=STUDYMATES_EMULATOR_HOST=127.0.0.1`.
+
+Verified against local Firebase emulators: 304 Flutter tests, clean analysis, the
+three-client Android host succession/revocation test and the existing Android
+room/session/private-capacity regression test passed. New rules tests cover queue
+ordering, healthy-host protection, expired/ineligible heads, rejoining at the tail,
+private desk 40, host setup-grace surrender and authorized revocation/listing.
+Hosted deployment and a physical multi-phone outage rehearsal remain separate.

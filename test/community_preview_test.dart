@@ -198,9 +198,12 @@ void main() {
   }
 
   Future<void> tap(WidgetTester tester, String label) async {
-    await tester.ensureVisible(find.text(label));
+    final target = label == 'Clear search'
+        ? find.byTooltip(label)
+        : find.text(label);
+    await tester.ensureVisible(target);
     await tester.pumpAndSettle();
-    await tester.tap(find.text(label));
+    await tester.tap(target);
     await tester.pumpAndSettle();
   }
 
@@ -211,7 +214,7 @@ void main() {
     expect(find.text('Create subgroup'), findsNothing);
     container.read(appRouterProvider).go('/discover');
     await tester.pumpAndSettle();
-    await tap(tester, 'Create a SIG');
+    await tap(tester, 'Create');
     final sigFields = find.descendant(
       of: find.byType(AlertDialog),
       matching: find.byType(TextFormField),
@@ -220,7 +223,12 @@ void main() {
     await tester.enterText(sigFields.at(1), 'Technology');
     await tester.enterText(sigFields.at(2), 'Study and build together.');
     await tap(tester, 'Create SIG');
-    expect(find.text('Explore Study Systems'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Study Systems'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Study Systems'), findsOneWidget);
 
     container.read(appRouterProvider).go('/sigs/preview-sig-1');
     await tester.pumpAndSettle();
@@ -233,6 +241,7 @@ void main() {
     await tester.enterText(subgroupFields.at(1), 'Compare study methods.');
     await tester.tap(find.text('Create subgroup').last);
     await tester.pumpAndSettle();
+    await tap(tester, 'Methods');
     expect(find.text('Edit Methods'), findsOneWidget);
     expect(find.text('Delete Methods'), findsOneWidget);
 
@@ -268,22 +277,17 @@ void main() {
       await tap(tester, 'Clear search');
       await tester.enterText(find.byType(AppTextField), 'IOT');
       await tester.pumpAndSettle();
-      expect(find.text('Explore Programming'), findsNothing);
-      await tap(tester, 'Explore IoT');
-      await tap(tester, 'Open ESP32');
+      expect(find.text('Programming'), findsNothing);
+      await tap(tester, 'IoT');
+      await tap(tester, 'ESP32');
       expect(
         find.text('Join IoT first to join this subgroup.'),
         findsOneWidget,
       );
-      final join = tester.widget<FilledButton>(
-        find.widgetWithText(FilledButton, 'Join subgroup'),
-      );
-      expect(join.onPressed, isNull);
-      await tap(tester, 'Back to IoT');
-      await tap(tester, 'Join SIG');
-      await tap(tester, 'Open ESP32');
+      expect(find.text('Join subgroup'), findsNothing);
+      await tap(tester, 'Join community');
       await tap(tester, 'Join subgroup');
-      await tap(tester, 'Preview First Sensor Project');
+      await tap(tester, 'First Sensor Project');
       expect(find.text('Room scene preview'), findsOneWidget);
       expect(
         find.text(
@@ -302,13 +306,21 @@ void main() {
         1,
       );
       await tap(tester, 'Back to ESP32');
-      await tap(tester, 'Back to IoT');
-      await tap(tester, 'Leave SIG');
+      tester
+          .state<ScrollableState>(find.byType(Scrollable).first)
+          .position
+          .jumpTo(0);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byTooltip('Community actions'));
+      await tester.tap(find.byTooltip('Community actions'));
+      await tester.pumpAndSettle();
+      await tap(tester, 'Leave community');
       await tap(tester, 'Cancel');
-      expect(find.text('You joined this SIG in preview.'), findsOneWidget);
-      await tap(tester, 'Leave SIG');
+      expect(find.text('Joined'), findsWidgets);
+      await tester.tap(find.byTooltip('Community actions'));
+      await tester.pumpAndSettle();
+      await tap(tester, 'Leave community');
       await tap(tester, 'Leave');
-      await tap(tester, 'Open ESP32');
       expect(
         find.text('Join IoT first to join this subgroup.'),
         findsOneWidget,
@@ -322,7 +334,7 @@ void main() {
   ) async {
     final container = await mount(tester, path: '/subgroups/flutter');
     expect(find.text('Flutter'), findsOneWidget);
-    await tap(tester, 'Preview My First Flutter Screen');
+    await tap(tester, 'My First Flutter Screen');
     await tap(tester, 'Profile');
     await tap(tester, 'Discover');
     expect(find.text('My First Flutter Screen'), findsOneWidget);
@@ -357,7 +369,7 @@ void main() {
       findsOneWidget,
     );
     await tap(tester, 'Retry');
-    expect(find.text('Explore IoT'), findsOneWidget);
+    expect(find.text('IoT'), findsOneWidget);
     container.read(appRouterProvider).go('/subgroups/esp32');
     await tester.pumpAndSettle();
     expect(find.text('Rooms are unavailable. Try again.'), findsOneWidget);
@@ -374,7 +386,7 @@ void main() {
         .read(previewScenarioProvider.notifier)
         .select(PreviewScenario.sample);
     await tester.pumpAndSettle();
-    expect(find.text('Explore IoT'), findsOneWidget);
+    expect(find.text('IoT'), findsOneWidget);
   });
 
   testWidgets(

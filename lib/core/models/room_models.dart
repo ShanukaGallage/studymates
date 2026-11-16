@@ -10,10 +10,16 @@ final class RoomSnapshot {
     required this.createdBy,
     required this.hostUid,
     required this.status,
+    this.capacity = 6,
+    this.isPrivate = false,
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : createdAt = createdAt.toUtc(),
-       updatedAt = updatedAt.toUtc();
+       updatedAt = updatedAt.toUtc() {
+    if (capacity < 2 || capacity > 40) {
+      throw ArgumentError.value(capacity, 'capacity', 'Must be 2–40');
+    }
+  }
 
   final String roomId;
   final String subgroupId;
@@ -21,6 +27,8 @@ final class RoomSnapshot {
   final String createdBy;
   final String hostUid;
   final RoomStatus status;
+  final int capacity;
+  final bool isPrivate;
   final DateTime createdAt;
   final DateTime updatedAt;
 }
@@ -64,13 +72,16 @@ final class SeatState {
   }
 }
 
-List<SeatState> validateSeatCollection(Iterable<SeatState> seats) {
+List<SeatState> validateSeatCollection(
+  Iterable<SeatState> seats, {
+  int capacity = 6,
+}) {
   final validatedSeats = List<SeatState>.unmodifiable(seats);
-  if (validatedSeats.length != 6) {
+  if (capacity < 2 || capacity > 40 || validatedSeats.length != capacity) {
     throw ArgumentError.value(
       validatedSeats.length,
       'seats',
-      'A room must have exactly six seats.',
+      'A room must have exactly its configured capacity (2–40 seats).',
     );
   }
 

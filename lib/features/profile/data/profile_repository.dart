@@ -12,15 +12,26 @@ abstract interface class ProfileRepository {
     required String displayName,
     String avatarId = UserProfile.defaultAvatarId,
     List<String> interestIds = const [],
+    String? institution,
+    String? programme,
+    String? yearOfStudy,
+    String? bio,
+    ProfilePhoto? photo,
   });
 
   /// Replaces the signed-in user's editable profile fields.
+  /// Empty/null optional values clear the saved value.
   ///
   /// Fails with [ProfileRepositoryError.profileNotFound] if no profile exists.
   Future<UserProfile> updateCurrentProfile({
     required String displayName,
     String avatarId = UserProfile.defaultAvatarId,
     List<String> interestIds = const [],
+    String? institution,
+    String? programme,
+    String? yearOfStudy,
+    String? bio,
+    ProfilePhoto? photo,
   });
 }
 

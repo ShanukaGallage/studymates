@@ -91,7 +91,13 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Retry'));
       await tester.pumpAndSettle();
-      expect(find.text('Eligible recorded time: 1h 5m'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('progress-total-time')),
+          matching: find.text('1h 5m'),
+        ),
+        findsOneWidget,
+      );
     },
   );
 
@@ -130,8 +136,20 @@ void main() {
     'paging preserves summary and separates demo from normal records',
     (tester) async {
       await open(tester, ProgressHistoryFixtureRepository());
-      expect(find.text('Eligible recorded time: 1h 5m'), findsOneWidget);
-      expect(find.text('Completed sessions: 2'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('progress-total-time')),
+          matching: find.text('1h 5m'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('progress-total-count')),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Goal: Unfinished'), findsOneWidget);
       expect(find.text('Build a working sensor sketch'), findsOneWidget);
       expect(find.text('Recorded time: 20m'), findsOneWidget);
@@ -147,7 +165,13 @@ void main() {
       expect(find.text('Demo history · rehearsal only'), findsOneWidget);
       expect(find.text('Recorded time: 1m 15s'), findsOneWidget);
       expect(find.text('Session: session-1'), findsNothing);
-      expect(find.text('Eligible recorded time: 1h 5m'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('progress-total-time')),
+          matching: find.text('1h 5m'),
+        ),
+        findsOneWidget,
+      );
     },
   );
 
@@ -163,7 +187,13 @@ void main() {
       find.textContaining('Your loaded records and summary'),
       findsOneWidget,
     );
-    expect(find.text('Completed sessions: 2'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('progress-total-count')),
+        matching: find.text('2'),
+      ),
+      findsOneWidget,
+    );
     await tapVisible(tester, 'Retry loading more');
     expect(find.textContaining('Could not load more history'), findsNothing);
     expect(find.text('Timer: Ended early'), findsOneWidget);
@@ -176,9 +206,21 @@ void main() {
         scenario: ProgressHistoryScenario.errorOnce,
       ),
     );
-    expect(find.text('Eligible recorded time: 0m'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('progress-total-time')),
+        matching: find.text('0m'),
+      ),
+      findsNothing,
+    );
     await tapVisible(tester, 'Retry');
-    expect(find.text('Eligible recorded time: 1h 5m'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('progress-total-time')),
+        matching: find.text('1h 5m'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
@@ -190,7 +232,13 @@ void main() {
           scenario: ProgressHistoryScenario.empty,
         ),
       );
-      expect(find.text('Eligible recorded time: 0m'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('progress-total-time')),
+          matching: find.text('0m'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('No recorded sessions yet.'), findsOneWidget);
       await tapVisible(tester, 'Demo history');
       expect(find.text('No demo records.'), findsOneWidget);
@@ -242,8 +290,20 @@ void main() {
       await tapVisible(tester, 'Load more history');
       expect(find.text(progressLongGoalText), findsOneWidget);
       expect(find.text('Build a working sensor sketch'), findsNothing);
-      expect(find.text('Eligible recorded time: 1h 5m'), findsOneWidget);
-      expect(find.text('Completed sessions: 2'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('progress-total-time')),
+          matching: find.text('1h 5m'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('progress-total-count')),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
     },
   );
 
@@ -265,10 +325,19 @@ void main() {
         expect(find.text('Timer: Cancelled'), findsOneWidget);
         expect(find.text('Recorded time: ${sample.value}'), findsOneWidget);
         expect(
-          find.text('Eligible recorded time: ${sample.value}'),
+          find.descendant(
+            of: find.byKey(const ValueKey('progress-total-time')),
+            matching: find.text(sample.value),
+          ),
           findsOneWidget,
         );
-        expect(find.text('Completed sessions: 0'), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('progress-total-count')),
+            matching: find.text('0'),
+          ),
+          findsOneWidget,
+        );
         expect(find.text('Read the assigned chapter'), findsOneWidget);
       },
     );
@@ -293,8 +362,20 @@ void main() {
       expect(find.text(progressLongGoalText), findsOneWidget);
       await tapVisible(tester, 'Load more history');
       expect(tester.takeException(), isNull);
-      expect(find.text('Eligible recorded time: 1h 5m'), findsOneWidget);
-      expect(find.text('Completed sessions: 2'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('progress-total-time')),
+          matching: find.text('1h 5m'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('progress-total-count')),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
       await tapVisible(tester, 'Demo history');
       await tester.ensureVisible(find.text('Recorded time: 1m 15s'));
       await tester.pumpAndSettle();

@@ -81,10 +81,7 @@ void main() {
       );
       await tester.tap(find.text('Week'));
       expect(selected, ProgressPeriod.week);
-      expect(
-        find.textContaining('Older pages are not included yet.'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Loaded history only'), findsOneWidget);
       await tester.ensureVisible(find.text('Completed goals: 1'));
       await tester.pumpAndSettle();
       expect(find.text('Completed goals: 1'), findsOneWidget);

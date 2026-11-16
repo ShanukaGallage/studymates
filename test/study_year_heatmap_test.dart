@@ -72,7 +72,7 @@ void main() {
         ),
       );
       expect(find.textContaining('1 active days · 1h 0m 0s'), findsOneWidget);
-      expect(find.textContaining('older pages may add time'), findsOneWidget);
+      expect(find.textContaining('Partial year'), findsOneWidget);
       await tester.ensureVisible(find.text('Inspect a study day'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Inspect a study day'));

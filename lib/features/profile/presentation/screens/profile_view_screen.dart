@@ -111,13 +111,31 @@ class _ProfileDetails extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Center(child: AvatarBadge(name: profile.displayName)),
+        Center(
+          child: AvatarBadge(
+            name: profile.displayName,
+            photo: profile.photo,
+            size: 80,
+          ),
+        ),
         const SizedBox(height: AppSpacing.lg),
         Text(
           profile.displayName,
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.titleLarge,
         ),
+        for (final detail in [
+          ('University or school', profile.institution),
+          ('Degree or programme', profile.programme),
+          ('Year of study', profile.yearOfStudy),
+          ('About', profile.bio),
+        ])
+          if (detail.$2?.trim().isNotEmpty ?? false) ...[
+            const SizedBox(height: AppSpacing.lg),
+            Text(detail.$1, style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: AppSpacing.xs),
+            Text(detail.$2!),
+          ],
         if (profile.interestIds.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.xl),
           Text('Interests', style: Theme.of(context).textTheme.titleMedium),

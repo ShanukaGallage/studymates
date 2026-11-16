@@ -127,7 +127,9 @@ class ProgressActivity extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Filters apply to loaded activity and history. Week starts Monday; dates use local time.${hasMore ? ' Older pages are not included yet.' : ''}',
+          hasMore
+              ? 'Loaded history only · Load more for older activity.'
+              : 'All history loaded',
           style: Theme.of(context).textTheme.bodySmall,
         ),
         const SizedBox(height: 20),
@@ -137,9 +139,7 @@ class ProgressActivity extends StatelessWidget {
             children: [
               Text('Study time', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 4),
-              const Text(
-                'Last 7 calendar days · loaded records in selected period',
-              ),
+              const Text('Last 7 days · Selected period'),
               const SizedBox(height: 20),
               if (largest == 0)
                 const Padding(
@@ -229,9 +229,6 @@ class ProgressActivity extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Values shown in minutes; credited seconds are retained.',
-              ),
             ],
           ),
         ),
@@ -279,9 +276,6 @@ class ProgressActivity extends StatelessWidget {
               if (filtered.isEmpty)
                 const Text('No goal outcomes in this period.'),
               const SizedBox(height: 8),
-              const Text(
-                'Goal outcome is separate from timer completion and credited time.',
-              ),
             ],
           ),
         ),

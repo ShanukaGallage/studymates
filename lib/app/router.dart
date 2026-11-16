@@ -159,7 +159,10 @@ GoRouter createAppRouter({
       ],
       GoRoute(path: '/', redirect: (context, state) => '/home'),
       StatefulShellRoute.indexedStack(
-        builder: (context, state, shell) => AppShell(navigationShell: shell),
+        builder: (context, state, shell) => AppShell(
+          navigationShell: shell,
+          showToolbar: !state.uri.path.startsWith('/sigs/'),
+        ),
         branches: [
           for (final tab in const [
             (

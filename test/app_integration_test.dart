@@ -226,7 +226,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Progress').last);
     await tester.pumpAndSettle();
-    expect(find.text('Eligible recorded time: 1h 5m'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('progress-total-time')),
+        matching: find.text('1h 5m'),
+      ),
+      findsOneWidget,
+    );
     await tester.tap(find.byTooltip('Scanner preview'));
     await tester.pumpAndSettle();
     expect(
@@ -238,6 +244,12 @@ void main() {
     expect(find.byType(NavigationBar).hitTestable(), findsNothing);
     await tester.tap(find.byTooltip('Back to preview'));
     await tester.pumpAndSettle();
-    expect(find.text('Eligible recorded time: 1h 5m'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('progress-total-time')),
+        matching: find.text('1h 5m'),
+      ),
+      findsOneWidget,
+    );
   });
 }

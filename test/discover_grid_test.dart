@@ -27,8 +27,11 @@ void main() {
           .read(communityCatalogProvider.notifier)
           .setSigMembership('iot', MembershipState.joined);
       await tester.pumpAndSettle();
-      expect(find.text('Explore IoT'), findsOneWidget);
-      expect(find.text('Explore Programming'), findsNothing);
+      expect(find.byKey(const ValueKey('community-card-iot')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('community-card-programming')),
+        findsNothing,
+      );
       await tester.ensureVisible(find.byType(TextField));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'Programming');
@@ -38,8 +41,11 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('All communities'));
       await tester.pumpAndSettle();
-      expect(find.text('Explore Programming'), findsOneWidget);
-      expect(find.text('Explore IoT'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('community-card-programming')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('community-card-iot')), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );

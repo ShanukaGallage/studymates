@@ -1,5 +1,29 @@
 # StudyMates contracts — preview and backend agreements
 
+## Optional profile details (17 November 2026)
+
+`UserProfile` still requires only UID and display name. The existing `interestIds`
+list holds editable study-interest tags; `institution`, `programme`, `yearOfStudy`
+and `bio` are nullable strings. Missing fields in older documents load as unset.
+Setup accepts a name alone, institution and interests; Edit Profile also exposes
+programme, Year 1–5/Postgraduate/Other and a short bio. Repository updates replace
+editable values; empty optional text becomes an explicit Firestore null so it
+clears a previously saved value. Other document fields are preserved.
+
+`users/{uid}` remains owner-only under the existing rules. Public seat projections
+still contain only name/avatar; no education, bio or email is exposed there.
+`avatarId` remains a preset identifier for room seats. Optional `photoBase64` holds
+only a processed JPEG avatar: 256px square, at most 32 KiB (43,692 base64 chars),
+with EXIF/GPS removed. This small private thumbnail uses the existing Spark
+Firestore profile; it is not a full-resolution media store or a public photo URL.
+The field is excluded from indexes. Rules retain owner-only access and bound the
+field's type/length. Add/change/remove is committed with Save profile/Save changes;
+picker cancellation leaves the draft photo untouched. Legacy or unreadable photos
+fall back to initials. The gallery picker needs no broad Android storage access.
+Photo rules/index exemption deployed to `studymates-dev` on 17 November 2026.
+Verification: 339 Flutter tests, clean analysis and a physical Android Firebase
+emulator test for persistence, removal, legacy loading and owner/size restrictions.
+
 ## Current connected implementation (16 November 2026)
 
 Reconciliation checkpoint: the connected implementation is now merged with PRs
@@ -35,10 +59,11 @@ unexpired seat. No automatic re-claim or schedule reset. A finalized user cannot
 rejoin the same cycle. History pages and complete summary remain independent.
 See [demo runbook](demo-runbook.md) for the conservative credit policy and limits.
 
-The trusted cleanup worker acknowledges M2 removalPending requests, releases the
-related seat, ends participation at zero credit and transfers host or closes rooms.
-It requires deployment and collection-group hostUid indexing. Client rules cannot
-acknowledge cleanup. Local emulator tests cover its retries and host transfer.
+Spark membership departure uses authenticated self-cleanup: finish related
+participation, release the user's seat, close hosted rooms and acknowledge the
+matching pending request. See the Spark departure contract below. The optional
+Admin cleanup worker retains its separate host-transfer behavior and tests;
+it is not required or deployed on Spark.
 
 ## Earlier agreements and implementation history
 
@@ -475,3 +500,76 @@ Next handoffs before connected room UI:
 `InvitationPreview`, result statuses and `InvitationService` already exist in
 `features/invites/data/invitation_service.dart`. They are contracts with fixtures,
 not a deployed lookup/admission backend. Scanner capture alone grants no admission.
+
+## Configurable rooms and private admission
+
+Connected creation accepts `capacity` (integer 2–40, default 6) and `isPrivate`
+(default false). Both are immutable after creation. Existing documents without
+these fields remain six-desk public rooms. Seats use stable `seat-1` through
+`seat-{capacity}` IDs. The shared claim policy and room scene consume capacity;
+preview fixtures stay six desks. Capacity and privacy are carried by RoomSnapshot
+and RoomSummary; other feature repository interfaces remain compatible.
+
+Public rooms retain SIG/subgroup eligibility checks. Private room metadata stays
+discoverable with a lock indicator, but seats require a verified admission or room
+creator/host identity. Opening a private tile/direct route prompts for an invitation
+code unless already admitted. Codes must match that exact room and subgroup and
+be unexpired/unrevoked. Code verification first creates the private room-access grant, allowing seat
+reads. The following seat claim rechecks the token inside its transaction and uses
+the same atomic claim path as public seating. Full/conflicting rooms never return
+admitted without a confirmed seat. Host/creator may issue private-room invitations.
+
+A private `users/{uid}/roomAccess/{roomId}` grant retains the original invitation
+proof for that account, so returning does not require retyping a code. Tokens are
+never copied into readable seat/claim projections. Only the account can read its
+grant; rules validate its token on creation and forbid client mutation. Once
+admitted, invitation expiry/revocation prevents new admissions, not existing grants.
+Membership remains mandatory for every future seat claim and renewal. Metadata
+visibility does not grant seat access or permission to start participation.
+
+Deploy the updated Firestore rules before using these options on hosted Firebase.
+These features use Firestore transactions and rules and do not require Blaze.
+
+## Spark membership departure
+
+The connected CommunityRepository supplies `completeOwnCleanup(requestId)` through
+`SparkMembershipCleanup`. It runs after M2 creates/resumes removalPending and before
+observing completion/finalizing. Only the authenticated user's records are touched.
+Related participation is saved as goal unfinished, its seat is released, and rooms
+the user hosts within the SIG/subgroup transfer to the oldest eligible seated learner, or close if empty. The account acknowledges only its
+exact pending request with a server timestamp; rules require no active participation
+or active claim and unchanged request ownership/scope. Another account cannot
+acknowledge it. Parent ownership transfer/closure and subgroup membership cascade
+remain M2 responsibilities. Room handover uses the ordered-queue protocol below.
+
+Retrying SIG leave does not require the SIG to remain visible in the active catalog:
+owner departure may already have closed it. Discover's pending-leave recovery
+retries cleanup and idempotent finalization after response loss or app restart.
+An unrelated active seat/session blocks acknowledgement until the user ends it.
+Self-service acknowledgement/host-handover permissions must be deployed in rules
+before this version is installed; the optional Admin worker remains compatible.
+
+## Room host queue and invitation revocation (Spark)
+
+`subgroups/{sg}/rooms/{room}` adds `hostQueue: List<seatId>` and `hostReleased: bool`.
+Fresh claims atomically remove that desk's former position and append it; renewals
+cannot reorder. Rules couple append to a fresh paired seat claim. Explicit release
+removes the desk and records host departure. Reclaiming a stale desk gets a new
+queue position. A host may yield setup grace only without a live claim in that room.
+
+`RoomHostCoordinator.maintainRoomHost` retries transactions against that queue.
+Only the confirmed oldest unexpired seat with a matching room/claim and active
+SIG/subgroup membership can succeed an unavailable host. Invalid queue heads are
+pruned individually under rules. Concurrent checks reread the room; no client can
+nominate a newer occupant or reset the running session. Foreground seated clients
+check immediately and after the existing 30-second renewal tick. Host absence uses
+the claim lease, with 125 seconds of setup grace for a newly created unseated host.
+Legacy rooms are initialized once by their existing host from server claim times;
+new clients must upgrade old rooms before expecting absent-host recovery.
+
+`FirestoreInvitationService` adds bounded room invitation observation, single-code
+observation and idempotent revocation. List access is restricted to the issuer or
+eligible room host/creator. Only issuer or eligible current host/creator may set
+`revoked: true`; token metadata/expiry cannot be changed and unrevocation is denied.
+Revocation invalidates future uses of the token, including a preview opened before
+revocation. Existing `roomAccess` grants/seat holders are intentionally retained.

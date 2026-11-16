@@ -1,20 +1,43 @@
+import 'profile_photo.dart';
+
+export 'profile_photo.dart';
+
 enum MembershipState { notJoined, joined }
 
 enum SubgroupStatus { active, closed }
 
 class UserProfile {
   static const defaultAvatarId = 'default';
+  static const studyYears = [
+    'Year 1',
+    'Year 2',
+    'Year 3',
+    'Year 4',
+    'Year 5',
+    'Postgraduate',
+    'Other',
+  ];
 
   UserProfile({
     required this.id,
     required this.displayName,
     this.avatarId = defaultAvatarId,
     List<String> interestIds = const [],
+    this.institution,
+    this.programme,
+    this.yearOfStudy,
+    this.bio,
+    this.photo,
   }) : interestIds = List.unmodifiable(interestIds);
   final String id;
   final String displayName;
   final String avatarId;
   final List<String> interestIds;
+  final String? institution;
+  final String? programme;
+  final String? yearOfStudy;
+  final String? bio;
+  final ProfilePhoto? photo;
 }
 
 class SigSummary {
@@ -103,10 +126,14 @@ class RoomSummary {
     required this.title,
     required this.occupiedSeats,
     this.capacity = 6,
+    this.isPrivate = false,
+    this.occupancyKnown = true,
   }) : assert(occupiedSeats >= 0 && occupiedSeats <= capacity);
   final String id, subgroupId, title;
   final int occupiedSeats, capacity;
-  bool get isFull => occupiedSeats >= capacity;
+  final bool isPrivate;
+  final bool occupancyKnown;
+  bool get isFull => occupancyKnown && occupiedSeats >= capacity;
 }
 
 enum RepositoryError {

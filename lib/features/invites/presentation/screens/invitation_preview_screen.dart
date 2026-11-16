@@ -177,7 +177,9 @@ class _InvitationPreviewScreenState
           Text('Study group: ${preview.sig.name}'),
           Text('Subgroup: ${preview.subgroup.name}'),
           Text(
-            'Preview occupancy: ${preview.room.occupiedSeats} of ${preview.room.capacity} seats',
+            preview.room.occupancyKnown
+                ? 'Preview occupancy: ${preview.room.occupiedSeats} of ${preview.room.capacity} seats'
+                : 'Private room · ${preview.room.capacity} desks. Availability is checked when you join.',
           ),
           const Text(
             'A preview is not a reservation. Membership and capacity are checked when you join.',

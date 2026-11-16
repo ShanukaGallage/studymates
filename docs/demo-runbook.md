@@ -1,5 +1,17 @@
 # Tomorrow's five-minute Android demo
 
+If taking a desk reports already seated, use the room's reserved-seat recovery
+panel. Open the prior room or explicitly release the reserved desk. If an unfinished
+session is shown, Return to unfinished session → End and save participation first,
+then release its desk. Finishing a timer or navigating to another room does not
+automatically release a reservation. The one-seat-per-account rule stays enforced.
+
+Normal room cycles default to 25-minute focus + 5-minute break. For the short live
+rehearsal, the host must deliberately enable **60-second demo cycle** before starting
+a new cycle. The room shows the shared current countdown, normal cycles done and
+separate demo cycles done. Existing cycles keep their original duration. After a
+cycle ends, save participation before joining the next host-started cycle.
+
 Use account mode (`lib/main.dart`) for connected features. `main_preview.dart`
 remains a separate, labelled in-memory UI preview. Local backend mode is also
 explicitly labelled and uses Firebase emulators, never production accounts/data.
@@ -34,35 +46,35 @@ flutter test integration_test/connected_study_test.dart -d DEVICE_ID \
 The Android integration test creates two independent test identities only in the
 emulators and uses real Firebase SDK transactions. It must never target production.
 
-## Production prerequisites
+## Hosted Firebase on Spark (no billing upgrade)
 
-The checked-in rules, index and trusted cleanup function must be reviewed and
-published to `studymates-dev` before treating account mode as a verified live demo.
-No client should bypass rules or set test security settings in the console.
-Deployment requires Firebase CLI login, suitable project permissions and a project
-plan supporting Cloud Functions. Do not silently change the billing plan.
+The connected app performs room/session operations and membership self-cleanup
+with Firestore transactions and rules. Cloud Functions are optional and must not
+be included in Spark deployment. Use the existing `studymates-dev` project.
 
 ```bash
-npm ci --prefix functions
-npm test --prefix functions
+npm exec --yes --package firebase-tools -- firebase login
 npm exec --yes --package firebase-tools -- firebase deploy \
-  --project studymates-dev --only firestore:rules,firestore:indexes,functions:cleanupMembership
+  --project studymates-dev --only firestore:rules,firestore:indexes
 flutter run -t lib/main.dart
 ```
 
-The Firebase CLI had no authorized accounts during this implementation, so
-production deployment was not performed. Run `firebase login` (or the equivalent
-`npm exec --package firebase-tools -- firebase login`) on your own machine first.
+Leave SIG/subgroup ends the current user's related session as goal unfinished,
+releases their seat, transfers hosting to the oldest eligible occupant (or closes empty hosted rooms), acknowledges their own
+pending request and finalizes membership removal. It never edits another user's
+seat or goal. Other participants can save their own participation and release
+their seats; a closed room cannot start/admit another session. SIG ownership still
+transfers or the SIG closes according to M2's existing protocol. Room host handover runs through the ordered seating queue on Spark.
 
-The cleanup worker is required for SIG/subgroup leave: it releases the departed
-user's seat, ends their participation with zero credit, transfers room hosting to
-an eligible seated member or closes the room, then acknowledges M2's leave request.
-Normal users cannot mark that trusted work complete. Function retries are idempotent.
+For a request that timed out in the old version, deploy the updated rules and
+open Discover → Pending leave requests. Interrupted cleanup is retryable.
+If a seat/session in another community is still active, finish/release it first.
 
 ## Five-minute sequence
 
 1. Use two accounts. Host creates a community and subgroup; both join.
-2. Host creates a room; both open it and claim different seats. Both phones must
+2. In Discover, open the community and expand a subgroup. Its Study rooms section
+   lets the host create a room; both open it and claim different seats. Both phones must
    show the same occupancy. A second claim on an occupied seat must fail safely.
 3. Set personal goals. Host starts the labelled 45s focus / 15s break demo;
    guest joins the same schedule. Explain that late joins do not receive earlier time.
@@ -133,8 +145,35 @@ npm exec --yes --package firebase-tools -- firebase projects:list
 ```
 
 Confirm Email/Password Authentication and the default Firestore database in the
-console. Deploy the rules/indexes and cleanup function with the command above.
-Cloud Functions requires Blaze; the project owner must approve linking billing.
+console. Deploy the rules/indexes only with the command above.
+Cloud Functions requires Blaze and is optional; keep Spark and deploy Firestore only.
 Do not run `firebase init` over this existing configuration. Run `lib/main.dart`
 without the emulator define after successful deployment. Local emulator test users
 are separate from hosted Firebase users.
+
+## Capacity/private-room check
+
+Create a 40-desk public room and confirm the last desk is reachable. Create a
+two-desk private room. The second member should see a lock label and invitation
+prompt when opening its tile or direct route. A wrong/expired/revoked/other-room
+code must fail; a host-issued code grants room access and the atomic seating operation confirms
+one seat before returning admitted. Both
+phones then see the same two desks. All membership requirements still apply.
+Previously admitted users can return without retyping the invitation. Redeploy
+Firestore rules for this update; no new Function or billing plan is needed.
+
+## Host handover and revoked-code rehearsal
+
+Deploy the new Firestore rules and install the same updated APK on both phones.
+For an existing room, first open it with its current host to initialize the queue.
+Have A host and claim a desk, then B sit, then C if available. Releasing A's desk
+passes hosting to B; releasing B's passes it to C. Rejoining places A last. The
+shared cycle continues unchanged. For a power-off/logout test, allow the old host's
+lease to expire (~2 minutes) and another foreground client's next 30-second check.
+A new room gives an unseated creator 125 seconds of setup grace. No app open means
+no client reconciliation until a seated learner returns; there is no paid scheduler.
+
+Open **Manage invitations**, issue/share a code, then revoke it. A previously
+opened preview must fail admission after revocation. Confirm existing learners
+keep their seats/access. A successor host must also be able to revoke an earlier
+host's code. New codes and revocations require confirmed backend success.
