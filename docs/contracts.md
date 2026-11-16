@@ -294,6 +294,42 @@ completion.
 breakTime or completed, with explicit invalid-timestamp results. It does not
 start a live session, synchronize devices or write completion records.
 
+## Active session contract and preview fixture
+
+`ActiveRoomSession` in `lib/core/models/active_room_session.dart` carries the
+current user's session schedule and derives participation as `valid` only from a
+verified, matching occupied seat whose lease expiry is later than the supplied
+UTC time. Missing, unverified, mismatched or expired seat evidence requires
+revalidation. The constructor normalizes schedule timestamps to UTC and uses
+`calculateSessionTiming` to reject invalid boundary order.
+
+M1 can watch the current-account state through
+`currentUserActiveSessionProvider` from
+`lib/features/sessions/data/active_session_providers.dart`:
+
+```dart
+final activeSession = ref.watch(currentUserActiveSessionProvider);
+return activeSession.when(
+  loading: () => const LoadingView(),
+  error: (error, stackTrace) => const SessionUnavailableView(),
+  data: (session) {
+    if (session == null) return const NoActiveSessionView();
+    if (session.participationStatus == ParticipationStatus.requiresRevalidation) {
+      return const RevalidatingSessionView();
+    }
+    return ActiveSessionView(session: session);
+  },
+);
+```
+
+`null` is confirmed absence; loading is a Riverpod state and errors mean the
+lookup failed. The UID-keyed provider cancels/rebinds on account changes and
+filters events whose session user does not match the current UID. The explicit
+`activeSessionRepositoryProvider` has no default implementation. The
+`FixtureActiveSessionRepository` in `lib/preview/active_session_fixtures.dart`
+is test/preview-only. This milestone does not implement persistence, live
+synchronization or app-restart restoration.
+
 ## App integration
 
 The normal entry point initializes Firebase before auth/profile consumers mount.
@@ -314,7 +350,7 @@ this does not imply live observation or transactional seat operations exist.
 ## Later contracts — not implemented
 
 Community creation/owner edits, live room/seat operations,
-SessionSnapshot, Participation, completion finalization/history adapter and
+session persistence and cross-device observation, completion finalization/history adapter and
 production invitation lookup/admission remain future work. Aradhana (M3) owns live seat claims, timing,
 completion writes and invitation services; Sandali (M4) consumes completion
 history and invitation lookup/admission.
