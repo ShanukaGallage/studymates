@@ -315,7 +315,7 @@ this does not imply live observation or transactional seat operations exist.
 
 Community creation/owner edits, live room/seat operations,
 SessionSnapshot, Participation, completion finalization/history adapter and
-InvitationPreview remain future work. Aradhana (M3) owns live seat claims, timing,
+production invitation lookup/admission remain future work. Aradhana (M3) owns live seat claims, timing,
 completion writes and invitation services; Sandali (M4) consumes completion
 history and invitation lookup/admission.
 See the [current four-member plan](team/00-common-plan.md) for ownership and gates.
@@ -343,3 +343,24 @@ time is elapsed fixture time, not eligible credit. M3 must supply authoritative
 session timestamps, admission/connection state and finalization results before
 live integration. Production retry must use M3's idempotent finalization; the
 preview's delayed summary callback only demonstrates pending/failure/retry UI.
+
+## Room repository integration checkpoint
+
+GitHub main's PR #19 adds `LiveRoomRepository` in
+`features/rooms/data/room_repository.dart`: create/list/get room snapshots and
+watch room lists, a room and its seats. `liveRoomRepositoryProvider` deliberately
+has no default implementation. `FixtureLiveRoomRepository` is in-memory only;
+merging it does not enable live rooms in account mode.
+
+Next handoffs before connected room UI:
+- Poojani: production current-user/membership verification and deployed access rules.
+- Aradhana: backend binding for room streams, atomic claim/release, one-seat enforcement
+  and lease handling. Confirm every stream subscriber receives an initial snapshot.
+- Shanuka: map authoritative room/seat states into the existing scene after those
+  operations are available; preserve the labelled local preview.
+- Session integration follows authoritative timing and idempotent completion writes;
+  Sandali then connects saved history.
+
+`InvitationPreview`, result statuses and `InvitationService` already exist in
+`features/invites/data/invitation_service.dart`. They are contracts with fixtures,
+not a deployed lookup/admission backend. Scanner capture alone grants no admission.
