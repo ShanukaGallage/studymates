@@ -163,6 +163,7 @@ void main() {
       await tester.tap(find.text('Create account').first);
       await tester.pump();
 
+      expect(find.text('Enter your display name.'), findsOneWidget);
       expect(find.text('Enter your email address.'), findsOneWidget);
       expect(find.text('Create a password.'), findsOneWidget);
       expect(find.text('Confirm your password.'), findsOneWidget);
@@ -269,6 +270,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repository.actions, contains('create-account'));
+      expect(repository.lastDisplayName, 'Learner');
       expect(repository.lastEmail, 'learner@example.com');
       expect(repository.lastPassword, 'secret1');
       expect(created, isTrue);
@@ -400,9 +402,10 @@ Future<void> _enterSignUp(
   required String password,
   required String confirmation,
 }) async {
-  await tester.enterText(find.byType(TextFormField).at(0), email);
-  await tester.enterText(find.byType(TextFormField).at(1), password);
-  await tester.enterText(find.byType(TextFormField).at(2), confirmation);
+  await tester.enterText(find.byType(TextFormField).at(0), 'Learner');
+  await tester.enterText(find.byType(TextFormField).at(1), email);
+  await tester.enterText(find.byType(TextFormField).at(2), password);
+  await tester.enterText(find.byType(TextFormField).at(3), confirmation);
 }
 
 class _FakeAuthRepository implements AuthRepository {
@@ -411,6 +414,7 @@ class _FakeAuthRepository implements AuthRepository {
   final actions = <String>[];
   String? lastEmail;
   String? lastPassword;
+  String? lastDisplayName;
 
   @override
   Stream<AuthState> watchAuthState() =>
@@ -432,7 +436,11 @@ class _FakeAuthRepository implements AuthRepository {
   Future<void> createAccount({
     required String email,
     required String password,
-  }) => _record('create-account', email: email, password: password);
+    required String displayName,
+  }) async {
+    lastDisplayName = displayName;
+    await _record('create-account', email: email, password: password);
+  }
 
   @override
   Future<void> signIn({required String email, required String password}) =>

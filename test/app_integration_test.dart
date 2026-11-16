@@ -84,6 +84,7 @@ void main() {
       await tester.tap(find.text('Create an account'));
       await tester.pumpAndSettle();
       expect(find.text('Create your account'), findsOneWidget);
+      await tester.ensureVisible(find.text('Sign in'));
       await tester.tap(find.text('Sign in'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Forgot password?'));

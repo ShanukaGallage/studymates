@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../app/app_mode.dart';
+import '../core/models/community_models.dart';
 import '../features/communities/presentation/controllers/community_providers.dart';
 import '../features/rooms/data/room_providers.dart';
 import 'preview_repositories.dart';
@@ -51,10 +52,18 @@ class PreviewScope extends StatelessWidget {
           scenario: ref.watch(previewScenarioProvider),
         ),
       ),
-      roomRepositoryProvider.overrideWith(
-        (ref) =>
-            MemoryRoomRepository(scenario: ref.watch(previewScenarioProvider)),
-      ),
+      roomRepositoryProvider.overrideWith((ref) {
+        final communityRepository = ref.watch(communityRepositoryProvider);
+        return MemoryRoomRepository(
+          scenario: ref.watch(previewScenarioProvider),
+          isSubgroupActive: (subgroupId) async {
+            final subgroup = (await communityRepository.loadCatalog()).subgroup(
+              subgroupId,
+            );
+            return subgroup?.status == SubgroupStatus.active;
+          },
+        );
+      }),
     ],
     child: child,
   );

@@ -6,9 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/auth_repository.dart';
 import '../../data/firebase_auth_repository.dart';
 import '../../domain/auth_state.dart';
+import '../../../profile/data/firestore_profile_repository.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => FirebaseAuthRepository(FirebaseAuth.instance),
+  (ref) => FirebaseAuthRepository(
+    FirebaseAuthIdentityClient(FirebaseAuth.instance),
+    ref.watch(profileRepositoryProvider),
+  ),
 );
 
 final authStateProvider = NotifierProvider<AuthStateController, AuthState>(
@@ -29,10 +33,15 @@ class AuthStateController extends Notifier<AuthState> {
   Future<void> createAccount({
     required String email,
     required String password,
+    required String displayName,
   }) => _run(
     () => ref
         .read(authRepositoryProvider)
-        .createAccount(email: email, password: password),
+        .createAccount(
+          email: email,
+          password: password,
+          displayName: displayName,
+        ),
   );
 
   Future<void> signIn({required String email, required String password}) =>

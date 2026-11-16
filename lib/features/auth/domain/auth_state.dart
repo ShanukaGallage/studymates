@@ -49,22 +49,16 @@ class AuthState {
          errorCode: errorCode,
        );
 
-  /// Maps the currently available Firebase Auth identity fields.
-  ///
-  /// These statuses describe the Auth identity only. App routing uses
-  /// accountAccessProvider to verify the matching persisted Firestore profile;
-  /// a non-empty Auth display name alone does not grant application access.
-  factory AuthState.fromIdentity({String? userId, String? displayName}) {
-    final stableId = userId?.trim();
-    if (stableId == null || stableId.isEmpty) {
-      return const AuthState.signedOut();
-    }
-
+  /// Resolves readiness from persisted profile data, never Auth metadata alone.
+  factory AuthState.fromPersistedProfile({
+    required String userId,
+    String? displayName,
+  }) {
+    final stableId = userId.trim();
     final name = displayName?.trim();
-    if (name == null || name.isEmpty) {
+    if (stableId.isEmpty || name == null || name.isEmpty) {
       return AuthState.incompleteProfile(userId: stableId);
     }
-
     return AuthState.ready(userId: stableId, displayName: name);
   }
 

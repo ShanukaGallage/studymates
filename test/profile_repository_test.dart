@@ -8,12 +8,15 @@ void main() {
   group('FirestoreProfileRepository', () {
     late _FakeProfileDocumentStore store;
     late FirestoreProfileRepository repository;
+    final syncedDisplayNames = <String>[];
 
     setUp(() {
       store = _FakeProfileDocumentStore();
+      syncedDisplayNames.clear();
       repository = FirestoreProfileRepository(
         documentStore: store,
         currentUserId: () => 'firebase-uid-1',
+        updateAuthDisplayName: (name) async => syncedDisplayNames.add(name),
       );
     });
 
@@ -120,6 +123,21 @@ void main() {
       expect(updated.avatarId, 'amber');
       expect(updated.interestIds, ['design']);
       expect(store.documents['firebase-uid-1']!['displayName'], 'After');
+      expect(syncedDisplayNames, ['Before', 'After']);
+    });
+
+    test('profile data remains readable after repository recreation', () async {
+      await repository.createCurrentProfile(displayName: 'Persisted learner');
+      final restartedRepository = FirestoreProfileRepository(
+        documentStore: store,
+        currentUserId: () => 'firebase-uid-1',
+        updateAuthDisplayName: (_) async {},
+      );
+
+      final restored = await restartedRepository.getCurrentProfile();
+
+      expect(restored?.id, 'firebase-uid-1');
+      expect(restored?.displayName, 'Persisted learner');
     });
 
     test('fails when updating a profile that does not exist', () async {

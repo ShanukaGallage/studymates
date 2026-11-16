@@ -10,7 +10,7 @@ import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../../app/app_mode.dart';
 import '../../../study/data/firestore_study_repository.dart';
-import '../../../study/presentation/study_dialogs.dart';
+import '../widgets/community_management_dialogs.dart';
 import '../controllers/community_providers.dart';
 import '../../data/spark_membership_cleanup.dart';
 import '../widgets/catalog_view.dart';
@@ -126,29 +126,13 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
             },
           ),
           const SizedBox(height: 8),
-          AppButton(
-            label: 'Create community',
-            variant: AppButtonVariant.secondary,
-            onPressed: () async {
-              final name = await studyTitleDialog(context, 'Create community');
-              if (name == null || !context.mounted) return;
-              try {
-                await ref.read(studyRepositoryProvider).createCommunity(name);
-                ref.invalidate(communityCatalogProvider);
-              } catch (_) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Community creation failed. Check your connection and retry.',
-                      ),
-                    ),
-                  );
-                }
-              }
-            },
-          ),
         ],
+        const SizedBox(height: 12),
+        AppButton(
+          label: 'Create a SIG',
+          variant: AppButtonVariant.secondary,
+          onPressed: () => showCreateSigDialog(context),
+        ),
         const SizedBox(height: 24),
         AppTextField(
           label: 'Search communities',

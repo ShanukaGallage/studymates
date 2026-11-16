@@ -70,6 +70,92 @@ void main() {
   });
 
   test(
+    'preview owner can create, edit and close locally created communities',
+    () async {
+      final repo = MemoryCommunityRepository();
+      final afterCreate = await repo.createSig(
+        name: '  Study Systems ',
+        category: 'Technology',
+        description: 'Read and build together.',
+      );
+      final sig = afterCreate.sigs.last;
+      expect(sig.ownerId, afterCreate.profile.id);
+      final created = await repo.createSubgroup(
+        sigId: sig.id,
+        name: 'Methods',
+        description: 'Compare study methods.',
+      );
+      final subgroup = created.subgroups.last;
+      final edited = await repo.updateSubgroup(
+        sigId: sig.id,
+        subgroupId: subgroup.id,
+        name: 'Updated methods',
+        description: 'A revised description.',
+      );
+      expect(edited.subgroup(subgroup.id)!.name, 'Updated methods');
+      final joined = await repo.setSubgroupMembership(
+        subgroup.id,
+        MembershipState.joined,
+      );
+      expect(joined.subgroup(subgroup.id)!.membership, MembershipState.joined);
+      final deleted = await repo.deleteSubgroup(
+        sigId: sig.id,
+        subgroupId: subgroup.id,
+      );
+      expect(deleted.subgroup(subgroup.id)?.status, SubgroupStatus.closed);
+      expect(deleted.subgroup(subgroup.id)?.membership, MembershipState.joined);
+      expect(
+        deleted.activeSubgroups.map((group) => group.id),
+        isNot(contains(subgroup.id)),
+      );
+    },
+  );
+
+  test('closed subgroups cannot be rejoined or expose their rooms', () async {
+    final communityRepository = MemoryCommunityRepository();
+    final sigs = await communityRepository.createSig(
+      name: 'Study Systems',
+      category: 'Technology',
+      description: 'Study together.',
+    );
+    final sig = sigs.sigs.last;
+    final groups = await communityRepository.createSubgroup(
+      sigId: sig.id,
+      name: 'Methods',
+      description: 'Compare study methods.',
+    );
+    final subgroup = groups.subgroups.last;
+    await communityRepository.setSubgroupMembership(
+      subgroup.id,
+      MembershipState.joined,
+    );
+    await communityRepository.deleteSubgroup(
+      sigId: sig.id,
+      subgroupId: subgroup.id,
+    );
+
+    await expectLater(
+      communityRepository.setSubgroupMembership(
+        subgroup.id,
+        MembershipState.joined,
+      ),
+      throwsA(
+        isA<RepositoryException>().having(
+          (error) => error.code,
+          'code',
+          RepositoryError.notFound,
+        ),
+      ),
+    );
+
+    final roomRepository = MemoryRoomRepository(
+      isSubgroupActive: (id) async => id != 'esp32',
+    );
+    expect(await roomRepository.listRooms('esp32'), isEmpty);
+    expect(await roomRepository.getRoom('first-sensor'), isNull);
+  });
+
+  test(
     'room fixtures are filtered, immutable and have empty/full examples',
     () async {
       final repo = MemoryRoomRepository();
@@ -117,6 +203,65 @@ void main() {
     await tester.tap(find.text(label));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('owner forms create SIGs and manage subgroups', (tester) async {
+    final container = await mount(tester);
+    container.read(appRouterProvider).go('/sigs/iot');
+    await tester.pumpAndSettle();
+    expect(find.text('Create subgroup'), findsNothing);
+    container.read(appRouterProvider).go('/discover');
+    await tester.pumpAndSettle();
+    await tap(tester, 'Create a SIG');
+    final sigFields = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byType(TextFormField),
+    );
+    await tester.enterText(sigFields.at(0), 'Study Systems');
+    await tester.enterText(sigFields.at(1), 'Technology');
+    await tester.enterText(sigFields.at(2), 'Study and build together.');
+    await tap(tester, 'Create SIG');
+    await tester.scrollUntilVisible(
+      find.text('Explore Study Systems'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Explore Study Systems'), findsOneWidget);
+
+    container.read(appRouterProvider).go('/sigs/preview-sig-1');
+    await tester.pumpAndSettle();
+    await tap(tester, 'Create subgroup');
+    final subgroupFields = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byType(TextFormField),
+    );
+    await tester.enterText(subgroupFields.at(0), 'Methods');
+    await tester.enterText(subgroupFields.at(1), 'Compare study methods.');
+    await tester.tap(find.text('Create subgroup').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Edit Methods'), findsOneWidget);
+    expect(find.text('Delete Methods'), findsOneWidget);
+
+    await tap(tester, 'Edit Methods');
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'Learning methods',
+    );
+    await tap(tester, 'Save changes');
+    expect(find.text('Learning methods'), findsOneWidget);
+
+    await tap(tester, 'Delete Learning methods');
+    await tap(tester, 'Delete');
+    expect(find.text('No subgroups yet'), findsOneWidget);
+    final closedGroup = container
+        .read(communityCatalogProvider)
+        .requireValue
+        .subgroup('preview-subgroup-2');
+    expect(closedGroup?.status, SubgroupStatus.closed);
+    container.read(appRouterProvider).go('/subgroups/preview-subgroup-2');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('This subgroup is closed.'), findsOneWidget);
+    expect(find.text('Study rooms'), findsNothing);
+  });
 
   testWidgets(
     'search, join hierarchy, open room, return and leave consistently',

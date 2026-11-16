@@ -20,6 +20,7 @@ class SignUpScreen extends ConsumerStatefulWidget {
 class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
+  final _displayName = TextEditingController();
   final _password = TextEditingController();
   final _confirmPassword = TextEditingController();
   bool _isSubmitting = false;
@@ -28,6 +29,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   @override
   void dispose() {
     _email.dispose();
+    _displayName.dispose();
     _password.dispose();
     _confirmPassword.dispose();
     super.dispose();
@@ -42,7 +44,11 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     try {
       await ref
           .read(authStateProvider.notifier)
-          .createAccount(email: _email.text.trim(), password: _password.text);
+          .createAccount(
+            email: _email.text.trim(),
+            password: _password.text,
+            displayName: _displayName.text.trim(),
+          );
       if (mounted) widget.onAccountCreated?.call();
     } catch (_) {
       if (mounted) {
@@ -80,6 +86,15 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                     'Join StudyMates and find a community to learn with.',
                   ),
                   const SizedBox(height: AppSpacing.xl),
+                  AppTextField(
+                    label: 'Display name',
+                    controller: _displayName,
+                    textInputAction: TextInputAction.next,
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Enter your display name.'
+                        : null,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
                   AppTextField(
                     label: 'Email',
                     controller: _email,

@@ -673,6 +673,21 @@ void main() {
 
 class _CleanupCatalogStore implements CommunityCatalogDocumentStore {
   @override
+  Future<void> createSig(Map<String, dynamic> data) async {}
+
+  @override
+  Future<void> createSubgroup(Map<String, dynamic> data) async {}
+
+  @override
+  Future<void> updateSubgroup(
+    String subgroupId,
+    Map<String, dynamic> data,
+  ) async {}
+
+  @override
+  Future<void> closeSubgroup(String subgroupId) async {}
+
+  @override
   Future<List<CommunityCatalogDocument>> loadSigs() async => [
     const CommunityCatalogDocument(
       id: 'sig-a',

@@ -181,6 +181,148 @@ void main() {
     expect(catalog.subgroups, isEmpty);
   });
 
+  test('creates a SIG owned by the authenticated user', () async {
+    final catalog = await repository.createSig(
+      name: '  Robotics  ',
+      category: '  Engineering ',
+      description: ' Build together ',
+    );
+    final created = catalog.sigs.last;
+    expect(created.name, 'Robotics');
+    expect(created.category, 'Engineering');
+    expect(created.ownerId, 'user-a');
+    expect(catalogStore.sigs.last.data['ownerId'], 'user-a');
+    expect(catalogStore.sigs.last.data['membershipRevision'], 0);
+  });
+
+  test(
+    'rejects invalid SIG data and creation without authentication',
+    () async {
+      await expectLater(
+        repository.createSig(name: ' ', category: 'Tech', description: 'About'),
+        throwsA(
+          isA<RepositoryException>().having(
+            (error) => error.code,
+            'code',
+            RepositoryError.invalidData,
+          ),
+        ),
+      );
+      final signedOut = _repository(currentUserId: () => null);
+      await expectLater(
+        signedOut.createSig(
+          name: 'Robotics',
+          category: 'Tech',
+          description: 'About',
+        ),
+        throwsA(isA<MembershipRepositoryException>()),
+      );
+    },
+  );
+
+  test('creates a subgroup only for the authenticated SIG owner', () async {
+    catalogStore.sigs.add(
+      _doc('owned', {
+        'name': 'Owned SIG',
+        'category': 'Tech',
+        'description': 'Owned',
+        'ownerId': 'user-a',
+        'status': 'active',
+      }),
+    );
+    final catalog = await repository.createSubgroup(
+      sigId: 'owned',
+      name: ' Embedded ',
+      description: ' Firmware projects ',
+    );
+    final subgroup = catalog.subgroups.last;
+    expect(subgroup.sigId, 'owned');
+    expect(subgroup.name, 'Embedded');
+    expect(subgroup.description, 'Firmware projects');
+    expect(catalogStore.subgroups.last.data['sigId'], 'owned');
+  });
+
+  test('denies non-owner subgroup creation and wrong-parent edits', () async {
+    catalogStore.sigs.add(
+      _doc('owned', {
+        'name': 'Owned SIG',
+        'category': 'Tech',
+        'description': 'Owned',
+        'ownerId': 'user-a',
+        'status': 'active',
+      }),
+    );
+    catalogStore.sigs.add(
+      _doc('other', {
+        'name': 'Other SIG',
+        'category': 'Tech',
+        'description': 'Not owned',
+        'ownerId': 'someone-else',
+        'status': 'active',
+      }),
+    );
+    await expectLater(
+      repository.createSubgroup(
+        sigId: 'other',
+        name: 'Nope',
+        description: 'Denied',
+      ),
+      throwsA(
+        isA<RepositoryException>().having(
+          (error) => error.code,
+          'code',
+          RepositoryError.permissionDenied,
+        ),
+      ),
+    );
+    await expectLater(
+      repository.updateSubgroup(
+        sigId: 'owned',
+        subgroupId: 'esp32',
+        name: 'Moved',
+        description: 'Wrong parent',
+      ),
+      throwsA(isA<RepositoryException>()),
+    );
+    expect(catalogStore.subgroups.first.data['name'], 'ESP32');
+  });
+
+  test(
+    'owner can edit then close a subgroup without deleting its record',
+    () async {
+      catalogStore.sigs.add(
+        _doc('owned', {
+          'name': 'Owned SIG',
+          'category': 'Tech',
+          'description': 'Owned',
+          'ownerId': 'user-a',
+          'status': 'active',
+        }),
+      );
+      catalogStore.subgroups.add(
+        _doc('group-a', {
+          'sigId': 'owned',
+          'name': 'Old name',
+          'description': 'Old description',
+          'status': 'active',
+        }),
+      );
+      await repository.updateSubgroup(
+        sigId: 'owned',
+        subgroupId: 'group-a',
+        name: 'New name',
+        description: 'New description',
+      );
+      expect(catalogStore.subgroups.last.data['name'], 'New name');
+      final catalog = await repository.deleteSubgroup(
+        sigId: 'owned',
+        subgroupId: 'group-a',
+      );
+      expect(catalog.subgroup('group-a'), isNull);
+      expect(catalogStore.subgroups.last.data['status'], 'closed');
+    },
+  );
+
   test('controller provider exposes loading state while loading', () async {
     final completer = Completer<CommunityCatalog>();
     final container = ProviderContainer(
@@ -263,6 +405,7 @@ class _CatalogStore implements CommunityCatalogDocumentStore {
   List<CommunityCatalogDocument> sigs = [];
   List<CommunityCatalogDocument> subgroups = [];
   int sigLoads = 0;
+  int _nextId = 0;
 
   @override
   Future<List<CommunityCatalogDocument>> loadSigs() async {
@@ -272,6 +415,32 @@ class _CatalogStore implements CommunityCatalogDocumentStore {
 
   @override
   Future<List<CommunityCatalogDocument>> loadSubgroups() async => subgroups;
+
+  @override
+  Future<void> createSig(Map<String, dynamic> data) async {
+    sigs.add(_doc('new-sig-${_nextId++}', Map.of(data)));
+  }
+
+  @override
+  Future<void> createSubgroup(Map<String, dynamic> data) async {
+    subgroups.add(_doc('new-subgroup-${_nextId++}', Map.of(data)));
+  }
+
+  @override
+  Future<void> updateSubgroup(
+    String subgroupId,
+    Map<String, dynamic> data,
+  ) async {
+    final index = subgroups.indexWhere((document) => document.id == subgroupId);
+    if (index < 0) {
+      throw FirebaseException(plugin: 'cloud_firestore', code: 'not-found');
+    }
+    subgroups[index] = _doc(subgroupId, {...subgroups[index].data, ...data});
+  }
+
+  @override
+  Future<void> closeSubgroup(String subgroupId) =>
+      updateSubgroup(subgroupId, {'status': 'closed'});
 }
 
 class _FakeMembershipRepository implements MembershipRepository {
@@ -387,6 +556,34 @@ class _FakeCommunityRepository implements CommunityRepository {
 
   @override
   Future<CommunityCatalog> loadCatalog() => load();
+
+  @override
+  Future<CommunityCatalog> createSig({
+    required String name,
+    required String category,
+    required String description,
+  }) => load();
+
+  @override
+  Future<CommunityCatalog> createSubgroup({
+    required String sigId,
+    required String name,
+    required String description,
+  }) => load();
+
+  @override
+  Future<CommunityCatalog> updateSubgroup({
+    required String sigId,
+    required String subgroupId,
+    required String name,
+    required String description,
+  }) => load();
+
+  @override
+  Future<CommunityCatalog> deleteSubgroup({
+    required String sigId,
+    required String subgroupId,
+  }) => load();
 
   @override
   Future<CommunityCatalog> setSigMembership(String id, MembershipState value) =>
