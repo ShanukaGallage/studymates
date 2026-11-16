@@ -76,29 +76,32 @@ void main() {
     );
   });
 
-  test('only confirmed unexpired matching seat lease is valid participation', () {
-    expect(makeSession().participationStatus, ParticipationStatus.valid);
-    expect(
-      makeSession(verified: false).participationStatus,
-      ParticipationStatus.requiresRevalidation,
-    );
-    expect(
-      makeSession(
-        seat: SeatState(
-          seatId: 'seat-1',
-          status: SeatStatus.occupied,
-          userId: 'user-a',
-          claimedAt: nowUtc.subtract(const Duration(minutes: 2)),
-          leaseExpiresAt: nowUtc,
-        ),
-      ).participationStatus,
-      ParticipationStatus.requiresRevalidation,
-    );
-    expect(
-      makeSession(
-        seat: SeatState(seatId: 'seat-1', status: SeatStatus.available),
-      ).participationStatus,
-      ParticipationStatus.requiresRevalidation,
-    );
-  });
+  test(
+    'only confirmed unexpired matching seat lease is valid participation',
+    () {
+      expect(makeSession().participationStatus, ParticipationStatus.valid);
+      expect(
+        makeSession(verified: false).participationStatus,
+        ParticipationStatus.requiresRevalidation,
+      );
+      expect(
+        makeSession(
+          seat: SeatState(
+            seatId: 'seat-1',
+            status: SeatStatus.occupied,
+            userId: 'user-a',
+            claimedAt: nowUtc.subtract(const Duration(minutes: 2)),
+            leaseExpiresAt: nowUtc,
+          ),
+        ).participationStatus,
+        ParticipationStatus.requiresRevalidation,
+      );
+      expect(
+        makeSession(
+          seat: SeatState(seatId: 'seat-1', status: SeatStatus.available),
+        ).participationStatus,
+        ParticipationStatus.requiresRevalidation,
+      );
+    },
+  );
 }

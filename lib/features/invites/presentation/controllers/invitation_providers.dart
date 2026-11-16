@@ -1,10 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/invitation_service.dart';
+import '../../../study/data/firestore_invitation_service.dart';
 import '../../data/invitation_token.dart';
 
 final invitationServiceProvider = Provider<InvitationService>(
-  (ref) => throw StateError('No invitation service configured.'),
+  (ref) => ref.watch(firestoreInvitationServiceProvider),
 );
 
 final invitationPreviewProvider = FutureProvider.autoDispose

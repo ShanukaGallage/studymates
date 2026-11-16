@@ -20,7 +20,8 @@
   in lib/preview. Four tabs: Home, Discover, Progress, Profile.
 - Keep preview explicitly labelled. Normal mode initializes Firebase for accounts
   and profiles; app access uses authenticated UID plus the matching Firestore profile.
-  Study features there remain unconnected. Never substitute fixtures on backend failure.
+  Connected study services require deployed rules/indexes/cleanup worker. Never
+  substitute fixtures on backend failure.
 - Keep feature presentation separate from data repositories. Shared domain models
   belong in lib/core/models only when needed by consumers. Agree contracts with
   M2/M3 before implementation; do not add speculative empty classes.
@@ -29,9 +30,11 @@
   exclude demo sessions from normal progress. No database operations in widgets.
 - The current preview implements community discovery/local membership, a six-seat
   room presentation and local goals. Selection is never a server reservation.
-  Auth/profile screens are integrated in account mode. Progress fixtures and QR/manual
-  capture are integrated in preview only. Live room/session services, invitation
-  admission, community persistence and history persistence remain later work.
+  Connected mode binds features/study/data/FirestoreStudyRepository for live rooms,
+  seats, sessions and history, with FirestoreInvitationService for admission. The
+  alternative FirestoreLiveRoomRepository remains unbound; its claim is unavailable.
+  Keep shared room/seat models and all existing M2/M3 interfaces consistent.
+  Shanuka is authorized to cover M3 implementation while Aradhana is travelling.
   No chat, AI, voice/video or game engine expansion.
 - Run formatting, analysis and relevant independent tests; report unavailable
   Android runtime checks honestly. Never commit secrets or weaken access rules.

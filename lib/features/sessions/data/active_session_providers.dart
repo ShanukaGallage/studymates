@@ -4,9 +4,10 @@ import '../../../core/models/active_room_session.dart';
 import '../../auth/domain/auth_state.dart';
 import '../../auth/presentation/controllers/auth_providers.dart';
 import 'active_session_repository.dart';
+import '../../study/data/firestore_study_repository.dart';
 
 final activeSessionRepositoryProvider = Provider<ActiveSessionRepository>(
-  (ref) => throw StateError('No active session repository configured.'),
+  (ref) => ref.watch(studyRepositoryProvider),
 );
 
 /// Session state scoped to the authenticated account.
@@ -33,15 +34,13 @@ final currentUserActiveSessionProvider =
     });
 
 final _activeSessionForUserProvider = StreamProvider.autoDispose
-    .family<ActiveRoomSession?, String>(
-      (ref, userId) {
-        final authenticatedUserId = ref.watch(
-          authStateProvider.select((identity) => identity.userId),
-        );
-        if (authenticatedUserId != userId) return const Stream.empty();
-        return ref
-            .watch(activeSessionRepositoryProvider)
-            .watchCurrentUserActiveSession()
-            .where((session) => session == null || session.userId == userId);
-      },
-    );
+    .family<ActiveRoomSession?, String>((ref, userId) {
+      final authenticatedUserId = ref.watch(
+        authStateProvider.select((identity) => identity.userId),
+      );
+      if (authenticatedUserId != userId) return const Stream.empty();
+      return ref
+          .watch(activeSessionRepositoryProvider)
+          .watchCurrentUserActiveSession()
+          .where((session) => session == null || session.userId == userId);
+    });

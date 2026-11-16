@@ -49,15 +49,15 @@ void main() {
     test('switching accounts prevents old-user updates from leaking', () async {
       final events = <ActiveRoomSession?>[];
       final reachedOtherUser = Completer<void>();
-      final subscription = repository
-          .watchCurrentUserActiveSession()
-          .listen((session) {
-            events.add(session);
-            if (session?.userId == 'preview-user-2' &&
-                !reachedOtherUser.isCompleted) {
-              reachedOtherUser.complete();
-            }
-          });
+      final subscription = repository.watchCurrentUserActiveSession().listen((
+        session,
+      ) {
+        events.add(session);
+        if (session?.userId == 'preview-user-2' &&
+            !reachedOtherUser.isCompleted) {
+          reachedOtherUser.complete();
+        }
+      });
       addTearDown(subscription.cancel);
 
       await Future<void>.delayed(Duration.zero);

@@ -17,6 +17,13 @@ import '../features/profile/presentation/screens/profile_view_screen.dart';
 import '../features/progress/presentation/screens/progress_history_screen.dart';
 import '../features/invites/presentation/screens/invite_scanner_screen.dart';
 import '../preview/scanner_preview_screen.dart';
+import '../features/home/presentation/screens/home_screen.dart';
+import '../features/study/presentation/live_room_screen.dart';
+import '../features/study/presentation/live_session_screen.dart';
+import '../features/invites/presentation/screens/invitation_preview_screen.dart';
+import '../features/invites/data/invitation_token.dart';
+import '../features/communities/data/firestore_membership_repository.dart';
+import '../features/communities/presentation/controllers/community_providers.dart';
 import 'account_access.dart';
 import 'account_screens.dart';
 import 'app_mode.dart';
@@ -66,6 +73,35 @@ GoRouter createAppRouter({
         : null,
     routes: [
       if (mode == AppMode.connected) ...[
+        GoRoute(path: '/session', builder: (_, _) => const LiveSessionScreen()),
+        GoRoute(
+          path: '/scan',
+          builder: (context, _) => InviteScannerScreen(
+            routeObserver: scannerObserver,
+            parseQr: InvitationTokenParser.parseQr,
+            parseManual: InvitationTokenParser.parseManual,
+            onCancel: () => context.go('/discover'),
+            onResult: (token) => context.go('/invitation/$token'),
+          ),
+        ),
+        GoRoute(
+          path: '/invitation/:token',
+          builder: (context, state) => Consumer(
+            builder: (context, ref, _) => InvitationPreviewScreen(
+              opaqueToken: state.pathParameters['token']!,
+              onAdmitted: (preview) => context.go('/rooms/${preview.room.id}'),
+              onRequestMembership: (preview) async {
+                final membership = ref.read(membershipRepositoryProvider);
+                await membership.joinSig(sigId: preview.sig.id);
+                await membership.joinSubgroup(
+                  sigId: preview.sig.id,
+                  subgroupId: preview.subgroup.id,
+                );
+                ref.invalidate(communityCatalogProvider);
+              },
+            ),
+          ),
+        ),
         GoRoute(
           path: '/account-status',
           builder: (_, _) => const AccountStatusScreen(),
@@ -154,9 +190,11 @@ GoRouter createAppRouter({
                   name: tab.$1,
                   pageBuilder: (context, state) => _tabPage(
                     state,
-                    mode == AppMode.preview && tab.$1 == 'discover'
+                    mode != AppMode.foundation && tab.$1 == 'home'
+                        ? HomeScreen(mode: mode)
+                        : mode != AppMode.foundation && tab.$1 == 'discover'
                         ? const DiscoverScreen()
-                        : mode == AppMode.preview && tab.$1 == 'progress'
+                        : mode != AppMode.foundation && tab.$1 == 'progress'
                         ? const ProgressHistoryScreen()
                         : mode == AppMode.connected && tab.$1 == 'profile'
                         ? ProfileViewScreen(
@@ -171,7 +209,7 @@ GoRouter createAppRouter({
                           ),
                   ),
                 ),
-                if (mode == AppMode.preview && tab.$1 == 'discover') ...[
+                if (mode != AppMode.foundation && tab.$1 == 'discover') ...[
                   GoRoute(
                     path: '/sigs/:sigId',
                     name: 'sig-detail',
@@ -195,7 +233,11 @@ GoRouter createAppRouter({
                     name: 'room-preview',
                     pageBuilder: (context, state) => _tabPage(
                       state,
-                      RoomPreviewScreen(id: state.pathParameters['roomId']!),
+                      mode == AppMode.preview
+                          ? RoomPreviewScreen(
+                              id: state.pathParameters['roomId']!,
+                            )
+                          : LiveRoomScreen(id: state.pathParameters['roomId']!),
                     ),
                   ),
                 ],
