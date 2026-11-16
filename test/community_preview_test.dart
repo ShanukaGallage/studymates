@@ -6,10 +6,32 @@ import 'package:studymates/app/app.dart';
 import 'package:studymates/app/router.dart';
 import 'package:studymates/core/models/community_models.dart';
 import 'package:studymates/core/widgets/app_text_field.dart';
+import 'package:studymates/features/communities/presentation/controllers/community_providers.dart';
 import 'package:studymates/preview/preview_repositories.dart';
 import 'package:studymates/preview/preview_scope.dart';
 
 void main() {
+  testWidgets('PreviewScope continues to bind MemoryCommunityRepository', (
+    tester,
+  ) async {
+    late ProviderContainer container;
+    await tester.pumpWidget(
+      PreviewScope(
+        child: Builder(
+          builder: (context) {
+            container = ProviderScope.containerOf(context);
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+
+    expect(
+      container.read(communityRepositoryProvider),
+      isA<MemoryCommunityRepository>(),
+    );
+  });
+
   test('membership requires parent, is idempotent, and leaving parent clears children', () async {
     final repo = MemoryCommunityRepository();
     await expectLater(
