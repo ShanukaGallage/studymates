@@ -112,6 +112,99 @@ void main() {
       );
     });
 
+    test('room eligibility requires active SIG and subgroup membership and matching parent', () async {
+      final transaction = _DummyFirestoreTransaction();
+      store.documents['sigs/sig-a/members/user-a'] = _member('user-a');
+      store.documents['subgroups/group-a/members/user-a'] = _member(
+        'user-a',
+        sigId: 'sig-a',
+      );
+
+      Future<MembershipCheckResult> verify() =>
+          repository.verifyRoomEligibilityInTransaction(
+            transaction: transaction,
+            sigId: 'sig-a',
+            subgroupId: 'group-a',
+          );
+
+      expect(await verify(), MembershipCheckResult.member);
+
+      store.documents.remove('sigs/sig-a/members/user-a');
+      expect(await verify(), MembershipCheckResult.nonMember);
+      store.documents['sigs/sig-a/members/user-a'] = _member(
+        'user-a',
+        status: 'removalPending',
+      );
+      expect(await verify(), MembershipCheckResult.nonMember);
+      store.documents['sigs/sig-a/members/user-a'] = _member('user-a');
+
+      store.documents['subgroups/group-a']!['sigId'] = 'another-sig';
+      expect(await verify(), MembershipCheckResult.nonMember);
+      store.documents['subgroups/group-a']!['sigId'] = 'sig-a';
+      store.documents['subgroups/group-a']!['status'] = 'closed';
+      expect(await verify(), MembershipCheckResult.nonMember);
+      store.documents['subgroups/group-a']!['status'] = 'active';
+
+      store.documents.remove('subgroups/group-a/members/user-a');
+      expect(await verify(), MembershipCheckResult.nonMember);
+      store.documents['subgroups/group-a/members/user-a'] = _member(
+        'user-a',
+        sigId: 'sig-a',
+        status: 'removalPending',
+      );
+      expect(await verify(), MembershipCheckResult.nonMember);
+    });
+
+    test(
+      'SIG owner still needs active subgroup membership for room eligibility',
+      () async {
+        final transaction = _DummyFirestoreTransaction();
+        store.documents['sigs/sig-a']!['ownerId'] = 'user-a';
+        store.documents['subgroups/group-a/members/user-a'] = _member(
+          'user-a',
+          sigId: 'sig-a',
+        );
+
+        expect(
+          await repository.verifyRoomEligibilityInTransaction(
+            transaction: transaction,
+            sigId: 'sig-a',
+            subgroupId: 'group-a',
+          ),
+          MembershipCheckResult.member,
+        );
+
+        store.documents.remove('subgroups/group-a/members/user-a');
+        expect(
+          await repository.verifyRoomEligibilityInTransaction(
+            transaction: transaction,
+            sigId: 'sig-a',
+            subgroupId: 'group-a',
+          ),
+          MembershipCheckResult.nonMember,
+        );
+      },
+    );
+
+    test(
+      'unavailable transaction membership reads fail room eligibility closed',
+      () async {
+        store.transactionFailure = FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'unavailable',
+        );
+
+        expect(
+          await repository.verifyRoomEligibilityInTransaction(
+            transaction: _DummyFirestoreTransaction(),
+            sigId: 'sig-a',
+            subgroupId: 'group-a',
+          ),
+          MembershipCheckResult.unavailable,
+        );
+      },
+    );
+
     test('signed-out caller is denied without a Firestore read', () async {
       currentUid = null;
 
@@ -629,6 +722,7 @@ class _FakeMembershipStore implements MembershipDocumentStore {
   final watchPaths = <String>[];
   final _watchers = <String, List<StreamController<Map<String, dynamic>?>>>{};
   Object? failure;
+  Object? transactionFailure;
   Transaction? lastSuppliedTransaction;
   void Function()? onEarliestActiveSigMember;
   var _requestId = 0;
@@ -694,6 +788,7 @@ class _FakeMembershipStore implements MembershipDocumentStore {
   ) async {
     lastSuppliedTransaction = transaction;
     transactionReadPaths.add(path);
+    if (transactionFailure case final error?) throw error;
     final value = documents[path];
     return value == null ? null : Map.of(value);
   }
