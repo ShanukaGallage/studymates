@@ -7,7 +7,7 @@ import 'package:studymates/preview/live_room_repository_fixture.dart';
 const _subgroupToSig = {'subgroup-a': 'sig-a', 'subgroup-b': 'sig-b'};
 
 FixtureLiveRoomRepository _repository({
-  bool member = true,
+  FixtureMembershipCheckResult membership = FixtureMembershipCheckResult.member,
   String userId = 'user-1',
   DateTime Function()? clock,
   Iterable<({RoomSnapshot room, Iterable<SeatState> seats})> initialRooms =
@@ -15,7 +15,9 @@ FixtureLiveRoomRepository _repository({
 }) => FixtureLiveRoomRepository(
   subgroupSigIds: _subgroupToSig,
   verifyMembership: ({required sigId, required subgroupId}) async =>
-      member && _subgroupToSig[subgroupId] == sigId,
+      _subgroupToSig[subgroupId] == sigId
+      ? membership
+      : FixtureMembershipCheckResult.nonMember,
   currentUserId: () => userId,
   clock: clock,
   initialRooms: initialRooms,
@@ -231,7 +233,9 @@ void main() {
     });
 
     test('rejects creation when fixture membership check fails', () async {
-      final repository = _repository(member: false);
+      final repository = _repository(
+        membership: FixtureMembershipCheckResult.nonMember,
+      );
       addTearDown(repository.dispose);
 
       await expectLater(

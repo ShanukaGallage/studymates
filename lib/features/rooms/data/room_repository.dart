@@ -1,5 +1,6 @@
 import '../../../core/models/community_models.dart';
 import '../../../core/models/room_models.dart';
+import 'seat_claim_result.dart';
 
 abstract interface class RoomRepository {
   Future<List<RoomSummary>> listRooms(String subgroupId);
@@ -24,6 +25,12 @@ abstract interface class LiveRoomRepository implements RoomRepository {
   Stream<RoomSnapshot?> watchRoom(String roomId);
 
   Stream<List<SeatState>> watchSeats(String roomId);
+
+  Future<SeatClaimResult> claimSeat({
+    required String subgroupId,
+    required String roomId,
+    required String seatId,
+  });
 }
 
 enum RoomRepositoryError {
