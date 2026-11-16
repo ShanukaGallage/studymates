@@ -195,6 +195,21 @@ subgroup; observe a room and its seat changes; claim a seat; release the current
 user's seat; and renew the current user's lease. These are responsibilities,
 not implemented method signatures.
 
+### Provisional Firestore repository foundation
+
+`FirestoreLiveRoomRepository` in
+`lib/features/rooms/data/firestore_live_room_repository.dart` implements the
+existing room create/list/lookup/observation contract using the proposed paths
+above and field names from `RoomSnapshot` and `SeatState`. It creates six
+available seat documents with the room in a client transaction, after M2's
+`verifyRoomEligibilityInTransaction()` returns `member`; this is not a security
+guarantee until M2 approves matching rules. The current `firestore.rules` has no
+room/seat matches. The adapter's schema, `roomId` query field, timestamp encoding
+and null fields on available seats are provisional. It does not persist
+`occupiedSeats`; discovery summaries derive occupancy from the six seat docs.
+`claimSeat()` remains unavailable until the trusted callable contract is
+implemented. No active-seat path or fields are defined by this adapter.
+
 ### Errors and remaining decisions
 
 Use explicit errors: `membershipRequired` when the user has no active subgroup
