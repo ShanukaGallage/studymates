@@ -276,10 +276,11 @@ Tests cover account/profile access, navigation, membership, seat conflicts and l
 
 | Member | Coordinating responsibility |
 | --- | --- |
-| **Shanuka** | Shared UI/theme, navigation, room/session presentation, integration, and release coordination; also covering connected study implementation for the demo. |
-| **Poojani** | Firebase setup, authentication, profiles, communities, and membership. |
-| **Aradhana** | Live-room/session contracts, seating, timing, completion logic, and invitation services. |
-| **Sandali** | Invitation UI, QR/manual scanning, and read-only history/progress. |
+| **Shanuka IM/2023/001** | Shared UI/theme, navigation, room/session presentation, integration, and release coordination; also covering connected study implementation for the demo. |
+| **Poojani IM/2023/087** | Firebase setup, authentication, profiles, communities, and membership. |
+| **Aradhana IM/2023/088** | Timing, completion logic, and invitation services. |
+| **Sajana IM/2023/096** | Live-room/session contracts, seating. |
+| **Sandali IM/2023/103** | Invitation UI, QR/manual scanning, and read-only history/progress. |
 
 The [four-member common plan](docs/team/00-common-plan.md) records ownership and collaboration boundaries.
 
