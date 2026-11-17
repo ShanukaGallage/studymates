@@ -6,6 +6,7 @@ import 'app_mode.dart';
 import 'account_screens.dart';
 import '../core/theme/app_theme.dart';
 import 'study_choice_sheet.dart';
+import '../features/notifications/presentation/notification_bell.dart';
 
 class AppShell extends ConsumerWidget {
   const AppShell({
@@ -24,6 +25,8 @@ class AppShell extends ConsumerWidget {
           : AppBar(
               title: Text(
                 'StudyMates',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: AppColors.primary,
                   fontWeight: FontWeight.w800,
@@ -37,6 +40,8 @@ class AppShell extends ConsumerWidget {
                     icon: const Icon(Icons.qr_code_scanner),
                     onPressed: () => context.push('/scan'),
                   ),
+                if (ref.watch(appModeProvider) == AppMode.connected)
+                  const NotificationBell(),
                 if (ref.watch(appModeProvider) == AppMode.connected &&
                     navigationShell.currentIndex == 3)
                   IconButton(
@@ -50,6 +55,8 @@ class AppShell extends ConsumerWidget {
                     icon: const Icon(Icons.qr_code_scanner),
                     onPressed: () => context.push('/preview-scanner'),
                   ),
+                if (ref.watch(appModeProvider) == AppMode.preview)
+                  const NotificationBell(),
 
                 if (ref.watch(appModeProvider) == AppMode.preview)
                   IconButton(

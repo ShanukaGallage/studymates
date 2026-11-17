@@ -12,10 +12,16 @@ import '../../../auth/presentation/controllers/auth_providers.dart';
 import '../controllers/profile_providers.dart';
 
 class ProfileViewScreen extends ConsumerWidget {
-  const ProfileViewScreen({super.key, this.onEdit, this.onSetUpProfile});
+  const ProfileViewScreen({
+    super.key,
+    this.onEdit,
+    this.onSetUpProfile,
+    this.onNotifications,
+  });
 
   final ValueChanged<UserProfile>? onEdit;
   final VoidCallback? onSetUpProfile;
+  final VoidCallback? onNotifications;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -72,6 +78,19 @@ class ProfileViewScreen extends ConsumerWidget {
                       : _ProfileDetails(profile: profile, onEdit: onEdit);
                 },
               ),
+            if (onNotifications != null &&
+                identity.status == AuthStatus.ready) ...[
+              const SizedBox(height: AppSpacing.lg),
+              AppCard(
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.notifications_outlined),
+                  title: const Text('Notifications'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: onNotifications,
+                ),
+              ),
+            ],
           ],
         ),
       ),

@@ -38,6 +38,8 @@ String? accountRedirect(AccountAccess access, Uri uri) {
     '/session',
     '/common-hall',
     '/scan',
+    '/notifications',
+    '/notification-settings',
   };
   final requested = gates.contains(uri.path)
       ? uri.queryParameters['from']

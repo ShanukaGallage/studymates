@@ -1,5 +1,43 @@
 # StudyMates contracts — preview and backend agreements
 
+## Local notifications (17 November 2026)
+
+`features/notifications` separates local storage, Android transport, hall event
+observation and presentation. `StudyNotificationService` owns account binding and
+preferences; `NotificationStore` uses uncached `SharedPreferencesAsync` so the
+foreground-task isolate and UI read the same state. Events are separate keys,
+scoped by full encoded UID, limited to 50 newest entries. Read marks and phase
+cursors are separate; reading alerts never resets delivery deduplication. No
+notification operation writes study time or Firestore data.
+
+The existing hall task emits one focus/break alert at an observed phase change.
+Restarts use a persisted cursor, seed the initial phase and never replay missed
+cycles. Recovery alerts are limited to once per session. Existing ongoing service
+notification ID 301 stays quiet; local IDs 501–504 cover phase, recovery, test and
+daily reminder. Ending a session cancels only its delivered phase/recovery alerts.
+Sign-out/account switching cancels these local IDs and the scheduled reminder.
+
+Daily reminders default off, use the device's IANA zone and inexact daily alarms
+without exact-alarm access. Android's receiver can restore reminders after reboot;
+it never starts a hall timer. The inbox records study/test alerts and reminders
+when opened; it does not claim an exact delivery log for scheduled reminders.
+Android permission denial leaves local study history available. Sound/vibration
+choices use separate channel IDs because existing Android channels are immutable;
+system notification settings and Do Not Disturb remain authoritative.
+
+`/notifications` and `/notification-settings` are authenticated routes. The bell is
+immediately right of QR; Profile links settings. Tap payloads carry a typed event,
+UID and optional session ID, never an arbitrary URL, email, goal or profile photo.
+Hall taps fetch the current private session before navigation; old/unknown sessions
+stay in the inbox with a recovery message. Preview uses explicit in-memory local
+settings and never invokes native notification APIs. No Firebase rules, indexes,
+email service or remote notification infrastructure changes are needed.
+
+Verification: 373 independent Flutter tests and clean analysis. Android phase
+delivery was observed; full lock/restart/recovery verification remains pending.
+See the device notification checkpoint in the demo runbook for the observed
+service-restart failure and remaining manual checks.
+
 ## Common Hall (17 November 2026)
 
 Implemented in `features/common_hall`: `CommonHallRepository` owns entry, paired

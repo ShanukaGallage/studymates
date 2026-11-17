@@ -10,6 +10,7 @@ import '../../../firebase_options.dart';
 import '../domain/common_hall_models.dart';
 import 'common_hall_repository.dart';
 import 'firestore_common_hall_repository.dart';
+import '../../notifications/data/study_notification_service.dart';
 
 abstract interface class HallBackgroundService {
   Future<void> prepare();
@@ -140,6 +141,9 @@ class AndroidHallBackgroundService implements HallBackgroundService {
       callback: hallTaskEntry,
     );
     if (result is ServiceRequestFailure) {
+      if (kDebugMode) {
+        debugPrint('Common Hall service start failed: ${result.error}');
+      }
       throw const HallFailure(
         'The background timer could not start. Reopen Common Hall and retry.',
       );
@@ -158,6 +162,19 @@ class AndroidHallBackgroundService implements HallBackgroundService {
           'Could not stop the study notification. Please retry.',
         );
       }
+    }
+    final uid = await FlutterForegroundTask.getData<String>(key: 'hall-user');
+    final sessionId = await FlutterForegroundTask.getData<String>(
+      key: 'hall-session',
+    );
+    if (uid != null && sessionId != null) {
+      // Phase/recovery alerts belong to this session, while the ongoing timer
+      // has its own service notification. An expired worker stops itself below
+      // without this cancellation so its recovery alert remains actionable.
+      await StudyNotificationService.android().transport.cancelSession(
+        uid,
+        sessionId,
+      );
     }
   }
 
@@ -193,6 +210,9 @@ class _HallTaskHandler extends TaskHandler {
   String? _expectedUser, _expectedId;
   DateTime? _lastRenewal;
   bool _busy = false, _closed = false;
+  bool _interrupting = false;
+  HallNotificationEngine? _alerts;
+  StreamSubscription<void>? _alertChanges;
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
@@ -234,13 +254,31 @@ class _HallTaskHandler extends TaskHandler {
         db: db,
         currentUid: () => auth.currentUser?.uid,
       );
+      try {
+        final notifications = StudyNotificationService.android();
+        await notifications.initialize();
+        _alerts = HallNotificationEngine(notifications);
+        _alertChanges = notifications.changes.stream.listen((_) {
+          FlutterForegroundTask.sendDataToMain('study-notification-added');
+        });
+      } catch (_) {
+        // Notification failure must not interrupt server-confirmed study.
+      }
       _session = await _repository!.getCurrentSession();
       if (_session?.sessionId != _expectedId) {
         await _stopIfCurrent();
         return;
       }
+      try {
+        await _alerts?.tick(_session!, DateTime.now().toUtc());
+      } catch (_) {
+        // Recovery alerts remain available if a phase event cannot be stored.
+      }
       await _renew(timestamp);
-    } catch (_) {
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('Common Hall background initialization failed: $error');
+      }
       await _interrupted();
     }
   }
@@ -253,15 +291,28 @@ class _HallTaskHandler extends TaskHandler {
   }
 
   Future<void> _interrupted() async {
-    if (_closed) return;
-    await FlutterForegroundTask.updateService(
-      notificationTitle: 'Common Hall connection interrupted',
-      notificationText: 'Open StudyMates to save confirmed time and continue.',
-    );
-    FlutterForegroundTask.sendDataToMain('hall-interrupted');
-    // Expired sessions cannot be revived across an unverified offline gap.
-    if (_session == null || !_session!.isLive(DateTime.now())) {
-      await _stopIfCurrent();
+    if (_closed || _interrupting) return;
+    _interrupting = true;
+    try {
+      if (_expectedUser != null && _expectedId != null) {
+        try {
+          await _alerts?.interrupted(_expectedUser!, _expectedId!);
+        } catch (_) {
+          /* Keep the timer/recovery path usable without alert storage. */
+        }
+      }
+      await FlutterForegroundTask.updateService(
+        notificationTitle: 'Common Hall connection interrupted',
+        notificationText:
+            'Open StudyMates to save confirmed time and continue.',
+      );
+      FlutterForegroundTask.sendDataToMain('hall-interrupted');
+      // Expired sessions cannot be revived across an unverified offline gap.
+      if (_session == null || !_session!.isLive(DateTime.now())) {
+        await _stopIfCurrent();
+      }
+    } finally {
+      _interrupting = false;
     }
   }
 
@@ -297,6 +348,7 @@ class _HallTaskHandler extends TaskHandler {
       unawaited(_renew(timestamp));
     }
     final timing = HallTiming(startsAt: session.startsAt, now: timestamp);
+    unawaited(_alerts?.tick(session, timestamp).catchError((_) {}));
     final remaining =
         '${timing.remainingSeconds ~/ 60}:${(timing.remainingSeconds % 60).toString().padLeft(2, '0')}';
     unawaited(
@@ -312,6 +364,7 @@ class _HallTaskHandler extends TaskHandler {
   @override
   Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {
     _closed = true;
+    await _alertChanges?.cancel();
   }
 
   @override

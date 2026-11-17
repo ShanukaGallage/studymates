@@ -1,5 +1,36 @@
 # Tomorrow's five-minute Android demo
 
+## Device notification check
+
+1. Open the bell to the right of QR → settings, or **Profile → Notifications**.
+   Allow Android notifications, then **Send test notification**. Tap the Android
+   alert to open the inbox; verify unread/read state and **Mark all read**.
+2. Start Common Hall and lock the phone. At 25 minutes the focus alert appears;
+   after the 5-minute break the next focus alert appears. The ongoing countdown
+   stays quiet and each transition alerts once. Taps return to the current session.
+3. Toggle cycle/recovery alerts and sound/vibration. Android channel settings and
+   Do Not Disturb may override them. No private goal appears in lock-screen text.
+4. Enable the optional daily reminder and choose a local time. Delivery is
+   approximate. Turn it off, or sign out, to cancel it. Sign in as a second account
+   and confirm the first account's history/settings do not appear.
+5. Finishing study clears its delivered alerts. An expired study connection leaves
+   one recovery alert; tapping an old session shows recovery guidance, never a new
+   reservation. Room/community push notifications are not part of this feature.
+
+The isolated Android test is `flutter test
+integration_test/study_notifications_test.dart -d DEVICE_ID
+--dart-define=STUDYMATES_EMULATOR_HOST=127.0.0.1` on one shell line, using the emulators
+and ADB reverse below. Lock after `NOTIFICATION_LOCK_TEST_READY`; unlock/foreground
+the app after `NOTIFICATION_LOCK_FOCUS_PASSED` before a fresh service start.
+
+Verification checkpoint (17 November): analysis and all 373 Flutter tests pass.
+The first Android run delivered a phase alert and checked silent/vibration channel
+settings, then failed on a fresh foreground-service start. The follow-up test now
+waits for the activity to be foregrounded, but has not completed on the phone;
+installation was blocked and the device later disconnected. Verify locked-screen
+delivery, finishing then starting another hall session, and expired-session
+recovery before treating the native walkthrough as passed.
+
 ## Common Hall check
 
 1. Finish/release any room activity. Tap **+ → Common Hall**, optionally enter a

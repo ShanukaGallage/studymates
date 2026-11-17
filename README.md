@@ -1,5 +1,20 @@
 # StudyMates
 
+## Device notifications
+
+The bell immediately right of the QR scanner opens recent on-device study
+alerts and their unread state. **Profile → Notifications** controls Common Hall
+focus/break alerts, recovery alerts, sound, vibration and an optional daily
+reminder. The ongoing countdown stays quiet. Notification taps check the current
+account/session before opening it; finishing study clears its delivered alerts.
+Sign-out cancels study alerts and reminders. Settings/history are local to this
+device and account; there is no email, FCM or cloud-notification backend.
+
+Daily reminders use the device's local time and may be delayed by Android battery
+restrictions. The inbox retains the newest 50 study/test alerts and reminders
+opened from Android. Preview is explicitly labelled and sends no device alerts.
+Room/community push alerts are outside this implementation.
+
 ## Common Hall self-study
 
 Tap the bottom-right **+** → **Common Hall** for a personal 25-minute focus /

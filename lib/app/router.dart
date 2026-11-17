@@ -30,6 +30,7 @@ import 'account_screens.dart';
 import 'app_mode.dart';
 import 'app_shell.dart';
 import 'placeholder_screen.dart';
+import '../features/notifications/presentation/notification_screens.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final mode = ref.watch(appModeProvider);
@@ -73,6 +74,16 @@ GoRouter createAppRouter({
           )
         : null,
     routes: [
+      if (mode != AppMode.foundation) ...[
+        GoRoute(
+          path: '/notifications',
+          builder: (_, _) => const NotificationInboxScreen(),
+        ),
+        GoRoute(
+          path: '/notification-settings',
+          builder: (_, _) => const NotificationSettingsScreen(),
+        ),
+      ],
       if (mode == AppMode.connected) ...[
         GoRoute(path: '/session', builder: (_, _) => const LiveSessionScreen()),
         GoRoute(
@@ -202,6 +213,8 @@ GoRouter createAppRouter({
                         ? const ProgressHistoryScreen()
                         : mode == AppMode.connected && tab.$1 == 'profile'
                         ? ProfileViewScreen(
+                            onNotifications: () =>
+                                context.push('/notification-settings'),
                             onEdit: (_) => context.go('/profile/edit'),
                             onSetUpProfile: () => context.go('/profile/setup'),
                           )

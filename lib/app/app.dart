@@ -6,6 +6,7 @@ import 'app_mode.dart';
 import '../features/study/data/study_providers.dart';
 import 'router.dart';
 import 'common_hall_coordinator.dart';
+import 'notification_coordinator.dart';
 
 class StudyMatesApp extends ConsumerWidget {
   const StudyMatesApp({super.key});
@@ -17,6 +18,7 @@ class StudyMatesApp extends ConsumerWidget {
       ref.watch(studyLeaseKeeperProvider);
       ref.watch(commonHallCoordinatorProvider);
     }
+    if (mode != AppMode.foundation) ref.watch(notificationCoordinatorProvider);
     return MaterialApp.router(
       title: 'StudyMates',
       debugShowCheckedModeBanner: false,

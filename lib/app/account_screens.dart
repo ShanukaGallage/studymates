@@ -8,11 +8,22 @@ import '../features/auth/presentation/controllers/auth_providers.dart';
 import '../features/profile/presentation/controllers/profile_providers.dart';
 import '../features/profile/presentation/screens/profile_edit_screen.dart';
 import 'account_access.dart';
+import '../features/notifications/presentation/notification_providers.dart';
 
 Future<void> signOutAccount(BuildContext context, WidgetRef ref) async {
   try {
+    final notifications = ref.read(notificationServiceProvider);
+    try {
+      await notifications.bindAccount(null);
+    } catch (_) {
+      await notifications.transport.cancelAllStudyAlerts().catchError((_) {});
+    }
     await ref.read(authStateProvider.notifier).signOut();
   } catch (_) {
+    await ref
+        .read(notificationServiceProvider)
+        .bindAccount(ref.read(authStateProvider).userId)
+        .catchError((_) {});
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not sign out. Please try again.')),
