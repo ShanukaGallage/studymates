@@ -1,3 +1,5 @@
+import 'package:studymates/features/common_hall/presentation/common_hall_providers.dart';
+
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -64,6 +66,9 @@ void main() {
       final profiles = StreamController<UserProfile?>.broadcast();
       final container = ProviderContainer(
         overrides: [
+          commonHallSessionProvider.overrideWith(
+            (ref) => const AsyncData(null),
+          ),
           appModeProvider.overrideWithValue(AppMode.connected),
           authStateProvider.overrideWith(TestIdentity.new),
           currentProfileProvider.overrideWith((ref) => profiles.stream),
@@ -143,6 +148,9 @@ void main() {
       final profiles = StreamController<UserProfile?>.broadcast();
       final container = ProviderContainer(
         overrides: [
+          commonHallSessionProvider.overrideWith(
+            (ref) => const AsyncData(null),
+          ),
           appModeProvider.overrideWithValue(AppMode.connected),
           authStateProvider.overrideWith(TestIdentity.new),
           currentProfileProvider.overrideWith((ref) => profiles.stream),

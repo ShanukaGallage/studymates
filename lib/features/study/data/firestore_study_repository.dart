@@ -373,6 +373,10 @@ class FirestoreStudyRepository
     try {
       if (token != null) await _verifyRoomInvitation(subgroupId, roomId, token);
       return await db.runTransaction((tx) async {
+        final hall = await tx.get(db.doc('users/$user/hallSession/current'));
+        if (hall.exists) {
+          return const SeatClaimFailed(SeatClaimFailure.hallSessionActive);
+        }
         if (token != null) {
           final invite = (await tx.get(db.doc('roomInvites/$token'))).data();
           if (invite == null ||

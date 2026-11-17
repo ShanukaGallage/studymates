@@ -153,6 +153,35 @@ void main() {
   });
 
   test(
+    'one hour in a room plus two hours self study totals three hours',
+    () async {
+      Map<String, dynamic> completion(
+        String id,
+        int seconds, {
+        bool demo = false,
+      }) => {
+        'recordId': id,
+        'sessionId': id,
+        'userId': 'a',
+        'goalText': 'Study',
+        'endedAt': Timestamp(1800000000, 0),
+        'creditedSeconds': seconds,
+        'timerStatus': 'completed',
+        'goalOutcome': 'unfinished',
+        'isDemo': demo,
+      };
+      db.rows['users/a/completions'] = [
+        _Doc('room-one', completion('room-one', 3600)),
+        _Doc('hall-two', completion('hall-two', 7200)),
+        _Doc('demo', completion('demo', 60, demo: true)),
+      ];
+      final summary = await repository.loadCurrentUserSummary();
+      expect(summary.creditedSeconds, 10800);
+      expect(summary.completedSessionCount, 2);
+    },
+  );
+
+  test(
     '75 records: newest first, equal timestamp boundary, no gaps or duplicates',
     () async {
       final expected = [...db.rows['users/a/completions']!]

@@ -12,6 +12,7 @@ import '../../../../core/widgets/avatar_badge.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../communities/presentation/controllers/community_providers.dart';
 import '../../../profile/presentation/controllers/profile_providers.dart';
+import '../../../common_hall/presentation/common_hall_card.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key, required this.mode});
@@ -87,6 +88,7 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   if (mode == AppMode.connected) ...[
                     const SizedBox(height: 16),
+                    const CommonHallCard(),
                     const ActiveSessionCard(),
                   ],
                   const SizedBox(height: 28),

@@ -337,7 +337,10 @@ class _LiveRoomScreenState extends ConsumerState<LiveRoomScreen> {
                         );
                         if (result is SeatClaimFailed) {
                           throw StudyFailure(
-                            result.failure == SeatClaimFailure.alreadySeated
+                            result.failure == SeatClaimFailure.hallSessionActive
+                                ? 'Finish your Common Hall session before taking a room desk. Use + to return to the hall.'
+                                : result.failure ==
+                                      SeatClaimFailure.alreadySeated
                                 ? 'You already have a reserved seat or unfinished session. Use the recovery controls above before choosing another desk.'
                                 : 'Seat not confirmed: ${result.failure.name}. Try another seat or retry.',
                           );

@@ -5,6 +5,7 @@ import '../core/theme/app_theme.dart';
 import 'app_mode.dart';
 import '../features/study/data/study_providers.dart';
 import 'router.dart';
+import 'common_hall_coordinator.dart';
 
 class StudyMatesApp extends ConsumerWidget {
   const StudyMatesApp({super.key});
@@ -12,7 +13,10 @@ class StudyMatesApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(appModeProvider);
-    if (mode == AppMode.connected) ref.watch(studyLeaseKeeperProvider);
+    if (mode == AppMode.connected) {
+      ref.watch(studyLeaseKeeperProvider);
+      ref.watch(commonHallCoordinatorProvider);
+    }
     return MaterialApp.router(
       title: 'StudyMates',
       debugShowCheckedModeBanner: false,

@@ -19,6 +19,7 @@ enum SeatClaimFailure {
   seatTaken,
   fullRoom,
   alreadySeated,
+  hallSessionActive,
   membershipRequired,
   permissionDenied,
   roomUnavailable,

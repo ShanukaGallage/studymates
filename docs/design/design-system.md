@@ -155,28 +155,42 @@ retains its original materials; its surrounding controls inherit the new theme.
 
 ## Progress overview refresh
 
-Progress follows the reference's third screen: pastel metric cards, lavender
-background, rounded white chart panels and a ring breakdown. The existing
-CompletionHistoryRepository/controller remains unchanged. All-time normal totals
-come from its complete-source summary. Day/week/month/all-time filters apply only
-to loaded records and the history list, with partial-page disclosure; weeks start
-Monday and record dates display locally. The bar chart shows the last seven local
-calendar days. The ring groups goal outcomes, since records have no subject IDs.
-Demo records stay in their separate view and never change normal totals. No focus
-score, invented streak, percentage improvement or subject attribution is shown.
-At large text sizes the daily chart becomes a readable date/value list.
+Progress uses Discover's light surfaces, plum text and purple actions. Period and
+Normal/Demo controls sit at the top; All time remains the default. The equal-height
+totals cards always show the repository's complete Normal summary, explicitly
+labelled even in Demo mode. Demo never changes those totals. The existing
+CompletionHistoryRepository/controller and credit calculations are unchanged.
+
+The chart retains seven local dates with the selected period applied, and states
+its exact range. Empty time does not hide goal outcomes or history. Compact goal
+counts use all loaded records in the selected period. Newest-first Session history
+rows open scrollable details; pagination/error recovery remains read-only. Records
+have no community/room name, so rows keep the existing Study/Demo session fallback.
+Partial-history notices stay beside charts, outcomes, history and calendar, never
+the complete-source totals. About your progress is available from the title's info
+action. At large text sizes controls wrap, totals stack at equal height, and chart
+values become a readable date/value list.
 
 ## Annual study heatmap
 
-Progress includes a compact full-calendar-year overview and a horizontally
-scrollable Monday–Sunday calendar, with previous/next year and an accessible
-date picker for exact day totals. Daily credited seconds are grouped by local
+Study calendar is collapsed below Session history. Its header shows selected year
+and active days (plus partial coverage). Expansion shows a year selector and one
+month grid with Monday–Sunday weeks. Day targets are at least 48dp; the month can
+scroll horizontally when needed. Both grid taps and the existing exact-date
+picker inspect day totals. Daily credited seconds are grouped by local
 session end date and deduplicated by record ID. Intensity levels: zero, >0–<30m,
-30m–<2h, 2–<4h, and 4h+. Future dates are blank. Normal and demo views stay separate.
+30m–<2h, 2–<4h, and 4h+. Future dates have no intensity and cannot be selected.
+Normal and demo views stay separate.
 The annual section is independent of short-period filters. While older pages
 remain, all values are explicitly partial and unfilled dates are unverified.
 A production year-aggregate query is still needed for complete coverage without
 paging through history; no new database interface or aggregation policy is imposed.
+
+17 November Progress verification: 349 Flutter tests and analysis passed; Android
+APK built/installed. Rendered at 320dp/200% text and checked live Normal/Demo,
+period changes, year/grid-day selection and the date-picker dialog on 23129RAA4G.
+The phone account had no saved sessions. Zero-time unfinished records, populated
+session details and paging/retry were verified through independent widget tests.
 
 ## Discover list redesign
 

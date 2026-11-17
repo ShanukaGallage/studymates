@@ -529,10 +529,12 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if self(uid) && request.resource.data.keys().hasOnly([
           'userId', 'subgroupId', 'roomId', 'seatId', 'claimId', 'leaseExpiresAt'])
-        && request.resource.data.userId == uid && matchingSeat(request.resource.data, uid);
+        && request.resource.data.userId == uid && matchingSeat(request.resource.data, uid)
+        && !existsAfter(hallPath(uid));
       allow update: if self(uid) && request.resource.data.keys().hasOnly([
           'userId', 'subgroupId', 'roomId', 'seatId', 'claimId', 'leaseExpiresAt'])
         && request.resource.data.userId == uid && matchingSeat(request.resource.data, uid)
+        && !existsAfter(hallPath(uid))
         && (resource.data.leaseExpiresAt <= request.time
           || (request.resource.data.claimId == resource.data.claimId
             && request.resource.data.roomId == resource.data.roomId
@@ -663,6 +665,7 @@ service cloud.firestore {
     match /users/{uid}/activeSession/{id} {
       allow read: if self(uid);
       allow create: if self(uid) && id == 'current' && eligible(request.resource.data.subgroupId)
+        && !existsAfter(hallPath(uid))
         && admittedRoom(request.resource.data.subgroupId, request.resource.data.roomId)
         && request.resource.data.keys().hasOnly(['sessionId', 'roomId', 'subgroupId', 'seatId', 'claimId', 'userId', 'goalText', 'joinedAt'])
         && request.resource.data.userId == uid && request.resource.data.joinedAt == request.time
@@ -697,7 +700,8 @@ service cloud.firestore {
       allow read: if self(uid);
       allow create: if self(uid)
         && request.resource.data.keys().hasOnly(['recordId', 'userId', 'sessionId', 'goalText', 'endedAt', 'creditedSeconds', 'timerStatus', 'goalOutcome', 'isDemo'])
-        && validCompletion(uid, id, request.resource.data);
+        && (validHallCompletion(uid, id, request.resource.data)
+          || validCompletion(uid, id, request.resource.data));
       allow update, delete: if false;
     }
     match /roomInvites/{token} {
@@ -722,6 +726,72 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['revoked'])
         && request.resource.data.revoked == true;
       allow delete: if false;
+    }
+
+    function hallPath(uid) {
+      return /databases/$(database)/documents/users/$(uid)/hallSession/current;
+    }
+    function hallPresencePath(uid) {
+      return /databases/$(database)/documents/commonHallPresence/$(uid);
+    }
+    function hallFocusSeconds(data) {
+      let elapsed = (data.confirmedAt - data.startsAt).seconds();
+      let cycles = int(elapsed / 1800);
+      let remainder = elapsed % 1800;
+      return cycles * 1500 + (remainder < 1500 ? remainder : 1500);
+    }
+    function validHallCompletion(uid, id, data) {
+      return exists(hallPath(uid))
+        && get(hallPath(uid)).data.sessionId == id
+        && data.recordId == id && data.sessionId == id && data.userId == uid
+        && data.goalText == get(hallPath(uid)).data.goalText
+        && data.isDemo == false && data.endedAt == request.time
+        && data.creditedSeconds is int
+        && data.creditedSeconds == hallFocusSeconds(get(hallPath(uid)).data)
+        && data.timerStatus == 'completed'
+        && data.goalOutcome in ['completed', 'unfinished']
+        && !existsAfter(hallPath(uid)) && !existsAfter(hallPresencePath(uid));
+    }
+    match /users/{uid}/hallSession/{id} {
+      allow read: if self(uid);
+      allow create: if self(uid) && id == 'current'
+        && request.resource.data.keys().hasOnly(['userId', 'sessionId', 'goalText', 'startsAt', 'confirmedAt'])
+        && request.resource.data.userId == uid
+        && request.resource.data.sessionId is string && request.resource.data.sessionId.matches('^hall-[A-Za-z0-9_-]{1,128}$')
+        && !exists(/databases/$(database)/documents/users/$(uid)/completions/$(request.resource.data.sessionId))
+        && request.resource.data.goalText is string && request.resource.data.goalText.size() > 0 && request.resource.data.goalText.size() <= 160
+        && request.resource.data.startsAt == request.time && request.resource.data.confirmedAt == request.time
+        && !existsAfter(claimPath(uid)) && !existsAfter(activePath(uid))
+        && getAfter(hallPresencePath(uid)).data.sessionId == request.resource.data.sessionId
+        && getAfter(hallPresencePath(uid)).data.lastSeenAt == request.time;
+      allow update: if self(uid) && id == 'current'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['confirmedAt'])
+        && resource.data.confirmedAt + duration.value(180, 's') > request.time
+        && request.resource.data.confirmedAt == request.time
+        && !existsAfter(claimPath(uid)) && !existsAfter(activePath(uid))
+        && getAfter(hallPresencePath(uid)).data.sessionId == resource.data.sessionId
+        && getAfter(hallPresencePath(uid)).data.lastSeenAt == request.time;
+      allow delete: if self(uid) && id == 'current'
+        && existsAfter(/databases/$(database)/documents/users/$(uid)/completions/$(resource.data.sessionId))
+        && !existsAfter(hallPresencePath(uid));
+    }
+    match /commonHallPresence/{uid} {
+      allow read: if signedIn();
+      allow create: if self(uid)
+        && request.resource.data.keys().hasOnly(['userId', 'sessionId', 'displayName', 'avatarId', 'joinedAt', 'lastSeenAt'])
+        && request.resource.data.userId == uid
+        && request.resource.data.displayName == get(/databases/$(database)/documents/users/$(uid)).data.displayName
+        && request.resource.data.avatarId == get(/databases/$(database)/documents/users/$(uid)).data.get('avatarId', 'default')
+        && request.resource.data.joinedAt == request.time && request.resource.data.lastSeenAt == request.time
+        && getAfter(hallPath(uid)).data.sessionId == request.resource.data.sessionId
+        && getAfter(hallPath(uid)).data.startsAt == request.time;
+      allow update: if self(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeenAt'])
+        && resource.data.lastSeenAt + duration.value(180, 's') > request.time
+        && request.resource.data.lastSeenAt == request.time
+        && getAfter(hallPath(uid)).data.sessionId == resource.data.sessionId
+        && getAfter(hallPath(uid)).data.confirmedAt == request.time;
+      allow delete: if self(uid) && !existsAfter(hallPath(uid));
     }
   }
 }

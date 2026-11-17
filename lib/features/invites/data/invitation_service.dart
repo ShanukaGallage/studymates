@@ -15,6 +15,7 @@ enum InvitationAdmissionStatus {
   expiredOrRevoked,
   fullRoom,
   membershipRequired,
+  hallSessionActive,
   unavailable,
 }
 

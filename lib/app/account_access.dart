@@ -36,6 +36,7 @@ String? accountRedirect(AccountAccess access, Uri uri) {
     '/profile',
     '/profile/edit',
     '/session',
+    '/common-hall',
     '/scan',
   };
   final requested = gates.contains(uri.path)

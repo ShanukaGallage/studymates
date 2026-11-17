@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:studymates/core/models/completion_record.dart';
 import 'package:studymates/core/theme/app_theme.dart';
 import 'package:studymates/features/progress/presentation/widgets/progress_dashboard.dart';
+import 'package:studymates/features/progress/presentation/widgets/progress_controls.dart';
 
 CompletionRecord record(String id, DateTime date) => CompletionRecord(
   recordId: id,
@@ -66,12 +67,19 @@ void main() {
               body: SingleChildScrollView(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
-                  child: ProgressActivity(
-                    records: [record('one', DateTime(2026, 11, 18))],
-                    period: ProgressPeriod.allTime,
-                    now: DateTime(2026, 11, 18),
-                    hasMore: true,
-                    onPeriodChanged: (value) => selected = value,
+                  child: Column(
+                    children: [
+                      ProgressPeriodControl(
+                        value: ProgressPeriod.allTime,
+                        onChanged: (value) => selected = value,
+                      ),
+                      ProgressActivity(
+                        records: [record('one', DateTime(2026, 11, 18))],
+                        period: ProgressPeriod.allTime,
+                        now: DateTime(2026, 11, 18),
+                        hasMore: true,
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -81,10 +89,15 @@ void main() {
       );
       await tester.tap(find.text('Week'));
       expect(selected, ProgressPeriod.week);
-      expect(find.textContaining('Loaded history only'), findsOneWidget);
-      await tester.ensureVisible(find.text('Completed goals: 1'));
+      expect(find.textContaining('Loaded records only'), findsOneWidget);
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('progress-goals-completed')),
+      );
       await tester.pumpAndSettle();
-      expect(find.text('Completed goals: 1'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('progress-goals-completed')),
+        findsOneWidget,
+      );
       expect(find.text('1m 0s'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },

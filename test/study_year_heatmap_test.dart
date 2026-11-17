@@ -71,15 +71,29 @@ void main() {
           ),
         ),
       );
-      expect(find.textContaining('1 active days · 1h 0m 0s'), findsOneWidget);
+      expect(
+        find.text('2024 · 1 active day · Partial history'),
+        findsOneWidget,
+      );
+      expect(find.text('Inspect a study day'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('study-calendar-toggle')));
+      await tester.pumpAndSettle();
+      expect(find.text('1h 0m 0s in 2024'), findsOneWidget);
       expect(find.textContaining('Partial year'), findsOneWidget);
       await tester.ensureVisible(find.text('Inspect a study day'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Inspect a study day'));
       await tester.pumpAndSettle();
       expect(find.byType(DatePickerDialog), findsOneWidget);
-      await tester.tap(find.text('Cancel'));
+      await tester.tap(find.byTooltip('Switch to input'));
       await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '02/29/2024');
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('2024-02-29: 1h 0m 0s'), findsOneWidget);
+      final day = find.byKey(const ValueKey('study-calendar-day-2024-02-29'));
+      expect(tester.getSize(day).width, greaterThanOrEqualTo(48));
+      expect(tester.getSize(day).height, greaterThanOrEqualTo(48));
       await tester.ensureVisible(find.byTooltip('Previous study year'));
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Previous study year'));

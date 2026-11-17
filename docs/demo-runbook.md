@@ -1,5 +1,24 @@
 # Tomorrow's five-minute Android demo
 
+## Common Hall check
+
+1. Finish/release any room activity. Tap **+ → Common Hall**, optionally enter a
+   goal, allow notifications and start. Another signed-in device should see one
+   occupied desk per learner, with no spare desks or capacity limit.
+2. Lock the phone for over a minute. The ongoing notification shows the personal
+   focus/break countdown; tapping it returns to the hall. Back and tab changes
+   keep study running. Each learner has their own 25/5 cycle.
+3. Finish and leave; choose the goal outcome. The desk disappears and Normal
+   Progress adds focus time to existing room time. Break time is excluded.
+4. If the connection/service was interrupted for three minutes, save the last
+   confirmed time and enter again. A room seat cannot be taken until this is saved.
+
+Local automated checks: `node test/common_hall_rules_test.mjs` and
+`flutter test integration_test/common_hall_test.dart -d DEVICE_ID
+--dart-define=STUDYMATES_EMULATOR_HOST=127.0.0.1` (one shell line). The native test
+prints `HALL_LOCK_TEST_READY`; lock the phone then for its 75-second heartbeat check.
+Use the loopback emulators and ADB reverse below, never hosted user data.
+
 If taking a desk reports already seated, use the room's reserved-seat recovery
 panel. Open the prior room or explicitly release the reserved desk. If an unfinished
 session is shown, Return to unfinished session → End and save participation first,

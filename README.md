@@ -1,5 +1,22 @@
 # StudyMates
 
+## Common Hall self-study
+
+Tap the bottom-right **+** → **Common Hall** for a personal 25-minute focus /
+5-minute break cycle, or choose **Study rooms** to open Discover. Each present
+learner brings one desk; the hall has no fixed capacity or empty seats. Finish
+and leave saves focus time to the same Normal Progress history as room study.
+Breaks are excluded. Finish/release your current room or hall activity before
+starting another. Home and the ongoing notification return to an active hall.
+
+The Android foreground timer requires notification permission and continues
+with the screen locked. It confirms presence every minute; after three minutes
+without confirmation, the desk disappears from the live list. Reopen the hall
+and save the last confirmed time before starting again. Force stop, reboot or
+device power restrictions can interrupt the service; unconfirmed offline time
+is never credited. Deploy the updated Firestore rules before using this feature.
+Preview describes the hall without Firebase; shared self-study needs `main.dart`.
+
 UI copy cleanup: room/session options and explanations are expandable; Progress
 shows totals once and keeps identifiers under Session details. Blocked-seat
 recovery, errors, demo labels and partial-history notices remain visible where

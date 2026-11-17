@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'app_mode.dart';
 import 'account_screens.dart';
 import '../core/theme/app_theme.dart';
+import 'study_choice_sheet.dart';
 
 class AppShell extends ConsumerWidget {
   const AppShell({
@@ -65,6 +66,19 @@ class AppShell extends ConsumerWidget {
               ],
             ),
       body: SafeArea(child: navigationShell),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: ref.watch(appModeProvider) == AppMode.foundation
+          ? null
+          : FloatingActionButton(
+              tooltip: 'Start studying',
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: const CircleBorder(
+                side: BorderSide(color: AppColors.softAccent, width: 4),
+              ),
+              onPressed: () => showStudyChoices(context),
+              child: const Icon(Icons.add),
+            ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
         onDestinationSelected: (index) => navigationShell.goBranch(

@@ -73,6 +73,7 @@ class _InvitationPreviewScreenState
             'The room became full. No admission was confirmed.',
           InvitationAdmissionStatus.membershipRequired =>
             'Active membership is still required. Recheck the invitation.',
+          InvitationAdmissionStatus.hallSessionActive => 'Finish your Common Hall session before joining a room. Use + to return to the hall.',
           InvitationAdmissionStatus.expiredOrRevoked =>
             'This invitation expired or was revoked.',
           InvitationAdmissionStatus.invalid =>

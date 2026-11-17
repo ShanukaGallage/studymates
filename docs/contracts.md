@@ -1,5 +1,42 @@
 # StudyMates contracts — preview and backend agreements
 
+## Common Hall (17 November 2026)
+
+Implemented in `features/common_hall`: `CommonHallRepository` owns entry, paired
+heartbeat, current-session/participant streams and idempotent finish. UI has no
+database writes. `HallBackgroundService` owns Android notification permission,
+foreground execution and notification navigation. Existing room APIs remain;
+`SeatClaimFailure.hallSessionActive` directs users to finish the hall first.
+
+- Private `users/{uid}/hallSession/current`: user/session IDs, goal, server
+  `startsAt` and `confirmedAt`. Room claims/participation and hall activity are
+  mutually exclusive in transactions **and rules**.
+- Shared `commonHallPresence/{uid}`: user/session IDs, display name, preset avatar,
+  joined/last-seen timestamps. No email, goal or private profile photo. One live
+  record means one occupied desk; no seat numbering or maximum. Expired records
+  are filtered out, not automatically deleted by a paid cleanup service.
+- Personal repeated 25/5 cycles derive from timestamps. Android confirms every
+  60 seconds; the lease lasts 180 seconds. An expired session cannot resume
+  across an offline gap. Saving recovery time uses the last confirmed timestamp.
+- Finish atomically removes session/presence and creates the existing immutable
+  `users/{uid}/completions/{sessionId}` shape (`isDemo:false`). Rules calculate
+  exact confirmed focus seconds, excluding breaks. Hall visits count as completed
+  sessions, with goal outcome chosen separately. Existing Normal totals, history,
+  charts and calendar combine room and hall records without a new category.
+
+The bottom-right + chooser preserves all four tabs. `/common-hall` is an
+authenticated Home-branch route; Home and notification taps return to it. Back/tab navigation
+does not finish study. Sign-out stops the service; any remaining session needs
+confirmed-time recovery after signing in again. No auto-start after reboot.
+
+Verification: clean analysis and 359 Flutter tests; emulator hall, room,
+membership and host/invitation security checks; Android 15 physical-device test
+with two isolated Firebase clients and a locked-screen heartbeat. Duplicate finish
+returns the original record, and the real Progress reader combines room/hall
+credit. Updated rules deployed to `studymates-dev` on 17 November 2026. Both normal
+and preview ARM64 debug APKs build; long-running OEM battery restrictions and
+physical two-phone hall rehearsal still need manual checks.
+
 ## Optional profile details (17 November 2026)
 
 `UserProfile` still requires only UID and display name. The existing `interestIds`

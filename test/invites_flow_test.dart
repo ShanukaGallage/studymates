@@ -249,6 +249,31 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'hall conflict explains recovery and never confirms room admission',
+    (tester) async {
+      final service = _Service()..gate = Completer<InvitationAdmissionResult>();
+      var callbacks = 0;
+      await open(tester, service, onAdmitted: (_) => callbacks++);
+      await tester.ensureVisible(find.text('Join room'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Join room'));
+      await tester.pump();
+      service.gate!.complete(
+        const InvitationAdmissionResult(
+          InvitationAdmissionStatus.hallSessionActive,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Finish your Common Hall session'),
+        findsOneWidget,
+      );
+      expect(find.text('Recheck invitation'), findsOneWidget);
+      expect(callbacks, 0);
+    },
+  );
+
   testWidgets('long names wrap on 320px screens at twice text size', (
     tester,
   ) async {

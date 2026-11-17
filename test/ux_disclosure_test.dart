@@ -97,9 +97,19 @@ void main() {
       expect(find.byKey(const ValueKey('progress-total-time')), findsOneWidget);
       expect(find.text('Eligible recorded time: 1h 5m'), findsNothing);
       expect(find.textContaining('Session: '), findsNothing);
-      await tester.ensureVisible(find.text('Session details').first);
+      final row = find.byKey(
+        const ValueKey('progress-record-completion-user-1-session-1'),
+      );
+      if (row.evaluate().isEmpty) {
+        await tester.scrollUntilVisible(
+          row,
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+      }
+      await tester.ensureVisible(row);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Session details').first);
+      await tester.tap(row);
       await tester.pumpAndSettle();
       expect(find.textContaining('Session: '), findsOneWidget);
     },

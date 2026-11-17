@@ -1,3 +1,5 @@
+import 'package:studymates/features/common_hall/presentation/common_hall_providers.dart';
+
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -46,6 +48,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          commonHallSessionProvider.overrideWith(
+            (ref) => const AsyncData(null),
+          ),
           appModeProvider.overrideWithValue(AppMode.connected),
           authStateProvider.overrideWith(_Identity.new),
           currentProfileProvider.overrideWith(

@@ -176,6 +176,12 @@ class FirestoreInvitationService implements InvitationService {
         );
       }
       if (result is SeatClaimFailed &&
+          result.failure == SeatClaimFailure.hallSessionActive) {
+        return const InvitationAdmissionResult(
+          InvitationAdmissionStatus.hallSessionActive,
+        );
+      }
+      if (result is SeatClaimFailed &&
           result.failure == SeatClaimFailure.alreadySeated) {
         final claim =
             (await study

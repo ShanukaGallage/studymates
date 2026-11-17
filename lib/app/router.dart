@@ -19,6 +19,7 @@ import '../features/invites/presentation/screens/invite_scanner_screen.dart';
 import '../preview/scanner_preview_screen.dart';
 import '../features/home/presentation/screens/home_screen.dart';
 import '../features/study/presentation/live_room_screen.dart';
+import '../features/common_hall/presentation/common_hall_screen.dart';
 import '../features/study/presentation/live_session_screen.dart';
 import '../features/invites/presentation/screens/invitation_preview_screen.dart';
 import '../features/invites/data/invitation_token.dart';
@@ -212,6 +213,13 @@ GoRouter createAppRouter({
                           ),
                   ),
                 ),
+                if (mode != AppMode.foundation && tab.$1 == 'home')
+                  GoRoute(
+                    path: '/common-hall',
+                    name: 'common-hall',
+                    pageBuilder: (context, state) =>
+                        _tabPage(state, const CommonHallScreen()),
+                  ),
                 if (mode != AppMode.foundation && tab.$1 == 'discover') ...[
                   GoRoute(
                     path: '/sigs/:sigId',
