@@ -1,61 +1,146 @@
+<div align="center">
+
+<img src="assets/branding/launcher-icon.svg" alt="StudyMates — two learners sharing a book" width="112" />
+
 # StudyMates
 
-## Device notifications
+**Find your people. Make room for focus.**
 
-The bell immediately right of the QR scanner opens recent on-device study
-alerts and their unread state. **Profile → Notifications** controls Common Hall
-focus/break alerts, recovery alerts, sound, vibration and an optional daily
-reminder. The ongoing countdown stays quiet. Notification taps check the current
-account/session before opening it; finishing study clears its delivered alerts.
-Sign-out cancels study alerts and reminders. Settings/history are local to this
-device and account; there is no email, FCM or cloud-notification backend.
+An Android study companion built with Flutter and Firebase for students to discover communities, study together, and track their progress.
 
-Daily reminders use the device's local time and may be delayed by Android battery
-restrictions. The inbox retains the newest 50 study/test alerts and reminders
-opened from Android. Preview is explicitly labelled and sends no device alerts.
-Room/community push alerts are outside this implementation.
+**University of Kelaniya · Mobile Application Development project**
 
-## Common Hall self-study
+[Features](#features) · [Screenshots](#screenshots) · [Getting started](#getting-started) · [Demo](#five-minute-demonstration) · [Team](#team)
 
-Tap the bottom-right **+** → **Common Hall** for a personal 25-minute focus /
-5-minute break cycle, or choose **Study rooms** to open Discover. Each present
-learner brings one desk; the hall has no fixed capacity or empty seats. Finish
-and leave saves focus time to the same Normal Progress history as room study.
-Breaks are excluded. Finish/release your current room or hall activity before
-starting another. Home and the ongoing notification return to an active hall.
+</div>
 
-The Android foreground timer requires notification permission and continues
-with the screen locked. It confirms presence every minute; after three minutes
-without confirmation, the desk disappears from the live list. Reopen the hall
-and save the last confirmed time before starting again. Force stop, reboot or
-device power restrictions can interrupt the service; unconfirmed offline time
-is never credited. Deploy the updated Firestore rules before using this feature.
-Preview describes the hall without Firebase; shared self-study needs `main.dart`.
+## About the project
 
-UI copy cleanup: room/session options and explanations are expandable; Progress
-shows totals once and keeps identifiers under Session details. Blocked-seat
-recovery, errors, demo labels and partial-history notices remain visible where
-relevant. The official Flutter responsive-layout agent skill is installed under
-`.agents/skills/`. The pub.dev `skills` tool was reviewed; it is not a runtime
-dependency and does not itself redesign the app.
+Studying consistently is easier with a community and a clear goal. StudyMates brings students together around shared interests, gives them a virtual desk in a study room, and helps them turn focused sessions into a personal study history.
 
-Room cycles default to **25 minutes focus + 5 minutes break**. The room and personal
-session show the shared phase countdown and whole-cycle progress. Room **Cycles
-done** counts non-demo room schedules whose full 30-minute end has passed;
-**Demo cycles done** is separate. These are elapsed room cycles, not attendance or
-personal study credit. Existing demo cycles finish as issued; the host's explicit
-demo switch defaults off for new cycles. No per-second writes or new rules are needed.
-The cycle reader loads the room's schedules, suitable for the university dataset;
-larger deployments should use an aggregate read model.
+The main journey is:
 
-Android study-community app: find your people, learn together. The assignment
-requires a **five-minute live Android demonstration**, with no report,
-presentation or formal rubric. These repository notes support development only.
+**Discover a community → Join a subgroup → Enter a study room → Set a goal → Study together → Review progress**
 
-## Toolchain and setup
+Students can also use the **Common Hall** for independent focus sessions alongside other learners. The app has four main tabs: **Home, Discover, Progress, and Profile**.
 
-Verified on 15 November 2026: **Flutter 3.50.0 stable / Dart 3.14.0**.
-Use the same Flutter version and retain `pubspec.lock`.
+## Features
+
+| Area | What students can do |
+| --- | --- |
+| Accounts and profiles | Register and sign in with email/password, reset a password, and manage a profile with a photo, institution, programme, year of study, bio, and interests. |
+| Communities | Search communities, filter joined communities, create a community, join or leave communities and subgroups, and browse their study rooms. Community owners manage their subgroups. |
+| Live study rooms | Create public or private rooms with **2–40 desks**, see live occupancy, and claim an available desk. Membership checks and atomic seat claims enforce one active room seat per account. |
+| Focus sessions | Set a personal goal and join a shared **25-minute focus / 5-minute break** cycle. Return to an active session, save participation, and record the goal outcome separately. |
+| Invitations | Generate and share a room QR/manual code, scan or enter a code, review the invitation, and explicitly join. Hosts can manage and revoke invitations. |
+| Common Hall | Start a personal 25/5 cycle in a shared hall with one occupied desk per present learner. Android foreground execution supports the timer while the screen is locked. |
+| Progress | Review credited focus time, completed sessions, history, charts, and a study calendar. Day/week/month/all-time filters and separate **Normal / Demo** views support review. |
+| Notifications | View an on-device alert inbox, control Common Hall focus/break and recovery alerts, and set a daily reminder with sound/vibration preferences. |
+
+Additional room behaviour includes automatic host handover to the longest-seated eligible learner, invitation expiry, seat-release recovery, and a screen-awake option while viewing a study session.
+
+## Screenshots
+
+Android screenshots supplied by the team on **17 November 2026**. Names, communities, and totals are illustrative app data.
+
+<table>
+  <tr>
+    <th>Home</th>
+    <th>Discover</th>
+    <th>Progress</th>
+    <th>Profile</th>
+  </tr>
+  <tr>
+    <td><img src="docs/images/screenshots/home.jpeg" alt="Home screen with a personal greeting and joined communities" width="200" /></td>
+    <td><img src="docs/images/screenshots/discover.jpeg" alt="Discover screen with community search and My communities filter" width="200" /></td>
+    <td><img src="docs/images/screenshots/progress.jpeg" alt="Progress screen with period filters, normal and demo views, totals and study chart" width="200" /></td>
+    <td><img src="docs/images/screenshots/profile.jpeg" alt="Profile screen with photo, education details, interests and edit action" width="200" /></td>
+  </tr>
+</table>
+
+<details>
+<summary><strong>More screenshots: launch, room creation, classroom, and notifications</strong></summary>
+
+<table>
+  <tr>
+    <th>Welcome</th>
+    <th>Create a room</th>
+    <th>Study classroom</th>
+    <th>Notification settings</th>
+  </tr>
+  <tr>
+    <td><img src="docs/images/screenshots/splash.jpeg" alt="StudyMates branded launch screen" width="200" /></td>
+    <td><img src="docs/images/screenshots/create-room.jpeg" alt="Create study room form with a name, desk capacity and private-room option" width="200" /></td>
+    <td><img src="docs/images/screenshots/study-room.jpeg" alt="Private study room with a claimed desk, available desk and study-goal controls" width="200" /></td>
+    <td><img src="docs/images/screenshots/notifications.jpeg" alt="Study alerts, daily reminder and sound settings with an Android test notification" width="200" /></td>
+  </tr>
+</table>
+
+</details>
+
+## Technology and architecture
+
+| Layer | Technology |
+| --- | --- |
+| Application | Flutter / Dart, Android |
+| UI | Material 3 through `material_ui`, shared theme and reusable controls |
+| State and navigation | Riverpod, `go_router` |
+| Accounts and data | Firebase Authentication, Cloud Firestore, transactions and security rules |
+| Invitations | `mobile_scanner`, `qr_flutter`, `share_plus` |
+| Android study utilities | `flutter_foreground_task`, `flutter_local_notifications`, `wakelock_plus` |
+| Local preferences and time | `shared_preferences`, `timezone`, `flutter_timezone` |
+| Verification | Flutter unit/widget tests, Android integration tests, Firebase emulator rule tests |
+
+Presentation consumes providers and repository interfaces; database operations live in the data layer. Connected room, seat, session, and history operations use `FirestoreStudyRepository`. `FirestoreInvitationService` uses the same checked seat-admission path. Explicit preview bindings provide local fixtures for UI development.
+
+```text
+lib/
+├── main.dart              # Firebase-connected entry point
+├── main_preview.dart      # Labelled local UI preview
+├── app/                   # Startup, access guards, routes and app shell
+├── core/                  # Shared models, theme and controls
+├── features/
+│   ├── auth/              # Email/password accounts
+│   ├── profile/           # Private student profiles
+│   ├── communities/       # Communities, subgroups and membership
+│   ├── home/              # Home dashboard
+│   ├── rooms/             # Room presentation and repository contracts
+│   ├── study/             # Connected rooms, seating and invitations
+│   ├── sessions/          # Session timing, participation and summaries
+│   ├── common_hall/       # Personal cycles and shared hall presence
+│   ├── invites/           # QR scanning, manual entry and invitation UI
+│   ├── progress/          # Read-only history and progress views
+│   └── notifications/     # Local alerts, preferences and inbox
+└── preview/               # Fixtures, component gallery and UI scenarios
+
+test/                      # Unit/widget tests and emulator security checks
+integration_test/          # Android tests using real Firebase SDKs
+functions/                 # Optional administrative cleanup and backend helpers
+docs/                      # Demo runbook, contracts, design and team guides
+firestore.rules            # Backend access and consistency rules
+firestore.indexes.json     # Firestore query/index configuration
+```
+
+### Data and session integrity
+
+- App access requires a signed-in Firebase UID and its matching saved profile. Backend errors remain visible; the connected app never substitutes sample data.
+- Room admission checks community/subgroup membership and uses transactions for seat ownership. A room seat and a Common Hall session cannot be active at the same time.
+- Shared room phases derive from one persisted server start time. Normal cycles use **25/5 minutes**; the explicitly enabled demo cycle uses **45/15 seconds**.
+- Each user/session has one immutable completion record. Retrying a save returns the existing result instead of adding duplicate credit.
+- Credited time represents eligible focus participation, excluding breaks. It does not measure attention; goal completion is a separate student-reported result.
+- Profiles, personal goals, and completion history are private to the account. Shared room/hall presence exposes limited display information.
+- Demo records are excluded from normal study totals. Preview sessions do not write connected history.
+
+## Getting started
+
+### Prerequisites
+
+- Project toolchain: **Flutter 3.50.0 / Dart 3.14.0**. Retain the checked-in `pubspec.lock`.
+- Android SDK/toolchain, an Android emulator or a phone with USB debugging enabled, and an authorized USB connection when using a phone.
+- Internet access for initial dependency downloads and hosted Firebase use.
+- For local backend testing: Node.js **22**, Java compatible with the Firebase emulators, and the Firebase CLI commands below.
+
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/ShanukaGallage/studymates.git
@@ -63,401 +148,147 @@ cd studymates
 flutter pub get
 flutter doctor -v
 flutter devices
-flutter run -t lib/main_preview.dart
 ```
 
-Select an Android device when prompted; with multiple devices use
-`flutter run -d <android-device-id> -t lib/main_preview.dart`.
-Enable USB debugging and authorize the computer on a physical phone, or start
-an Android emulator. No Firebase configuration is needed for this milestone.
+Replace `DEVICE_ID` below with an Android device ID from `flutter devices`.
 
-## Entry points and current scope
+### 2. Choose a run mode
 
-- `lib/main_preview.dart`: labelled local UI samples without Firebase. Home,
-  Discover, classrooms, demo sessions, history and scanner remain independent.
-- `lib/main.dart`: Firebase-backed accounts, profiles, communities, rooms, atomic
-  seating, immutable shared schedules, current-user session return, invitations
-  and private completion history. Deploy the checked-in Firestore rules/indexes
-  before production use; local implementation does not prove deployed configuration.
-- `--dart-define=STUDYMATES_EMULATOR_HOST=127.0.0.1`: explicitly labelled local
-  backend with real Firebase SDK operations against shared emulator data. Debug
-  Android permits cleartext only to localhost/emulator addresses.
-- App access requires authenticated UID plus its matching persisted profile.
-  No fixture repository substitutes for a backend failure.
-- See [demo runbook](docs/demo-runbook.md) for setup, deployment prerequisites,
-  credit policy, two-phone checks and the five-minute rehearsal sequence.
+| Mode | Entry point | Purpose |
+| --- | --- | --- |
+| Connected app | `lib/main.dart` | Full feature flow using the configured hosted Firebase project. |
+| Local backend | `lib/main.dart` with emulator define | Real Firebase SDK operations against local Auth/Firestore emulators. |
+| UI preview | `lib/main_preview.dart` | Labelled fixtures without Firebase; useful for inspecting screens and states. |
 
-## Try account and feature integration
+**Connected app**
 
 ```bash
-flutter run -t lib/main.dart          # Existing Firebase Android configuration
-flutter run -t lib/main_preview.dart  # Explicit fixtures, no Firebase required
+flutter run -d DEVICE_ID -t lib/main.dart
 ```
 
-Account mode: signed out → login/signup → missing profile → setup → Home; open
-Profile to edit the display name or use the toolbar to sign out. Profile save is
-observed from Firestore before access is granted. Errors remain errors, never fake
-signed-out identities or sample profiles. Return navigation accepts only known
-local account destinations. No invitation-link contract is implemented yet.
+The repository includes Android client configuration for the team's `studymates-dev` project in `android/app/google-services.json` and `lib/firebase_options.dart`. Hosted use requires Email/Password Authentication, a Firestore database, and the matching deployed rules/indexes. Register an account and complete profile setup before using the app; use two accounts/devices to evaluate live collaboration.
 
-Profile setup and editing support optional gallery photos. Save commits a cropped
-256px JPEG thumbnail (at most 32 KiB) to the owner's private Firestore profile;
-removing it restores initials. Full-size files, EXIF/GPS and local file paths are
-not stored. This university-scale approach uses the existing Spark database,
-without Firebase Storage. Deploy the photo field rules/index exemption with the
-normal Firestore rules/indexes command in the demo runbook.
-
-Before live account verification, Poojani must confirm email/password sign-in is
-enabled and access to `users/{uid}` is restricted to its authenticated owner in
-`studymates-dev`. Deployed rules have not been inspected; this checkout contains
-no Firestore rules file. No backend configuration or rules were deployed here.
-
-Preview mode: open Progress to view sample history and the separate demo view.
-Preview data's sample/empty/loading/error-once controls also configure history;
-Reset resets its repository. Use the scanner toolbar icon to capture a QR or enter
-text manually, then return to the same tab. Camera access starts only on opening
-capture; its route observer stops the camera when covered.
-
-The integration tests use fake identity/profile streams and a fake camera. They
-cover profile-based access, stale-user data rejection, redirects, sign-out, startup
-retry, Progress navigation and camera lifecycle through the real app router.
-Live account writes and physical camera capture require separate device testing.
-
-Integration verification (16 November 2026): formatting, `flutter analyze`, all
-**146 tests**, and ARM64 debug APK builds for both entry points passed. No Android
-device was connected for this integration pass, so phone checks of the new account,
-history and scanner flows remain pending. Earlier classroom checks below apply
-only to that earlier milestone.
-
-## Try the community preview
+Firebase project maintainers can deploy the checked-in Firestore configuration:
 
 ```bash
-flutter run -t lib/main_preview.dart
+npm exec --yes --package firebase-tools -- firebase login
+npm exec --yes --package firebase-tools -- firebase deploy \
+  --project studymates-dev --only firestore:rules,firestore:indexes
 ```
 
-1. Open Discover, search for IoT, then Explore IoT.
-2. Join SIG → Open ESP32 → Join subgroup → Preview First Sensor Project.
-3. Try the six-seat room scene. Tap an available seat; it becomes selected after
-   a brief local pending state. No seat has been reserved.
-4. Go back and leave the SIG. Its subgroup memberships clear too. Switching tabs
-   preserves local membership; restarting the app resets it.
-5. Inspect the full Sensor Study Club, empty Quiet Electronics Lab, Programming /
-   Flutter, Dart basics with no rooms, and the long-title Design SIG with no subgroups.
+Evaluators do not need deployment permissions to use an already configured backend. The connected client supports the Spark plan through Firestore transactions and membership self-cleanup; Cloud Functions are optional. Firebase client configuration is distinct from administrator credentials. Do not add service-account keys, account passwords, or signing secrets to the repository.
 
-The palette icon opens the component gallery. The sliders icon opens **Preview
-data**: sample, empty, loading and error-once states, plus reset. Loading remains
-until you select another scenario; Retry recovers from error-once. Switching
-scenarios resets membership. These tools are separate from product navigation.
+**Local backend — reproducible connected evaluation**
 
-## Try the room presentation
-
-After joining ESP32, open First Sensor Project. Its three sample occupants match
-its room summary. Available seats are interactive; occupied seats are disabled.
-Tap a selected seat to clear it, or select another. The selection never changes
-sample occupancy or grants access to a live room.
-
-- Save/edit a local goal (1–160 characters after trimming); Cancel preserves the
-  prior goal. The sheet scrolls above the keyboard and supports larger text.
-- Expand **Preview controls**, enable the next selection conflict, then tap an
-  available seat. Retry that seat after the simulated error.
-- Select a seat and save a goal to enable **Start · preview**. It opens a local
-  45-second focus / 15-second break demo with end confirmation and goal review. **Invite · preview** likewise
-  explains the future QR/code step without creating an invitation.
-- **Leave room preview** confirms before clearing an existing draft. Navigating
-  back out of the page also discards the local draft. Tab switches retain it.
-  Losing subgroup membership, changing/resetting scenarios, or restarting clears it.
-- The component gallery demonstrates all six states, including the sample
-  “yours” state. Selection in the room only becomes “selected,” never “yours.”
-
-The room now uses the [classroom design](docs/design/room-classroom.html): six
-illustrated desk cards in two columns, a green classroom header, occupant names
-and explicit seat states. Cards stack into one column below 280 logical pixels
-of available width or above 150% body-text scaling. Names and controls wrap;
-the page scrolls vertically. Original desk/avatar art is painted in Flutter,
-separate from labels and interaction; no external assets or dependencies were added.
-The `RoomScene` constructor, seat models and callbacks remain unchanged for M3.
-This is still a local preview, not a synchronized room. The mockup's live
-connection, host and focus samples are not connected application behavior.
-
-Material 3 uses the existing `material_ui` package (locked at 1.11.0), whose
-installed source supplies the Material widgets used by the starter. Keep these
-imports consistent; no package changes were needed. Theme/spacing tokens live
-in `lib/core/theme`; reusable controls live in `lib/core/widgets`.
-
-## Checks and manual review
+Start Auth and Firestore emulators in one terminal and leave them running:
 
 ```bash
-dart format lib test
+npm exec --yes --package firebase-tools -- firebase emulators:start \
+  --only auth,firestore --project studymates-dev --config firebase.emulators.json
+```
+
+In another terminal, forward the ports to the selected Android device and launch:
+
+```bash
+adb -s DEVICE_ID reverse tcp:8080 tcp:8080
+adb -s DEVICE_ID reverse tcp:9099 tcp:9099
+flutter run -d DEVICE_ID -t lib/main.dart \
+  --dart-define=STUDYMATES_EMULATOR_HOST=127.0.0.1
+```
+
+Repeat the forwarding and launch steps for a second device to share the same local backend. Create fresh test accounts: emulator accounts/data are separate from hosted Firebase and are temporary unless exported. This mode is visibly labelled in the app.
+
+**UI preview — no backend required**
+
+```bash
+flutter run -d DEVICE_ID -t lib/main_preview.dart
+```
+
+Explore the tabs, component gallery, and sample/loading/empty/error scenarios. Preview membership and seat selection are local UI interactions; selecting a desk does not reserve a server seat. Local fixtures reset when restarted.
+
+### 3. Build an Android APK
+
+```bash
+flutter build apk --debug -t lib/main.dart
+```
+
+Output: `build/app/outputs/flutter-apk/app-debug.apk`.
+
+For an ARM64-only demo device, add `--target-platform android-arm64`. To build the independent preview, change the target to `lib/main_preview.dart`. These commands produce debug APKs for evaluation.
+
+## Five-minute demonstration
+
+Prepare two signed-in accounts on two Android devices using the same backend. Create the community/subgroup beforehand and have both accounts join to keep the live demonstration within five minutes.
+
+| Time | Demonstration |
+| --- | --- |
+| 0:00–0:30 | Introduce StudyMates; show Home and the two student profiles. |
+| 0:30–1:15 | Open Discover, the shared community, and its subgroup; create or open a study room. |
+| 1:15–2:00 | Share/scan a fresh invitation or enter its code; show both learners in different desks. |
+| 2:00–2:20 | Set personal goals; the host explicitly enables the **60-second demo cycle**, starts it, and the guest joins. |
+| 2:20–3:20 | Observe the shared 45-second focus and 15-second break countdown. |
+| 3:20–4:10 | Save each participation, choose the goal outcome, and open **Progress → Demo**. |
+| 4:10–4:40 | Reopen history to show persistence and show that Normal totals exclude demo sessions. |
+| 4:40–5:00 | Explain one reliability behaviour, such as occupied-seat protection, and finish. |
+
+Use a newly generated invitation during evaluation. End/save participation and release existing seats before repeating the flow or entering Common Hall. Detailed setup, recovery steps, and device checks are in the [demo runbook](docs/demo-runbook.md).
+
+## Testing
+
+Run the independent Flutter checks from the repository root:
+
+```bash
+dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
 flutter test
-flutter run -t lib/main_preview.dart
-# Optional preview APK:
-flutter build apk --debug -t lib/main_preview.dart
 ```
 
-Foundation checkpoint: `a9bde2b` (`first UI build`); the working tree was clean
-before this milestone. Shanuka confirmed the foundation runs correctly on a phone.
-Verified phone: model **23129RAA4G**, **Android 15 (API 35)**;
-Android build **AQ3A.240829.003**, confirmed by Shanuka.
-Foundation analysis and all eight tests passed again before implementation.
-
-Automated checks cover navigation, membership consistency/parent requirements,
-search, missing IDs, empty/loading/error recovery, sample occupancy and narrow
-large-text layouts, alongside the original component tests. The prior community
-APK built, installed and launched on Android 15 (the display was dozing during
-visual inspection). The room milestone adds target-size/activation, semantic
-labels/actions, pending/conflict/retry, goal validation/cancel, keyboard layout
-and timer-disposal checks. No Android device was connected during room work;
-phone runtime and TalkBack review of the room remain pending.
-
-Room milestone verification: formatting and analysis passed; the full suite passed
-**21 tests**, and the seven room tests passed again after the visual badge fix.
-A rendered scene was inspected with text/icon fonts loaded. The ARM64 debug APK
-built successfully at `build/app/outputs/flutter-apk/app-debug.apk`:
+With the local Auth/Firestore emulators running, exercise backend rules:
 
 ```bash
-flutter build apk --debug --target-platform android-arm64 -t lib/main_preview.dart
+node test/firestore_membership_rules_test.mjs
+node test/firestore_study_rules_test.mjs
+node test/room_host_invitation_rules_test.mjs
+node test/common_hall_rules_test.mjs
 ```
 
-The earlier general APK build stalled and was stopped; this successful build is
-specifically for the ARM64 demo phone, not a universal architecture build.
-
-Classroom update: formatting, analysis and all **61 tests** passed, including
-responsive desk cards at 320px with 200% text and the existing selection/retry,
-semantics and goal-sheet checks. The new failure-action color pair also passed
-the contrast check. A Flutter render of all six states was visually inspected.
-`flutter run -d 704285f1 -t lib/main_preview.dart` built and launched on the
-23129RAA4G / Android 15 phone. The first build downloaded SDK Platform 34 and
-native dependencies. On 16 November, the unlocked phone passed the Discover →
-IoT → ESP32 → First Sensor Project walkthrough: two-column classroom rendering,
-scrolling to all six seats, local seat selection and goal entry/save with the
-keyboard open were checked. Selection remained explicitly local, not a reservation.
-TalkBack and large-system-text review on the physical phone remain pending;
-large-text layout is covered by the widget tests above.
-
-On Android inspect all four tabs, selected navigation state, gallery/back,
-validation, password visibility, loading/disabled controls and Retry. Try large
-system text, narrow portrait/landscape, keyboard open and TalkBack. Confirm the
-mode label stays visible. Gallery feedback is local and does not save anything.
-
-## Four-member team and work plans
-
-All four members have reported successfully running the app on their devices.
-Before parallel feature work, confirm everyone has the same published preview
-commit; the latest local community/room changes still need review and publication.
-
-Read the [common four-member plan](docs/team/00-common-plan.md), then your guide:
-
-| Member | Ownership | Guide |
-|---|---|---|
-| M1 — Shanuka | Shared UI, room/session presentation, navigation, integration and release | [Step-by-step plan](docs/team/01-shanuka-ui-integration.md) |
-| M2 — Poojani | Firebase, accounts, profiles, communities and shared-contract coordination | [Step-by-step plan](docs/team/02-poojani-accounts-communities.md) |
-| M3 — Aradhana | Live rooms, seating, sessions, completion writes and invitation services | [Step-by-step plan](docs/team/03-aradhana-rooms-sessions.md) |
-| M4 — Sandali | Camera/manual invitations and read-only history/progress | [Step-by-step plan](docs/team/04-sandali-invites-progress.md) |
-
-These are proposed assignments using the supplied name order. Availability and the
-demo deadline are still unspecified, so the plans use completion gates rather than
-calendar promises. Each member implements their feature screens using the shared
-components. Shared-file ownership, contract handoffs, blockers and Codex task
-prompts are included in the guides.
-
-The four-member common plan supersedes the original five-member allocations.
-Keep the two original StudyMates guides as design/product background; do not
-repeat their completed startup tasks. The five-minute demo requires no slides,
-report or formal rubric. Current implementation status remains documented above.
-
-## Study-session UI preview
-
-From Discover → IoT → ESP32 → First Sensor Project, join the sample communities,
-select an available seat, save a goal and tap **Start · preview**. The full-screen
-flow hides tab navigation while studying. Wait for focus/break completion or end
-early, mark the goal outcome, then review the summary. Return to the room or open
-sample Progress; no completion is written and history totals remain unchanged.
-
-Expand **Session preview controls** for connection interruption, seat-unavailable
-and one-shot summary failure/retry. These are UI simulations. The display derives
-phases from M3's existing UTC timestamp calculator, with an injectable clock for
-tests; it does not implement participation credit or backend session operations.
-The 45/15 split is a preview fixture, pending confirmation for live demo timing.
-
-Session UI verification (16 November 2026): formatting, analysis and all **164
-tests** passed, including UTC phase changes, early-end confirmation, failure/retry,
-connection recovery, goal outcome, room-start handoff and 320px/200% text layout.
-The preview APK built and launched on the Android 15 phone. The device showed its
-lock screen during automated inspection; Shanuka subsequently reported the
-session flow was working on the phone. This is a user-reported visual check. No live session, seat admission or completion persistence was tested.
-
-## Lavender Home
-
-Home now follows the approved lavender/purple visual direction, with a focus card,
-community list and study shortcuts. Preview memberships update Home and Discover
-together. Account Home uses the saved profile and explicitly identifies community
-services as pending. No active session, progress totals or AI features are invented.
-See `docs/design/design-system.md` for the updated shared palette and spacing.
-
-Lavender Home verification: analysis and all **231 tests** passed after the newly
-merged membership and seat-policy changes. Home tests cover membership updates,
-community navigation, loading/retry and 320px large text; contrast checks cover
-hero text and the new accent surfaces. A Flutter render with Roboto was inspected.
-The earlier Home APK launched, but the phone disconnected before the final
-provider fix could be installed; final on-device review remains pending.
-
-Progress overview now uses pastel summary cards, local day/week/month/all-time
-filters, a seven-day study-time chart and a goal-outcome ring. Charts/filter results
-use loaded pages only; the normal all-history summary stays independent. Demo
-records remain separate. Analysis and all **258 tests** passed; a Flutter render
-was visually checked. Android verification of this dashboard is pending.
-
-The Progress study-year heatmap shows daily credited time with purple intensity,
-a full-year overview, scrollable calendar, year navigation and day inspection.
-It uses loaded records, clearly marks incomplete history and updates on paging.
-Future dates are blank; demo activity stays separate. Complete annual coverage
-without paging requires a future current-user daily-aggregate repository method.
-Heatmap verification: analysis and all **260 tests** passed, including leap-day,
-year boundaries, duplicate records, intensity thresholds, demo exclusion and
-large-text date inspection. The ARM64 preview APK built successfully. Physical
-phone review of the heatmap remains pending.
-
-Discover now has a responsive community-card grid, category/membership badges,
-subgroup counts and All communities / My communities filters combined with search.
-Analysis and all **261 tests** passed; the 390px Flutter render was inspected.
-Final on-device visual verification of the Discover refresh remains pending.
-
-## Connected demo implementation checkpoint
-
-Shanuka is covering Aradhana's backend/integration work for the demo. The new
-`features/study/data` adapters reuse M2 membership transactions, M3 seat policy
-and active-session model, and M4 invitation/history consumers. Seat release and
-renewal accept an expected claim ID. The foreground app renews a valid seat every
-30 seconds. Session phase boundaries derive from a server-recorded start. Stable
-per-user/session completion IDs prevent duplicate writes; demo credit is separate.
-
-Firebase rules enforce paired claims, membership, private goals/history and bounded
-credit. `functions/` supplies trusted membership-leave cleanup and host transfer.
-The Firebase CLI currently has no authorized account; no production deployment
-was performed. Earlier milestone notes below/above are historical checkpoints.
-
-Connected verification (16 November): formatting and analysis passed; **262 Flutter
-tests** passed. The Android real-SDK integration test passed on 23129RAA4G /
-Android 15 using two emulator identities: conflicting claims, cross-room seat
-exclusion, renewal, invitation revocation, shared schedules, revalidation, stable
-completion retry and private history. Firestore rule tests passed for authorization,
-completion credit bounds, demo isolation and simultaneous claims. Trusted cleanup
-tests passed for seat release, host transfer and repeat execution. This is evidence
-for the local backend, not a production deployment or a two-physical-phone rehearsal.
-
-Reconciled main checkpoint: retained PR #25 membership retry fixes and PR #26/#31
-TypeScript room helpers/tests and alternative room adapter; restored the tested
-connected application and lavender UI from `Shanuka/conflict_resolving`. Backend
-dependencies are no longer tracked. Analysis, **278 Flutter tests**, **35 backend
-tests**, membership/room/session rules and trusted cleanup emulator checks passed.
-The hosted-Firebase ARM64 debug APK built. Production deployment still requires
-Firebase CLI authentication and a project plan supporting Cloud Functions.
-
-## Room capacity and visibility
-
-Connected room creation asks for 2–40 desks and Public or Private. Public rooms
-are open to eligible subgroup members; private rooms remain discoverable with a
-lock label and ask for an invitation code before admission. Hosts/creators enter
-their own rooms directly. Previously admitted members may return. Existing rooms
-remain public with six desks. Private room codes are entered after opening the
-room, or through the existing scanner/invitation flow. Invite expiry/revocation
-blocks new admissions; membership checks continue for all seat operations.
-
-Redeploy rules before installing this update:
+After configuring ADB port forwarding, run connected Android integration checks against the emulators:
 
 ```bash
-npm exec --yes --package firebase-tools -- firebase deploy \
-  --project studymates-dev --only firestore:rules
+flutter test integration_test/connected_study_test.dart -d DEVICE_ID \
+  --dart-define=STUDYMATES_EMULATOR_HOST=127.0.0.1
 ```
 
-Capacity/privacy verification: analysis and **281 Flutter tests** passed. The
-expanded Android integration test passed against Firebase emulators, including
-40-desk creation, desk-40 claim, private direct-entry denial and verified-code
-admission. Rules tests cover capacity bounds, unknown/out-of-range desks, private
-seat reads, forged grants, expired/revoked/other-room invitations and token privacy.
-Membership rules and trusted cleanup regressions also passed. Hosted rules have
-not been redeployed by this task; repeat the two-phone rehearsal after deployment.
+Additional Android suites cover host handover, profile photos, Common Hall, notifications, and session utilities. Some require manual lock/unlock steps described in the runbook. Backend helper tests can be run with `npm --prefix functions ci` followed by `npm --prefix functions test`.
 
-## Spark-compatible membership leave
+Tests cover account/profile access, navigation, membership, seat conflicts and leases, session timing, completion deduplication, invitation validation, private history, demo separation, and responsive/accessibility states. Screenshots illustrate the UI; they are not evidence that every runtime scenario has passed. See the [runbook's verification checkpoints](docs/demo-runbook.md) for recorded device results and outstanding checks.
 
-Leave SIG/subgroup no longer waits for a Cloud Function. `SparkMembershipCleanup`
-ends only the current user's related participation, releases their seat and closes
-hands hosting to the longest-seated eligible learner (or closes an empty hosted room) before membership finalization. Their goal
-is recorded as unfinished; credit follows existing server-validated focus rules.
-It never edits another user's participation. SIG ownership
-transfer/closure and subgroup cascade still use M2's membership protocol.
+## Current limitations
 
-Deploy current rules, then use Discover → **Pending leave requests** to
-recover an earlier timed-out departure. This may also finish owner departures
-after their SIG has already closed. Foreground errors preserve the retry path.
-Deploy only `firestore:rules,firestore:indexes` on Spark; Functions are optional.
+- **Android is the evaluation target.** Other platform folders do not imply verified support; Firebase platform configuration is Android-specific.
+- **Connected features need a reachable backend.** Room seats renew while the app is foregrounded and expire after approximately two minutes without renewal. Returning after expiry requires explicit recovery; the app never silently reclaims a seat.
+- **Common Hall depends on Android service execution.** Force stop, reboot, connectivity loss, or battery restrictions can interrupt it. After a three-minute confirmation gap, recovery credits only confirmed focus time. The full notification lock/restart/recovery walkthrough remains pending in the runbook.
+- **Notifications are local to the device/account.** Daily reminders are approximate and subject to Android settings. There is no FCM, email, or room/community push-notification service.
+- **History is sized for the university project.** Summary reads use the user's completion collection; calendar/history views identify partial loaded data. Larger deployments would need aggregate read models.
+- **Invitations require in-app scanning or manual entry.** Android deep-link handling is not configured. Revoking a code prevents new admissions but does not remove users already admitted.
 
-Leave verification: analysis is clean and **283 Flutter tests** passed. Firestore
-membership/security regressions passed. On the Xiaomi 23129RAA4G (Android 15),
-the connected integration test passed against Firebase emulators, including
-subgroup departure, SIG departure, seat release, hosted-room closure and cleanup
-retry. Hosted rules still require deployment and a two-account rehearsal.
+## Team
 
-## Invitation sharing and screen sleep
+| Member | Coordinating responsibility |
+| --- | --- |
+| **Shanuka** | Shared UI/theme, navigation, room/session presentation, integration, and release coordination; also covering connected study implementation for the demo. |
+| **Poojani** | Firebase setup, authentication, profiles, communities, and membership. |
+| **Aradhana** | Live-room/session contracts, seating, timing, completion logic, and invitation services. |
+| **Sandali** | Invitation UI, QR/manual scanning, and read-only history/progress. |
 
-Live room invitations offer **Share invitation** through the Android share sheet,
-including the manual code and entry instructions. Preview fixtures cannot be
-shared. The selectable code remains available if sharing fails. Sharing does not
-reserve a seat, bypass membership, or configure Android deep links.
+The [four-member common plan](docs/team/00-common-plan.md) records ownership and collaboration boundaries.
 
-The connected session screen offers **Keep screen awake**, off by default. It
-applies only while that screen is visible and the app is foregrounded, and releases
-on departure or completion. It does not run background work or extend seat leases.
-Packages: `share_plus` and `wakelock_plus`; existing dependencies remain pinned.
+## Project documentation
 
-Verification: formatting, analysis and 286 Flutter tests passed; the normal Android
-debug APK built successfully. The native integration test passed on the Xiaomi
-23129RAA4G (Android 15): screen-awake is off initially, enables on selection and
-releases after leaving. Manually check the invitation share sheet and screen-awake
-background/resume behavior. First builds may install SDK Platform 35 and CMake
-through Gradle.
+- [Demo runbook](docs/demo-runbook.md) — connected setup, five-minute walkthrough, recovery, and verification checkpoints.
+- [Contracts](docs/contracts.md) — shared models, repository boundaries, backend behaviour, and implementation history.
+- [Design system](docs/design/design-system.md) — theme and reusable UI guidance.
+- [Screen guide](docs/design/screens.md) — screen and navigation design.
+- [Team plan](docs/team/00-common-plan.md) — responsibilities and integration workflow.
 
-## Branded launch
-
-Android launch themes use lavender in both system light/dark modes, with an
-original book-and-two-learners vector emblem and Android 12+ splash resources.
-`lib/app/startup_splash.dart` continues the branding while Firebase initializes:
-gentle entrance, tagline and loading indicator, with no artificial delay. Startup
-errors still show Retry. Preview remains Firebase-free and shares the native
-launch artwork. Narrow/landscape layouts and 200% text scaling are tested.
-
-## Automatic host handover and invitation management
-
-Rooms maintain an atomic FIFO `hostQueue`: each fresh desk claim appends its desk;
-renewals preserve order, and rejoining starts at the back. A healthy host keeps
-hosting. Seat release triggers handover to the oldest eligible seated learner.
-Logout/offline handover follows lease expiry (about two minutes), then a remaining
-foreground app checks within 30 seconds. The shared cycle/timestamps never reset.
-No server scheduler or paid Function is needed; if nobody has the app open,
-reconciliation waits for a seated learner to return. Empty rooms close on community
-departure. A newly created, unseated host has a 125-second setup grace.
-
-Existing rooms upgrade their queue when their current host opens the room or
-renews a seat. This trusted one-time upgrade sorts existing desks by server
-`claimedAt` (desk ID breaks ties). Reopen older demo rooms with their host after
-updating the app; an absent legacy host cannot be safely replaced until upgrade.
-All teammates must use this version: upgraded-room claims require atomic queue updates.
-
-Room hosts/creators have **Manage invitations**. Code issuers can revoke their own
-code from its display. A new host can revoke codes issued by the previous host.
-Revocation is irreversible, hides the live QR/share controls and prevents new
-admissions through that code. Already admitted users retain room access and seats.
-The management list is bounded to 50 codes; codes expire after 12 hours.
-
-Deploy `firestore:rules` before using this update on hosted Firebase. No indexes,
-billing changes, or Functions deployment are required. Emulator rule tests:
-`node test/room_host_invitation_rules_test.mjs`. Android integration:
-`flutter test integration_test/host_handover_test.dart -d <device-id> --dart-define=STUDYMATES_EMULATOR_HOST=127.0.0.1`.
-
-Verified against local Firebase emulators: 304 Flutter tests, clean analysis, the
-three-client Android host succession/revocation test and the existing Android
-room/session/private-capacity regression test passed. New rules tests cover queue
-ordering, healthy-host protection, expired/ineligible heads, rejoining at the tail,
-private desk 40, host setup-grace surrender and authorized revocation/listing.
-Hosted deployment and a physical multi-phone outage rehearsal remain separate.
+Some planning documents retain earlier milestone assumptions. This README describes the current application; dated implementation updates in the contracts and runbook provide the detailed context.
